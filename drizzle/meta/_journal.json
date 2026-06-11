@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1778305628860,
+      "tag": "0000_handy_hellfire_club",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1747122000000,
+      "tag": "0001_add_admission_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1747285800000,
+      "tag": "0002_parent_meetings",
+      "breakpoints": true
+    }
+  ]
+}
