@@ -11,13 +11,14 @@ import {
 import { studentStatusEnum, enrollmentStatusEnum, starTypeEnum } from "./enums";
 import { users } from "./users";
 import { admissionApplications } from "./admissions";
-import { academicYears } from "./settings";
+import { academicYears, batches } from "./settings";
 import { classes } from "./classes";
 import { relations } from "drizzle-orm";
 
 export const students = pgTable("students", {
   id: uuid("id").defaultRandom().primaryKey(),
-  studentCode: varchar("student_code", { length: 20 }).unique().notNull(), // HQMS-2024-0001
+  studentCode: varchar("student_code", { length: 20 }).unique().notNull(), // HQMS-2024-0001 (system)
+  admissionNumber: varchar("admission_number", { length: 20 }).unique(),   // 150, 151 (manual register)
   userId: uuid("user_id")
     .unique()
     .references(() => users.id, { onDelete: "set null" }),
@@ -34,7 +35,16 @@ export const students = pgTable("students", {
   bloodGroup: varchar("blood_group", { length: 5 }),
   nationality: varchar("nationality", { length: 50 }).default("Indian"),
   religion: varchar("religion", { length: 50 }),
+
+  // Structured address fields (primary)
+  houseName: varchar("house_name", { length: 200 }),
+  post:      varchar("post",       { length: 150 }),
+  district:  varchar("district",   { length: 150 }),
+  state:     varchar("state",      { length: 150 }),
+  pin:       varchar("pin",        { length: 10 }),
+  // Legacy combined field (auto-built from parts, kept for compat)
   address: text("address"),
+
   photoUrl: text("photo_url"),
   documentUrls: jsonb("document_urls").$type<string[]>().default([]),
   medicalNotes: text("medical_notes"),
@@ -50,6 +60,10 @@ export const students = pgTable("students", {
   admissionYearId: uuid("admission_year_id")
     .notNull()
     .references(() => academicYears.id, { onDelete: "restrict" }),
+
+  // Batch (permanent cohort — assigned at admission, never changes)
+  batchId: uuid("batch_id")
+    .references(() => batches.id, { onDelete: "set null" }),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -107,6 +121,10 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
   admissionYear: one(academicYears, {
     fields: [students.admissionYearId],
     references: [academicYears.id],
+  }),
+  batch: one(batches, {
+    fields: [students.batchId],
+    references: [batches.id],
   }),
   parent: one(parents, { fields: [students.id], references: [parents.studentId] }),
   enrollments: many(enrollments),

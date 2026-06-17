@@ -3,45 +3,58 @@
 import { db } from "@/lib/db";
 import {
   academicYears,
+  batches,
   classes,
   enrollments,
   students,
 } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
-import { eq, and, ne, inArray } from "drizzle-orm";
+import { eq, and, ne, sql, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-const createYearSchema = z.object({
-  label: z.string().min(4).max(20), // "2025-26"
-  startDate: z.string(), // ISO date string
-  endDate: z.string(),
+// =============================================
+// SCHEMA VALIDATORS
+// =============================================
+const createAcademicYearSchema = z.object({
+  startDate: z.string().optional(),
+  endDate:   z.string().optional(),
+  label:     z.string().optional(), // e.g. "2024-25"
+});
+
+const createBatchSchema = z.object({
+  batchNumber: z.number().int().positive(),
+  notes:       z.string().optional(),
 });
 
 // =============================================
-// CREATE A NEW ACADEMIC YEAR
-// Clones all active classes from the previous current year
+// CREATE A NEW ACADEMIC YEAR (time period only)
+// Clones all active classes from the previous current year.
+// Does NOT create a batch — that is a separate step.
 // =============================================
 export async function createAcademicYear(input: unknown) {
   const session = await requireRole(["super_admin", "admin"]);
 
-  const parsed = createYearSchema.safeParse(input);
+  const parsed = createAcademicYearSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, error: "Invalid input: " + JSON.stringify(parsed.error.flatten()) };
   }
 
-  const { label, startDate, endDate } = parsed.data;
+  const { startDate, endDate, label: customLabel } = parsed.data;
 
-  // Check for duplicate label
-  const existing = await db.query.academicYears.findFirst({
-    where: eq(academicYears.label, label),
-  });
-  if (existing) {
-    return { success: false, error: `Academic year "${label}" already exists.` };
-  }
+  // Default dates
+  const today = new Date();
+  const oneYearLater = new Date(today);
+  oneYearLater.setFullYear(today.getFullYear() + 1);
+  const resolvedStart = startDate ? new Date(startDate) : today;
+  const resolvedEnd   = endDate   ? new Date(endDate)   : oneYearLater;
 
-  // Get currently active year so we can clone its classes
+  // Auto-generate label from dates or use provided
+  const yearLabel = customLabel
+    ?? `${resolvedStart.getFullYear()}-${String(resolvedEnd.getFullYear()).slice(-2)}`;
+
+  // Get currently active year for class cloning
   const currentYear = await db.query.academicYears.findFirst({
     where: eq(academicYears.isCurrent, true),
   });
@@ -55,12 +68,13 @@ export async function createAcademicYear(input: unknown) {
   }
 
   // 2. Create new academic year (mark as current)
+  //    batchNumber on academicYears is now DEPRECATED — kept for compat only.
   const [newYear] = await db
     .insert(academicYears)
     .values({
-      label,
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
+      label: yearLabel,
+      startDate: resolvedStart,
+      endDate: resolvedEnd,
       isCurrent: true,
     })
     .returning();
@@ -77,13 +91,13 @@ export async function createAcademicYear(input: unknown) {
     if (oldClasses.length > 0) {
       await db.insert(classes).values(
         oldClasses.map((cls) => ({
-          name: cls.name,
-          track: cls.track,
-          tutorId: cls.tutorId,
+          name:           cls.name,
+          track:          cls.track,
+          tutorId:        cls.tutorId,
           academicYearId: newYear.id,
-          capacity: cls.capacity,
-          isActive: true,
-          displayOrder: cls.displayOrder,
+          capacity:       cls.capacity,
+          isActive:       true,
+          displayOrder:   cls.displayOrder,
         }))
       );
     }
@@ -97,13 +111,97 @@ export async function createAcademicYear(input: unknown) {
 }
 
 // =============================================
+// CREATE A NEW BATCH (student cohort)
+// Separate from academic years.
+// =============================================
+export async function createBatch(input: unknown) {
+  const session = await requireRole(["super_admin", "admin"]);
+
+  const parsed = createBatchSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid input: " + JSON.stringify(parsed.error.flatten()) };
+  }
+
+  const { batchNumber, notes } = parsed.data;
+
+  // Check for duplicate
+  const existing = await db.query.batches.findFirst({
+    where: eq(batches.batchNumber, batchNumber),
+  });
+  if (existing) {
+    return { success: false, error: `Batch ${batchNumber} already exists.` };
+  }
+
+  const [newBatch] = await db
+    .insert(batches)
+    .values({
+      batchNumber,
+      label: `Batch ${batchNumber}`,
+      notes: notes ?? null,
+    })
+    .returning();
+
+  await logActivity(session.user.id, "batch.create", "batches", newBatch.id);
+  revalidatePath("/admin/settings/academic-year");
+
+  return { success: true, data: newBatch };
+}
+
+// =============================================
+// GET ALL BATCHES with active student counts
+// A batch is "current" if it has ≥1 active student.
+// =============================================
+export async function getAllBatchesWithCounts() {
+  const allBatches = await db.query.batches.findMany({
+    orderBy: (b, { asc }) => [asc(b.batchNumber)],
+  });
+
+  // Count active students per batch
+  const activeCounts = await db
+    .select({
+      batchId: students.batchId,
+      count:   sql<number>`COUNT(*)::int`,
+    })
+    .from(students)
+    .where(eq(students.status, "active"))
+    .groupBy(students.batchId);
+
+  // Count all students per batch
+  const totalCounts = await db
+    .select({
+      batchId: students.batchId,
+      count:   sql<number>`COUNT(*)::int`,
+    })
+    .from(students)
+    .groupBy(students.batchId);
+
+  const activeMap = new Map(activeCounts.map((r) => [r.batchId, r.count]));
+  const totalMap  = new Map(totalCounts.map((r) => [r.batchId, r.count]));
+
+  return allBatches.map((b) => ({
+    ...b,
+    activeStudents: activeMap.get(b.id) ?? 0,
+    totalStudents:  totalMap.get(b.id)  ?? 0,
+    isCurrent:      (activeMap.get(b.id) ?? 0) > 0,
+  }));
+}
+
+// =============================================
+// GET NEXT BATCH NUMBER (max existing + 1)
+// =============================================
+export async function getNextBatchNumber(): Promise<number> {
+  const result = await db
+    .select({ maxBatch: sql<number>`COALESCE(MAX(${batches.batchNumber}), 0)` })
+    .from(batches);
+  return (result[0]?.maxBatch ?? 0) + 1;
+}
+
+// =============================================
 // PROMOTE A SINGLE STUDENT to the new academic year
-// Closes old enrollment, opens new one with incremented yearOfStudy
 // =============================================
 export async function promoteStudent(studentId: string, newAcademicYearId: string) {
   const session = await requireRole(["super_admin", "admin", "tutor"]);
 
-  // Get student's current active enrollment
   const activeEnrollment = await db.query.enrollments.findFirst({
     where: and(
       eq(enrollments.studentId, studentId),
@@ -116,7 +214,6 @@ export async function promoteStudent(studentId: string, newAcademicYearId: strin
     return { success: false, error: "No active enrollment found for this student." };
   }
 
-  // Check not already promoted to the new year
   const alreadyPromoted = await db.query.enrollments.findFirst({
     where: and(
       eq(enrollments.studentId, studentId),
@@ -128,7 +225,6 @@ export async function promoteStudent(studentId: string, newAcademicYearId: strin
     return { success: false, error: "Student is already promoted to this academic year." };
   }
 
-  // Find the equivalent class in the new academic year (same name and track)
   const newClass = await db.query.classes.findFirst({
     where: and(
       eq(classes.academicYearId, newAcademicYearId),
@@ -144,22 +240,19 @@ export async function promoteStudent(studentId: string, newAcademicYearId: strin
     };
   }
 
-  // Compute next year of study: "1st" → "2nd" → "3rd"
   const yearMap: Record<string, string> = {
     "1st": "2nd",
     "2nd": "3rd",
-    "3rd": "3rd", // cap at 3rd
+    "3rd": "3rd",
   };
   const currentYos = activeEnrollment.yearOfStudy ?? "1st";
   const nextYos = yearMap[currentYos] ?? "2nd";
 
-  // Close old enrollment
   await db
     .update(enrollments)
     .set({ status: "completed", completedAt: new Date() })
     .where(eq(enrollments.id, activeEnrollment.id));
 
-  // Create new enrollment in new year
   const [newEnrollment] = await db
     .insert(enrollments)
     .values({
@@ -197,7 +290,7 @@ export async function bulkPromoteByClass(classId: string, newAcademicYearId: str
   );
 
   const succeeded = results.filter((r) => r.success).length;
-  const failed = results.filter((r) => !r.success).length;
+  const failed    = results.filter((r) => !r.success).length;
 
   revalidatePath("/admin/settings/academic-year/promote");
   return { success: true, succeeded, failed };
@@ -205,10 +298,8 @@ export async function bulkPromoteByClass(classId: string, newAcademicYearId: str
 
 // =============================================
 // GET PROMOTION STATUS for all active students
-// Returns: promoted & unpromoted lists for the given new year
 // =============================================
 export async function getPromotionStatus(newAcademicYearId: string) {
-  // Get all currently active students with their old-year enrollment
   const allActiveEnrollments = await db.query.enrollments.findMany({
     where: and(
       eq(enrollments.status, "active"),
@@ -221,7 +312,6 @@ export async function getPromotionStatus(newAcademicYearId: string) {
     },
   });
 
-  // Get students already promoted to the new year
   const promotedEnrollments = await db.query.enrollments.findMany({
     where: and(
       eq(enrollments.academicYearId, newAcademicYearId),
@@ -230,12 +320,8 @@ export async function getPromotionStatus(newAcademicYearId: string) {
   });
   const promotedStudentIds = new Set(promotedEnrollments.map((e) => e.studentId));
 
-  const pending = allActiveEnrollments.filter(
-    (e) => !promotedStudentIds.has(e.studentId)
-  );
-  const promoted = allActiveEnrollments.filter((e) =>
-    promotedStudentIds.has(e.studentId)
-  );
+  const pending  = allActiveEnrollments.filter((e) => !promotedStudentIds.has(e.studentId));
+  const promoted = allActiveEnrollments.filter((e) =>  promotedStudentIds.has(e.studentId));
 
   return { pending, promoted };
 }

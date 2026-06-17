@@ -1,7 +1,7 @@
 // Re-export all schema tables and relations
 export * from "./enums";
 export * from "./users";
-export * from "./settings";
+export * from "./settings"; // includes academicYears, batches
 export * from "./classes";
 export * from "./remarks";
 export * from "./admissions";

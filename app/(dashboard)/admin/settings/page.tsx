@@ -21,8 +21,8 @@ export default async function SettingsPage() {
 
   const settingSections = [
     {
-      title: "Academic Year",
-      description: "Manage academic years and promote students to the next year of study",
+      title: "Batch & Year Management",
+      description: "Manage academic years (time periods) and student batches (cohorts)",
       href: "/admin/settings/academic-year",
       icon: "🎓",
     },

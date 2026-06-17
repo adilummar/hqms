@@ -467,6 +467,7 @@ export async function completeAdmission(input: unknown) {
         emergencyContact: parsed.data.emergencyContact,
         admissionDate: parsed.data.admissionDate,
         admissionYearId: parsed.data.admissionYearId,
+        batchId: (parsed.data as { batchId?: string }).batchId ?? null,
         status: "active",
       })
       .returning();

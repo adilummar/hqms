@@ -9,7 +9,7 @@ interface BreadcrumbItem {
 
 interface PageHeaderProps {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   breadcrumbs?: BreadcrumbItem[];
   action?: React.ReactNode;
   className?: string;
@@ -55,9 +55,9 @@ export function PageHeader({
             {title}
           </h1>
           {description && (
-            <p className="text-sm text-muted-foreground mt-1 font-dm-sans">
+            <div className="text-sm text-muted-foreground mt-1 font-dm-sans">
               {description}
-            </p>
+            </div>
           )}
         </div>
         {action && <div className="flex-shrink-0">{action}</div>}

@@ -6,6 +6,8 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { JuzGrid } from "@/components/hifz/juz-grid";
 import { StatusBadge } from "@/components/students/status-badge";
+import { StudentStatusPanel } from "@/components/students/student-status-panel";
+import { PreMemorizedJuzMarker } from "@/components/hifz/pre-memorized-juz-marker";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -96,7 +98,18 @@ export default async function StudentProfilePage({ params }: Props) {
     <div>
       <PageHeader
         title={`${student.firstName} ${student.lastName ?? ""}`}
-        description={student.studentCode}
+        description={
+          <span className="flex items-center gap-3 flex-wrap">
+            <span className="font-jetbrains text-xs bg-muted px-2 py-0.5 rounded">
+              {student.studentCode}
+            </span>
+            {student.admissionNumber && (
+              <span className="font-jetbrains text-xs bg-foreground text-background px-2 py-0.5 rounded">
+                AD No. {student.admissionNumber}
+              </span>
+            )}
+          </span>
+        }
         breadcrumbs={[
           { label: "Admin" },
           { label: "Students", href: "/admin/students" },
@@ -127,8 +140,9 @@ export default async function StudentProfilePage({ params }: Props) {
 
           {/* Personal Information */}
           <SectionCard title="Personal Information">
+            <Row label="Admission Number" value={student.admissionNumber ? `AD No. ${student.admissionNumber}` : undefined} />
             <Row label="Date of Birth" value={student.dateOfBirth} />
-            <Row label="Gender" value={student.gender} />
+            <Row label="Gender" value="Male" />
             <Row label="Blood Group" value={student.bloodGroup} />
             <Row label="Nationality" value={student.nationality} />
             <Row label="Religion" value={student.religion} />
@@ -140,16 +154,25 @@ export default async function StudentProfilePage({ params }: Props) {
             )}
           </SectionCard>
 
-          {/* Address */}
-          {(app?.houseName || app?.place || fullAddress) && (
+          {/* Address — from student structured fields or application fields */}
+          {(student.houseName || student.district || app?.houseName || fullAddress) && (
             <SectionCard title="Address">
-              {app?.houseName && <Row label="House Name" value={app.houseName} />}
-              {app?.place && <Row label="Place" value={app.place} />}
-              {app?.postOffice && <Row label="Post Office" value={app.postOffice} />}
-              {app?.pincode && <Row label="Pincode" value={app.pincode} />}
-              {app?.district && <Row label="District" value={app.district} />}
-              {app?.state && <Row label="State" value={app.state} />}
-              {!app?.houseName && fullAddress && (
+              {(student.houseName || app?.houseName) && (
+                <Row label="House Name" value={student.houseName ?? app?.houseName} />
+              )}
+              {(student.post || app?.place) && (
+                <Row label="Post / Place" value={student.post ?? app?.place} />
+              )}
+              {(student.district || app?.district) && (
+                <Row label="District" value={student.district ?? app?.district} />
+              )}
+              {(student.state || app?.state) && (
+                <Row label="State" value={student.state ?? app?.state} />
+              )}
+              {(student.pin || app?.pincode) && (
+                <Row label="PIN Code" value={student.pin ?? app?.pincode} />
+              )}
+              {!student.houseName && !app?.houseName && fullAddress && (
                 <Row label="Address" value={fullAddress} />
               )}
             </SectionCard>
@@ -204,6 +227,13 @@ export default async function StudentProfilePage({ params }: Props) {
               ))}
             </div>
           </div>
+
+          {/* Student Status Panel — change active/discontinued/completed */}
+          <StudentStatusPanel
+            studentId={student.id}
+            currentStatus={student.status as "active" | "completed" | "discontinued"}
+            studentName={`${student.firstName} ${student.lastName ?? ""}`.trim()}
+          />
         </div>
 
         {/* Right column */}
@@ -221,6 +251,14 @@ export default async function StudentProfilePage({ params }: Props) {
             </div>
             <JuzGrid juzData={juzCells} readonly />
           </div>
+
+          {/* Pre-Memorized Juz Marker */}
+          <PreMemorizedJuzMarker
+            studentId={student.id}
+            completedJuzNumbers={juzData
+              .filter((j) => j.status === "completed")
+              .map((j) => j.juzNumber)}
+          />
 
           {/* Recent Hifz Log */}
           <div className="bg-card border border-border rounded-lg">

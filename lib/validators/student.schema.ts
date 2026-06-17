@@ -26,6 +26,13 @@ export const updateStudentSchema = z.object({
   bloodGroup: z.string().optional(),
   nationality: z.string().optional(),
   religion: z.string().optional(),
+  // Structured address
+  houseName: z.string().optional(),
+  post: z.string().optional(),
+  district: z.string().optional(),
+  state: z.string().optional(),
+  pin: z.string().optional(),
+  // Legacy combined (auto-built)
   address: z.string().optional(),
   photoUrl: z.string().optional(),
   medicalNotes: z.string().optional(),

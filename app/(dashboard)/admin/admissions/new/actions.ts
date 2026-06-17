@@ -6,117 +6,150 @@ import { requireAdmin } from "@/lib/auth/helpers";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { currentTargetPeriod, getDefaultMonthlyTarget } from "@/lib/hifz-targets";
+import { generateStudentCode, generateNextAdmissionNumber, checkAdmissionNumberConflict } from "@/lib/utils/codes";
+import { eq } from "drizzle-orm";
 
 export async function submitAdmissionForm(formData: FormData) {
   const session = await requireAdmin();
 
-  const firstName = formData.get("firstName") as string;
-  const lastName = formData.get("lastName") as string;
-  const dateOfBirth = formData.get("dateOfBirth") as string;
-  const gender = formData.get("gender") as "male" | "female";
-  const bloodGroup = formData.get("bloodGroup") as string;
-  const address = formData.get("address") as string;
-  const admissionDate = formData.get("admissionDate") as string;
-  const academicYearId = formData.get("academicYearId") as string;
+  const firstName       = (formData.get("firstName") as string)?.trim();
+  const lastName        = (formData.get("lastName") as string)?.trim();
+  const dateOfBirth     = formData.get("dateOfBirth") as string;
+  const bloodGroup      = formData.get("bloodGroup") as string;
+  const admissionDate   = formData.get("admissionDate") as string;
+  const academicYearId  = formData.get("academicYearId") as string;
 
-  const fatherName = formData.get("fatherName") as string;
-  const motherName = formData.get("motherName") as string;
-  const primaryPhone = formData.get("primaryPhone") as string;
-  const secondaryPhone = formData.get("secondaryPhone") as string;
+  // Structured address
+  const houseName = (formData.get("houseName") as string)?.trim();
+  const post      = (formData.get("post") as string)?.trim();
+  const district  = (formData.get("district") as string)?.trim();
+  const state     = (formData.get("state") as string)?.trim();
+  const pin       = (formData.get("pin") as string)?.trim();
+  const combinedAddress = [houseName, post, district, state, pin].filter(Boolean).join(", ");
 
-  const hifzClassId = formData.get("hifzClassId") as string;
+  // Admission number: use provided or auto-generate
+  let admissionNumber = (formData.get("admissionNumber") as string)?.trim();
+
+  const fatherName    = (formData.get("fatherName") as string)?.trim();
+  const motherName    = (formData.get("motherName") as string)?.trim();
+  const primaryPhone  = (formData.get("primaryPhone") as string)?.trim();
+  const secondaryPhone = (formData.get("secondaryPhone") as string)?.trim();
+
+  const hifzClassId    = formData.get("hifzClassId") as string;
   const madrasaClassId = formData.get("madrasaClassId") as string;
-  const schoolClassId = formData.get("schoolClassId") as string;
+  const schoolClassId  = formData.get("schoolClassId") as string;
+  const batchId        = (formData.get("batchId") as string)?.trim() || null;
 
-  if (!firstName || !dateOfBirth || !gender || !address || !admissionDate || !fatherName || !primaryPhone || !hifzClassId || !madrasaClassId || !schoolClassId) {
+  if (!firstName || !dateOfBirth || !admissionDate || !fatherName || !primaryPhone || !hifzClassId || !madrasaClassId || !schoolClassId) {
     return { error: "Please fill in all required fields." };
   }
 
-  try {
-    // Generate student code
-    // simple format: HQMS-YYYY-XXXX
-    const year = new Date(admissionDate).getFullYear();
-    const countQuery = await db.query.students.findMany();
-    const sequence = String(countQuery.length + 1).padStart(4, "0");
-    const studentCode = `HQMS-${year}-${sequence}`;
+  // If no manual admission number given, auto-generate next
+  if (!admissionNumber) {
+    admissionNumber = await generateNextAdmissionNumber();
+  } else {
+    // Check for conflict with existing student
+    const conflict = await checkAdmissionNumberConflict(admissionNumber);
+    if (conflict) {
+      return {
+        error: `Admission number ${admissionNumber} is already assigned to ${conflict.firstName} ${conflict.lastName ?? ""} (${conflict.studentCode}). Please choose a different number.`,
+      };
+    }
+  }
 
-    // Generate parent credentials
-    const username = `parent_${studentCode.toLowerCase()}`;
-    const password = "password123"; // default password
-    const passwordHash = await bcrypt.hash(password, 10);
+  try {
+    const year = new Date(admissionDate).getFullYear();
+    const studentCode = await generateStudentCode(year);
+
+    // Parent credentials: username = fatherName+last4digits, password = same
+    const parentUsername = `${fatherName.replace(/\s+/g, "").toLowerCase()}${primaryPhone.slice(-4)}`;
+    const parentPassword = parentUsername;
+    const parentPwHash   = await bcrypt.hash(parentPassword, 10);
+
+    // Student credentials: username = phone, password = DOB as DDMMYYYY
+    const [yyyy, mm, dd] = dateOfBirth.split("-");
+    const studentPassword = `${dd}${mm}${yyyy}`;
+    const studentPwHash   = await bcrypt.hash(studentPassword, 10);
 
     const result = await db.transaction(async (tx) => {
       // 1. Create Student
       const [newStudent] = await tx.insert(students).values({
         studentCode,
+        admissionNumber,
         firstName,
         lastName: lastName || null,
         dateOfBirth,
-        gender,
+        gender: "male",          // All students are male
         bloodGroup: bloodGroup || null,
-        address,
+        houseName: houseName || null,
+        post: post || null,
+        district: district || null,
+        state: state || null,
+        pin: pin || null,
+        address: combinedAddress || null,
         admissionDate,
         admissionYearId: academicYearId,
+        batchId: batchId || null,
         status: "active",
       }).returning();
 
       // 2. Create Parent User
       const [newUser] = await tx.insert(users).values({
-        username,
-        passwordHash,
+        username: parentUsername,
+        passwordHash: parentPwHash,
         role: "parent",
         isActive: true,
-      }).returning();
+      }).onConflictDoNothing().returning();
 
-      // 3. Create Parent Record
-      await tx.insert(parents).values({
-        userId: newUser.id,
-        studentId: newStudent.id,
-        fatherName,
-        motherName: motherName || null,
-        primaryPhone,
-        whatsappNumber: secondaryPhone || null,
-      });
+      // 3. Create Student User
+      const [studentUser] = await tx.insert(users).values({
+        username: primaryPhone,
+        passwordHash: studentPwHash,
+        role: "student",
+        isActive: true,
+      }).onConflictDoNothing().returning();
 
-      // 4. Create Enrollments
+      // Link student user if created
+      if (studentUser) {
+        await tx.update(students).set({ userId: studentUser.id }).where(eq(students.id, newStudent.id));
+      }
+
+      // 4. Create Parent Record
+      if (newUser) {
+        await tx.insert(parents).values({
+          userId: newUser.id,
+          studentId: newStudent.id,
+          fatherName,
+          motherName: motherName || null,
+          primaryPhone,
+          whatsappNumber: secondaryPhone || null,
+        });
+      }
+
+      // 5. Create Enrollments
       await tx.insert(enrollments).values([
-        {
-          studentId: newStudent.id,
-          classId: hifzClassId,
-          academicYearId,
-          yearOfStudy: "1",
-          status: "active",
-        },
-        {
-          studentId: newStudent.id,
-          classId: madrasaClassId,
-          academicYearId,
-          yearOfStudy: "1",
-          status: "active",
-        },
-        {
-          studentId: newStudent.id,
-          classId: schoolClassId,
-          academicYearId,
-          yearOfStudy: "1",
-          status: "active",
-        },
-      ]);
+        { studentId: newStudent.id, classId: hifzClassId,    academicYearId, yearOfStudy: "1st", status: "active" },
+        { studentId: newStudent.id, classId: madrasaClassId, academicYearId, yearOfStudy: "1st", status: "active" },
+        { studentId: newStudent.id, classId: schoolClassId,  academicYearId, yearOfStudy: "1st", status: "active" },
+      ]).onConflictDoNothing();
 
+      // 6. Initial monthly target
       const targetPeriod = currentTargetPeriod(new Date(admissionDate));
-      await tx
-        .insert(monthlyTargets)
-        .values({
-          studentId: newStudent.id,
-          year: targetPeriod.year,
-          month: targetPeriod.month,
-          targetJuz: String(getDefaultMonthlyTarget("1")),
-          setBy: session.user.id,
-          notes: "Auto target on admission",
-        })
-        .onConflictDoNothing();
+      await tx.insert(monthlyTargets).values({
+        studentId: newStudent.id,
+        year: targetPeriod.year,
+        month: targetPeriod.month,
+        targetJuz: String(getDefaultMonthlyTarget("1st")),
+        setBy: session.user.id,
+        notes: "Auto target on admission",
+      }).onConflictDoNothing();
 
-      return { student: newStudent, parentUsername: username, parentPassword: password };
+      return {
+        student: newStudent,
+        parentUsername,
+        parentPassword,
+        admissionNumber,
+      };
     });
 
     revalidatePath("/admin/students");
