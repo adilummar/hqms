@@ -31,6 +31,7 @@ const saveMeetingAttendanceSchema = z.object({
       remarks: z.string().optional(),
     })
   ),
+  extraRevalidatePaths: z.array(z.string()).optional(),
 });
 
 // ── Create a parent meeting (super_admin only) ────────────────────────────────
@@ -180,6 +181,13 @@ export async function saveParentMeetingAttendance(input: unknown) {
 
   revalidatePath("/tutor/parent-meetings");
   revalidatePath("/admin/settings/parent-meetings");
+  revalidatePath("/admin/parent-meetings");
+
+  // Revalidate any extra paths supplied by the caller (e.g. admin page)
+  for (const p of parsed.data.extraRevalidatePaths ?? []) {
+    revalidatePath(p);
+  }
+
   return { success: true };
 }
 

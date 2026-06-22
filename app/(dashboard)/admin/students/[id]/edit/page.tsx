@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
-import { students, parents } from "@/lib/db/schema";
+import { students, parents, admissionApplications } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
@@ -17,19 +17,25 @@ export default async function EditStudentProfilePage({ params }: Props) {
   await requireAdmin();
   const { id } = await params;
 
-  const [student, parentInfo] = await Promise.all([
-    db.query.students.findFirst({
-      where: eq(students.id, id),
-      with: { application: true },
-    }),
+  // Fetch student first — if not found, 404 immediately
+  const student = await db.query.students.findFirst({
+    where: eq(students.id, id),
+  });
+
+  if (!student) notFound();
+
+  const [application, parentInfo] = await Promise.all([
+    student.applicationId
+      ? db.query.admissionApplications.findFirst({
+          where: eq(admissionApplications.id, student.applicationId),
+        })
+      : Promise.resolve(null),
     db.query.parents.findFirst({
       where: eq(parents.studentId, id),
     }),
   ]);
 
-  if (!student) notFound();
-
-  const app = student.application;
+  const app = application ?? null;
   const fullName = `${student.firstName} ${student.lastName ?? ""}`.trim();
 
   const defaultValues = {

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { saveParentMeetingAttendance } from "@/lib/actions/parent-meetings";
 import { toast } from "sonner";
-import { Loader2, CheckCircle2, XCircle, ChevronDown } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 
 interface Student {
   id: string;
@@ -24,6 +24,8 @@ interface Props {
   meetingDate: string;
   students: Student[];
   existingAttendance: ExistingEntry[];
+  /** Extra paths to revalidate after saving (e.g. admin page) */
+  revalidatePaths?: string[];
 }
 
 type AttendanceMap = Record<string, boolean | null>; // null = not marked
@@ -35,6 +37,7 @@ export function ParentMeetingRoster({
   meetingDate,
   students,
   existingAttendance,
+  revalidatePaths,
 }: Props) {
   const [isPending, startTransition] = useTransition();
 
@@ -75,7 +78,11 @@ export function ParentMeetingRoster({
         remarks: remarks[s.id] ?? "",
       }));
 
-      const result = await saveParentMeetingAttendance({ meetingId, entries });
+      const result = await saveParentMeetingAttendance({
+        meetingId,
+        entries,
+        extraRevalidatePaths: revalidatePaths,
+      });
 
       if (result.success) {
         toast.success(`Attendance saved — ${attendedCount} attended, ${absentCount} absent`);

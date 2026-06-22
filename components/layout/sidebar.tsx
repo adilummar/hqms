@@ -30,15 +30,17 @@ interface NavItem {
 }
 
 const ADMIN_NAV: NavItem[] = [
-  { label: "Dashboard",    href: "/admin",                         icon: LayoutDashboard },
-  { label: "Students",     href: "/admin/students",                icon: Users },
-  { label: "Hifz Progress",href: "/admin/hifz/targets",           icon: BookOpen },
-  { label: "Attendance",   href: "/admin/attendance",              icon: CalendarCheck },
-  { label: "Exams",        href: "/admin/exams",                   icon: FileText },
-  { label: "Admissions",   href: "/admin/admissions/applications", icon: ClipboardList },
-  { label: "Inventory",    href: "/admin/inventory",               icon: Archive },
-  { label: "Reports",      href: "/admin/reports",                 icon: BarChart3 },
+  { label: "Dashboard",       href: "/admin",                         icon: LayoutDashboard },
+  { label: "Students",        href: "/admin/students",                icon: Users },
+  { label: "Hifz Progress",   href: "/admin/hifz/targets",           icon: BookOpen },
+  { label: "Attendance",      href: "/admin/attendance",              icon: CalendarCheck },
+  { label: "Parent Meetings", href: "/admin/parent-meetings",         icon: UsersRound },
+  { label: "Exams",           href: "/admin/exams",                   icon: FileText },
+  { label: "Admissions",      href: "/admin/admissions/applications", icon: ClipboardList },
+  { label: "Inventory",       href: "/admin/inventory",               icon: Archive },
+  { label: "Reports",         href: "/admin/reports",                 icon: BarChart3 },
 ];
+
 
 const TUTOR_NAV: NavItem[] = [
   { label: "Dashboard",       href: "/tutor",                icon: LayoutDashboard },

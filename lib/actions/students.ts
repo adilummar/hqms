@@ -13,7 +13,7 @@ import {
   updateJuzEntrySchema,
   setMonthlyTargetSchema,
 } from "@/lib/validators/hifz.schema";
-import { eq, and, between, count, desc } from "drizzle-orm";
+import { eq, and, between, count, desc, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 // === STUDENT ACTIONS ===
@@ -174,6 +174,33 @@ export async function updateJuzEntry(input: unknown) {
   revalidatePath(`/admin/students/${d.studentId}`);
   return { success: true, data: entry };
 }
+
+/**
+ * Reset juz tracker rows for the given juz numbers back to "not started".
+ * Deletes the rows entirely so the juz grid shows them as empty again.
+ */
+export async function resetJuzEntries(
+  studentId: string,
+  juzNumbers: number[]
+): Promise<{ success: boolean; error?: string }> {
+  await requireRole(["admin", "super_admin"]);
+
+  if (!juzNumbers.length) return { success: true };
+
+  await db
+    .delete(juzTracker)
+    .where(
+      and(
+        eq(juzTracker.studentId, studentId),
+        inArray(juzTracker.juzNumber, juzNumbers)
+      )
+    );
+
+  revalidatePath(`/admin/students/${studentId}`);
+  return { success: true };
+}
+
+
 
 export async function setMonthlyTarget(input: unknown) {
   const session = await requireRole(["tutor", "admin", "super_admin"]);

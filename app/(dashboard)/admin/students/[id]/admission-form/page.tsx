@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
-import { students, parents, enrollments } from "@/lib/db/schema";
+import { students, parents, enrollments, admissionApplications, academicYears } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Image from "next/image";
@@ -41,13 +41,21 @@ export default async function AdmissionFormPrintPage({ params }: Props) {
   await requireAdmin();
   const { id } = await params;
 
-  const [student, parentInfo, activeEnrollments] = await Promise.all([
-    db.query.students.findFirst({
-      where: eq(students.id, id),
-      with: {
-        application: true,
-        admissionYear: true,
-      },
+  // Fetch student first — if not found, 404 immediately
+  const student = await db.query.students.findFirst({
+    where: eq(students.id, id),
+  });
+
+  if (!student) notFound();
+
+  const [application, admissionYear, parentInfo, activeEnrollments] = await Promise.all([
+    student.applicationId
+      ? db.query.admissionApplications.findFirst({
+          where: eq(admissionApplications.id, student.applicationId),
+        })
+      : Promise.resolve(null),
+    db.query.academicYears.findFirst({
+      where: eq(academicYears.id, student.admissionYearId),
     }),
     db.query.parents.findFirst({
       where: eq(parents.studentId, id),
@@ -58,14 +66,12 @@ export default async function AdmissionFormPrintPage({ params }: Props) {
     }),
   ]);
 
-  if (!student) notFound();
-
-  const application = student.application;
+  const app = application ?? null;
   const hifzClass = activeEnrollments.find((item) => item.class.track === "hifz");
   const madrasaClass = activeEnrollments.find((item) => item.class.track === "madrasa");
   const schoolClass = activeEnrollments.find((item) => item.class.track === "school");
   const fullName = `${student.firstName} ${student.lastName ?? ""}`.trim();
-  const addressParts = value(parentInfo?.address ?? student.address ?? application?.address)
+  const addressParts = value(parentInfo?.address ?? student.address ?? app?.address)
     .split(",")
     .map((part) => part.trim())
     .filter(Boolean);
@@ -124,17 +130,17 @@ export default async function AdmissionFormPrintPage({ params }: Props) {
         <section className="mt-6 grid grid-cols-2 gap-x-10">
           <div>
             <Field label="Name of Student">{fullName}</Field>
-            <Field label="Name of Father">{value(parentInfo?.fatherName ?? application?.fatherName)}</Field>
-            <Field label="Name of Mother">{value(parentInfo?.motherName ?? application?.motherName)}</Field>
-            <Field label="Name of Guardian">{value(parentInfo?.fatherName ?? application?.fatherName)}</Field>
+            <Field label="Name of Father">{value(parentInfo?.fatherName ?? app?.fatherName)}</Field>
+            <Field label="Name of Mother">{value(parentInfo?.motherName ?? app?.motherName)}</Field>
+            <Field label="Name of Guardian">{value(parentInfo?.fatherName ?? app?.fatherName)}</Field>
             <Field label="Relation with student">Father</Field>
             <Field label="Place">{place}</Field>
             <Field label="Post">{post}</Field>
             <Field label="District">{district}</Field>
-            <Field label="Class Completed">{value(hifzClass?.yearOfStudy ?? application?.schoolClass)}</Field>
+            <Field label="Class Completed">{value(hifzClass?.yearOfStudy ?? app?.schoolClass)}</Field>
             <Field label="Blood Group">{value(student.bloodGroup)}</Field>
-            <Field label="Phone No">{value(parentInfo?.primaryPhone ?? application?.guardianPhone)}</Field>
-            <Field label="WhatsApp No">{value(parentInfo?.whatsappNumber ?? application?.alternatePhone)}</Field>
+            <Field label="Phone No">{value(parentInfo?.primaryPhone ?? app?.guardianPhone)}</Field>
+            <Field label="WhatsApp No">{value(parentInfo?.whatsappNumber ?? app?.alternatePhone)}</Field>
           </div>
 
           <div>
@@ -144,8 +150,8 @@ export default async function AdmissionFormPrintPage({ params }: Props) {
             <Field label="State">{value(student.nationality === "Indian" ? "Kerala" : student.nationality)}</Field>
             <Field label="Pin">-</Field>
             <Field label="School">{value(schoolClass?.class.name)}</Field>
-            <Field label="Aadhar No">{value(application?.aadhaarNumber)}</Field>
-            <Field label="2)">{value(parentInfo?.email ?? application?.guardianEmail)}</Field>
+            <Field label="Aadhar No">{value(app?.aadhaarNumber)}</Field>
+            <Field label="2)">{value(parentInfo?.email ?? app?.guardianEmail)}</Field>
             <Field label="2)">{value(madrasaClass?.class.name)}</Field>
           </div>
         </section>
@@ -160,7 +166,7 @@ export default async function AdmissionFormPrintPage({ params }: Props) {
           </div>
           <p className="mt-4 text-[12px] leading-5">
             {fullName} is allotted to study in MIC Thahfeezul Qur&apos;an College,
-            Batch {value(student.admissionYear?.label)}, with the Admission No. {admissionNo} on{" "}
+            Batch {value(admissionYear?.label)}, with the Admission No. {admissionNo} on{" "}
             {formatDate(student.admissionDate)}.
           </p>
         </section>

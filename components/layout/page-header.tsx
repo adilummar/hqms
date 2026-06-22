@@ -25,21 +25,25 @@ export function PageHeader({
   return (
     <div className={cn("mb-4 md:mb-6", className)}>
       {breadcrumbs && breadcrumbs.length > 0 && (
-        <nav className="flex items-center gap-1 mb-2">
+        <nav aria-label="Breadcrumb" className="flex items-center mb-2">
           {breadcrumbs.map((crumb, i) => (
-            <span key={i} className="flex items-center gap-1">
+            <span key={i} className="inline-flex items-center">
               {i > 0 && (
-                <ChevronRight size={12} className="text-muted-foreground" />
+                <ChevronRight
+                  size={12}
+                  className="text-muted-foreground/60 mx-1 flex-shrink-0"
+                  aria-hidden="true"
+                />
               )}
               {crumb.href ? (
                 <Link
                   href={crumb.href}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors font-dm-sans"
+                  className="text-xs leading-none text-muted-foreground hover:text-foreground transition-colors font-dm-sans"
                 >
                   {crumb.label}
                 </Link>
               ) : (
-                <span className="text-xs text-muted-foreground font-dm-sans">
+                <span className="text-xs leading-none text-muted-foreground font-dm-sans">
                   {crumb.label}
                 </span>
               )}

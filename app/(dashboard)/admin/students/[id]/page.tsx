@@ -1,6 +1,6 @@
 import { requireTutor } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
-import { students, juzTracker, hifzDailyEntries, enrollments, parents } from "@/lib/db/schema";
+import { students, juzTracker, hifzDailyEntries, enrollments, parents, admissionApplications } from "@/lib/db/schema";
 import { eq, and, desc, asc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
@@ -39,12 +39,22 @@ export default async function StudentProfilePage({ params }: Props) {
   await requireTutor();
   const { id } = await params;
 
-  const [student, juzData, recentEntries, studentEnrollments, parentInfo] =
+  // Fetch student first — if not found, 404 immediately
+  const student = await db.query.students.findFirst({
+    where: eq(students.id, id),
+  });
+
+  if (!student) notFound();
+
+  // Fetch all related data in parallel
+  const [application, juzData, recentEntries, studentEnrollments, parentInfo] =
     await Promise.all([
-      db.query.students.findFirst({
-        where: eq(students.id, id),
-        with: { application: true },
-      }),
+      // Fetch application separately to avoid relational query issues
+      student.applicationId
+        ? db.query.admissionApplications.findFirst({
+            where: eq(admissionApplications.id, student.applicationId),
+          })
+        : Promise.resolve(null),
       db.query.juzTracker.findMany({
         where: eq(juzTracker.studentId, id),
         orderBy: [asc(juzTracker.juzNumber)],
@@ -63,9 +73,7 @@ export default async function StudentProfilePage({ params }: Props) {
       }),
     ]);
 
-  if (!student) notFound();
-
-  const app = student.application;
+  const app = application ?? null;
 
   const juzCells = Array.from({ length: 30 }, (_, i) => {
     const entry = juzData.find((j) => j.juzNumber === i + 1);
@@ -252,13 +260,17 @@ export default async function StudentProfilePage({ params }: Props) {
             <JuzGrid juzData={juzCells} readonly />
           </div>
 
-          {/* Pre-Memorized Juz Marker */}
+          {/* Memorized Juz Manager — mark pre-memorized or reset completed juz */}
           <PreMemorizedJuzMarker
             studentId={student.id}
             completedJuzNumbers={juzData
               .filter((j) => j.status === "completed")
               .map((j) => j.juzNumber)}
+            inProgressJuzNumbers={juzData
+              .filter((j) => j.status === "in_progress")
+              .map((j) => j.juzNumber)}
           />
+
 
           {/* Recent Hifz Log */}
           <div className="bg-card border border-border rounded-lg">
