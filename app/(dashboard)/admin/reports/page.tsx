@@ -118,11 +118,32 @@ export default async function ReportsPage({ searchParams }: Props) {
   const maxCompletions = Math.max(...classStats.map((c) => c.completions), 1);
 
   const reportLinks = [
-    { label: "Monthly Targets & Toppers", href: "/admin/hifz/targets", icon: "🎯", description: "View student progress vs targets" },
-    { label: "Attendance Grid", href: "/admin/attendance", icon: "📋", description: "Monthly attendance by class" },
-    { label: "Student List", href: "/admin/students", icon: "👥", description: "All enrolled students" },
-    { label: "Applications", href: "/admin/admissions/applications", icon: "📝", description: "Admission pipeline status" },
-    { label: "Activity Log", href: "/admin/settings/activity", icon: "🔍", description: "Full audit trail (super_admin)" },
+    { label: "Monthly Targets & Toppers", href: "/admin/hifz/targets",              icon: "🎯", description: "View student progress vs targets" },
+    { label: "Attendance Grid",           href: "/admin/attendance",                icon: "📋", description: "Monthly attendance grid by class" },
+    { label: "Student List",              href: "/admin/students",                  icon: "👥", description: "All enrolled students" },
+    { label: "Applications",              href: "/admin/admissions/applications",   icon: "📝", description: "Admission pipeline status" },
+    { label: "Activity Log",              href: "/admin/settings/activity",         icon: "🔍", description: "Full audit trail (super_admin)" },
+  ];
+
+  const featuredReports = [
+    {
+      href: "/admin/reports/attendance",
+      emoji: "✅",
+      bg: "bg-emerald-100",
+      title: "Daily Attendance Report",
+      description: "View present, absent, on-leave, and unmarked students for any class and date. Printable.",
+      tags: ["Present list", "Absent list", "On leave", "Not marked", "Printable"],
+      tagStyle: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    },
+    {
+      href: "/admin/reports/parent-meetings",
+      emoji: "👨‍👩‍👧",
+      bg: "bg-blue-100",
+      title: "Parent Meeting Report",
+      description: "Full attendance report for any parent meeting. Filter by track, class, or status. Printable PDF.",
+      tags: ["By meeting", "By class", "By track", "Attendance %", "Printable"],
+      tagStyle: "bg-blue-50 text-blue-700 border-blue-200",
+    },
   ];
 
   return (
@@ -208,6 +229,40 @@ export default async function ReportsPage({ searchParams }: Props) {
         {/* Toppers List */}
         <div className="lg:col-span-1">
           <ToppersList toppers={toppersData} month={monthName} />
+        </div>
+      </div>
+
+      {/* Featured Reports */}
+      <div className="mb-8 print:hidden">
+        <h3 className="font-playfair text-base font-semibold mb-3">Detailed Reports</h3>
+        <div className="space-y-3">
+          {featuredReports.map((r) => (
+            <Link
+              key={r.href}
+              href={r.href}
+              className="flex items-start gap-4 p-5 border border-border rounded-lg bg-card hover:border-foreground/30 hover:bg-muted/20 transition-all group"
+            >
+              <div className={`w-11 h-11 rounded-lg ${r.bg} flex items-center justify-center shrink-0 text-xl`}>
+                {r.emoji}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground text-sm group-hover:underline">
+                  {r.title}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {r.description}
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {r.tags.map((tag) => (
+                    <span key={tag} className={`text-xs px-2 py-0.5 border rounded-full ${r.tagStyle}`}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <span className="text-muted-foreground text-lg mt-0.5">→</span>
+            </Link>
+          ))}
         </div>
       </div>
 
