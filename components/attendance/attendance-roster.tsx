@@ -23,12 +23,18 @@ interface ExistingEntry {
   remarks?: string | null;
 }
 
+interface RemarkOption {
+  id: string;
+  label: string;
+}
+
 interface Props {
   students: Student[];
   classId: string;
   track: Track;
   date: string;
   existingEntries: ExistingEntry[];
+  remarkOptions?: RemarkOption[];
 }
 
 const STATUS_LABELS: Record<AttendanceStatus, string> = {
@@ -43,13 +49,21 @@ const STATUS_STYLES: Record<AttendanceStatus, string> = {
   leave: "bg-muted text-muted-foreground border-border",
 };
 
-export function AttendanceRoster({ students, classId, track, date, existingEntries }: Props) {
+export function AttendanceRoster({ students, classId, track, date, existingEntries, remarkOptions = [] }: Props) {
   const [isPending, startTransition] = useTransition();
   const [entries, setEntries] = useState<Record<string, AttendanceStatus>>(() => {
     const map: Record<string, AttendanceStatus> = {};
     for (const s of students) {
       const existing = existingEntries.find((e) => e.studentId === s.id);
       map[s.id] = existing?.status ?? "present";
+    }
+    return map;
+  });
+  const [remarks, setRemarks] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    for (const s of students) {
+      const existing = existingEntries.find((e) => e.studentId === s.id);
+      map[s.id] = existing?.remarks ?? "";
     }
     return map;
   });
@@ -71,6 +85,8 @@ export function AttendanceRoster({ students, classId, track, date, existingEntri
       const entriesArr = Object.entries(entries).map(([studentId, status]) => ({
         studentId,
         status,
+        // Remarks only apply to absent students; clear otherwise.
+        remarks: status === "absent" ? remarks[studentId]?.trim() || undefined : undefined,
       }));
 
       const result = await bulkMarkAttendance({
@@ -132,6 +148,7 @@ export function AttendanceRoster({ students, classId, track, date, existingEntri
               <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Student</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Status</th>
               <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground">P / A / L</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Remark (if absent)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -164,6 +181,31 @@ export function AttendanceRoster({ students, classId, track, date, existingEntri
                         </button>
                       ))}
                     </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {status === "absent" ? (
+                      <select
+                        value={remarks[student.id] ?? ""}
+                        onChange={(e) =>
+                          setRemarks((prev) => ({ ...prev, [student.id]: e.target.value }))
+                        }
+                        className="h-9 w-full min-w-[160px] px-2 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+                      >
+                        <option value="">— Select reason —</option>
+                        {remarkOptions.map((opt) => (
+                          <option key={opt.id} value={opt.label}>
+                            {opt.label}
+                          </option>
+                        ))}
+                        {/* Preserve a previously-saved remark that is no longer in the options list */}
+                        {remarks[student.id] &&
+                          !remarkOptions.some((o) => o.label === remarks[student.id]) && (
+                            <option value={remarks[student.id]}>{remarks[student.id]}</option>
+                          )}
+                      </select>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </td>
                 </tr>
               );

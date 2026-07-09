@@ -30,6 +30,26 @@ export async function addRemarkOption(formData: FormData) {
   }
 }
 
+export async function updateRemarkOption(id: string, label: string) {
+  await requireAdmin();
+
+  if (!label || label.trim() === "") {
+    return { error: "Label is required" };
+  }
+
+  try {
+    await db
+      .update(remarksOptions)
+      .set({ label: label.trim() })
+      .where(eq(remarksOptions.id, id));
+    revalidatePath("/admin/settings/remarks");
+    return { success: true };
+  } catch (error) {
+    console.error("Update Remark Error:", error);
+    return { error: "Failed to update remark option" };
+  }
+}
+
 export async function deleteRemarkOption(id: string) {
   await requireAdmin();
   try {

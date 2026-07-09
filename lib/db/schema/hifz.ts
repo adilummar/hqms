@@ -66,9 +66,16 @@ export const hifzDailyEntries = pgTable(
       { onDelete: "set null" }
     ),
 
-    // Daura (long revision)
+    // Daura (long revision) — session 1
     dauraJuzNumbers: integer("daura_juz_numbers").array(),
     dauraRemarksId: uuid("daura_remarks_id").references(
+      () => remarksOptions.id,
+      { onDelete: "set null" }
+    ),
+
+    // Daura session 2 — used in Hafiz mode (two daura sittings per day)
+    daura2JuzNumbers: integer("daura2_juz_numbers").array(),
+    daura2RemarksId: uuid("daura2_remarks_id").references(
       () => remarksOptions.id,
       { onDelete: "set null" }
     ),
@@ -141,6 +148,10 @@ export const hifzDailyEntriesRelations = relations(
     }),
     dauraRemarks: one(remarksOptions, {
       fields: [hifzDailyEntries.dauraRemarksId],
+      references: [remarksOptions.id],
+    }),
+    daura2Remarks: one(remarksOptions, {
+      fields: [hifzDailyEntries.daura2RemarksId],
       references: [remarksOptions.id],
     }),
   })

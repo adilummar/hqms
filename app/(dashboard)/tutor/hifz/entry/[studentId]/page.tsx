@@ -1,9 +1,10 @@
-import { requireTutor } from "@/lib/auth/helpers";
+import { requireTutor, getSession } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { students, hifzDailyEntries, juzTracker } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, count } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { HifzEntryForm } from "@/components/hifz/hifz-entry-form";
+import { HafizModeToggle } from "@/components/hifz/hafiz-mode-toggle";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -28,7 +29,11 @@ export default async function HifzEntryPage({ params, searchParams }: Props) {
 
   if (!student) return notFound();
 
-  const [existingEntry, activeJuz, allRemarks] = await Promise.all([
+  const session = await getSession();
+  const canRevert =
+    session?.user.role === "admin" || session?.user.role === "super_admin";
+
+  const [existingEntry, activeJuz, allRemarks, completedJuz] = await Promise.all([
     db.query.hifzDailyEntries.findFirst({
       where: and(
         eq(hifzDailyEntries.studentId, studentId),
@@ -42,7 +47,15 @@ export default async function HifzEntryPage({ params, searchParams }: Props) {
       ),
     }),
     db.query.remarksOptions.findMany(),
+    db
+      .select({ value: count() })
+      .from(juzTracker)
+      .where(
+        and(eq(juzTracker.studentId, studentId), eq(juzTracker.status, "completed"))
+      ),
   ]);
+
+  const completedJuzCount = completedJuz[0]?.value ?? 0;
 
   const sabaqRemarks = allRemarks.filter(r => r.category === "sabaq").sort((a,b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
   const sabaqJuzRemarks = allRemarks.filter(r => r.category === "sabaq_juz").sort((a,b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
@@ -60,14 +73,22 @@ export default async function HifzEntryPage({ params, searchParams }: Props) {
         ]}
       />
       
-      <HifzEntryForm 
-        studentId={student.id} 
-        date={targetDate} 
-        existingEntry={existingEntry} 
+      <HafizModeToggle
+        studentId={student.id}
+        isHafiz={student.isHafiz}
+        completedJuzCount={completedJuzCount}
+        canRevert={canRevert}
+      />
+
+      <HifzEntryForm
+        studentId={student.id}
+        date={targetDate}
+        existingEntry={existingEntry}
         activeJuz={activeJuz}
         sabaqRemarks={sabaqRemarks}
         sabaqJuzRemarks={sabaqJuzRemarks}
         dauraRemarks={dauraRemarks}
+        isHafiz={student.isHafiz}
       />
     </div>
   );

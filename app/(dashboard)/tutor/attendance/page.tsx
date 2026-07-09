@@ -1,6 +1,6 @@
 import { requireTutor } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
-import { classes, enrollments, students, attendanceRecords } from "@/lib/db/schema";
+import { classes, enrollments, students, attendanceRecords, remarksOptions } from "@/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { AttendanceRoster } from "@/components/attendance/attendance-roster";
@@ -22,9 +22,14 @@ export default async function TutorAttendancePage({ searchParams }: Props) {
   const selectedDate = params.date ?? today;
   const selectedTrack = (params.track ?? "hifz") as Track;
 
-  const allClasses = await db.query.classes.findMany({
-    where: and(eq(classes.track, selectedTrack), eq(classes.isActive, true)),
-  });
+  const [allClasses, attendanceRemarkOptions] = await Promise.all([
+    db.query.classes.findMany({
+      where: and(eq(classes.track, selectedTrack), eq(classes.isActive, true)),
+    }),
+    db.query.remarksOptions.findMany({
+      where: and(eq(remarksOptions.category, "attendance"), eq(remarksOptions.isActive, true)),
+    }),
+  ]);
 
   const selectedClassId = params.classId ?? allClasses[0]?.id;
 
@@ -111,7 +116,7 @@ export default async function TutorAttendancePage({ searchParams }: Props) {
       ) : studentList.length === 0 ? (
         <div className="border border-border rounded-lg p-12 text-center text-muted-foreground">No active students enrolled</div>
       ) : (
-        <AttendanceRoster students={studentList} classId={selectedClassId} track={selectedTrack} date={selectedDate} existingEntries={existingEntries} />
+        <AttendanceRoster students={studentList} classId={selectedClassId} track={selectedTrack} date={selectedDate} existingEntries={existingEntries} remarkOptions={attendanceRemarkOptions.map(r => ({ id: r.id, label: r.label }))} />
       )}
     </div>
   );

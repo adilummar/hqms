@@ -1,28 +1,51 @@
 import { requireParent, getParentStudentId } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { students, hifzDailyEntries } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, gte, lte, asc } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
+import { MonthSelector } from "@/components/parent/month-selector";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Hifz Progress | Parent Portal" };
 
-export default async function ParentProgressPage() {
+interface Props {
+  searchParams: Promise<{ year?: string; month?: string }>;
+}
+
+export default async function ParentProgressPage({ searchParams }: Props) {
   await requireParent();
   const studentId = await getParentStudentId();
+  const params = await searchParams;
 
-  const [student, allEntries] = await Promise.all([
+  const now = new Date();
+  const selectedYear = params.year ? parseInt(params.year, 10) : now.getFullYear();
+  const selectedMonth = params.month ? parseInt(params.month, 10) : now.getMonth() + 1;
+
+  const startDate = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-01`;
+  const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+  const endDate = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+  const [student, monthEntries, firstEntry] = await Promise.all([
     db.query.students.findFirst({
       where: eq(students.id, studentId),
     }),
     db.query.hifzDailyEntries.findMany({
-      where: eq(hifzDailyEntries.studentId, studentId),
+      where: and(
+        eq(hifzDailyEntries.studentId, studentId),
+        gte(hifzDailyEntries.date, startDate),
+        lte(hifzDailyEntries.date, endDate),
+      ),
       orderBy: [desc(hifzDailyEntries.date)],
       with: {
         sabaqRemarks: true,
         sabaqJuzRemarks: true,
         dauraRemarks: true,
-      }
+      },
+    }),
+    db.query.hifzDailyEntries.findFirst({
+      where: eq(hifzDailyEntries.studentId, studentId),
+      orderBy: [asc(hifzDailyEntries.date)],
+      columns: { date: true },
     }),
   ]);
 
@@ -30,13 +53,12 @@ export default async function ParentProgressPage() {
     return <div className="text-muted-foreground">Student not found.</div>;
   }
 
-  // Calculate some simple stats
-  const totalEntries = allEntries.length;
+  const totalEntries = monthEntries.length;
   let totalSabaqPages = 0;
   let sabaqJuzGivenCount = 0;
   let dauraGivenCount = 0;
 
-  for (const entry of allEntries) {
+  for (const entry of monthEntries) {
     if (entry.sabaqPages) totalSabaqPages += Number(entry.sabaqPages);
     if (entry.sabaqJuzGiven) sabaqJuzGivenCount++;
     if (entry.dauraJuzNumbers?.length) dauraGivenCount++;
@@ -46,14 +68,14 @@ export default async function ParentProgressPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader 
-        title="Detailed Hifz Progress" 
-        description="View your child's complete daily Hifz log" 
+      <PageHeader
+        title="Detailed Hifz Progress"
+        description="View your child's complete daily Hifz log"
       />
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-card border border-border p-5 rounded-lg">
-          <p className="text-sm text-muted-foreground font-medium mb-1">Total Daily Logs</p>
+          <p className="text-sm text-muted-foreground font-medium mb-1">Daily Logs This Month</p>
           <span className="text-3xl font-jetbrains font-bold text-foreground">{totalEntries}</span>
         </div>
         <div className="bg-card border border-border p-5 rounded-lg">
@@ -77,6 +99,11 @@ export default async function ParentProgressPage() {
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <h3 className="font-playfair text-lg font-semibold">Full Daily Log</h3>
+          <MonthSelector
+            currentYear={selectedYear}
+            currentMonth={selectedMonth}
+            minDate={firstEntry?.date}
+          />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -90,14 +117,14 @@ export default async function ParentProgressPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {allEntries.length === 0 ? (
+              {monthEntries.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-5 py-8 text-center text-muted-foreground">
-                    No entries recorded yet.
+                    No entries recorded for this month.
                   </td>
                 </tr>
               ) : (
-                allEntries.map((entry) => (
+                monthEntries.map((entry) => (
                   <tr key={entry.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-5 py-3 font-jetbrains text-xs whitespace-nowrap">
                       {new Date(entry.date).toLocaleDateString("en-IN", {

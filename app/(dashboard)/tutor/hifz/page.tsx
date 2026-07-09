@@ -142,11 +142,12 @@ export default async function TutorHifzPage({ searchParams }: Props) {
       )}
 
       {/* Controls */}
-      <div className="flex flex-wrap gap-3 mb-6">
+      <form method="GET" className="flex flex-wrap gap-3 mb-6 items-end">
         <div>
           <label className="block text-xs text-muted-foreground mb-1">Date</label>
           <input
             type="date"
+            name="date"
             defaultValue={selectedDate}
             max={today}
             className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
@@ -156,6 +157,7 @@ export default async function TutorHifzPage({ searchParams }: Props) {
         <div>
           <label className="block text-xs text-muted-foreground mb-1">Class</label>
           <select
+            name="classId"
             defaultValue={selectedClassId}
             className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
           >
@@ -166,7 +168,14 @@ export default async function TutorHifzPage({ searchParams }: Props) {
             ))}
           </select>
         </div>
-      </div>
+
+        <button
+          type="submit"
+          className="h-9 px-4 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors"
+        >
+          Load
+        </button>
+      </form>
 
       {/* Roster Table */}
       {!selectedClassId || studentRows.length === 0 ? (
@@ -208,27 +217,45 @@ export default async function TutorHifzPage({ searchParams }: Props) {
                       >
                         {s.firstName} {s.lastName ?? ""}
                       </Link>
-                      <p className="text-xs text-muted-foreground font-jetbrains">{s.studentCode}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-muted-foreground font-jetbrains">{s.studentCode}</p>
+                        {s.isHafiz && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                            🎓 Hafiz
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 font-jetbrains text-sm">
-                      {currentJuz ? `Juz ${currentJuz.juzNumber}` : "—"}
+                      {s.isHafiz
+                        ? <span className="text-emerald-600 font-medium">Hafiz ✓</span>
+                        : currentJuz ? `Juz ${currentJuz.juzNumber}` : "—"}
                     </td>
                     <td className="px-4 py-3 font-jetbrains text-sm">
-                      {entry?.sabaqFromPage && entry?.sabaqToPage
-                        ? `${entry.sabaqFromPage}→${entry.sabaqToPage}`
-                        : entry?.sabaqRemarksId
-                        ? "Reason given"
-                        : "—"}
+                      {s.isHafiz
+                        ? "—"
+                        : entry?.sabaqFromPage && entry?.sabaqToPage
+                          ? `${entry.sabaqFromPage}→${entry.sabaqToPage}`
+                          : entry?.sabaqRemarksId
+                          ? "Reason given"
+                          : "—"}
                     </td>
                     <td className="px-4 py-3">
-                      {entry
-                        ? entry.sabaqJuzGiven
-                          ? <span className="text-green-600 font-medium">✓</span>
-                          : <span className="text-red-500">✗</span>
-                        : "—"}
+                      {s.isHafiz
+                        ? "—"
+                        : entry
+                          ? entry.sabaqJuzGiven
+                            ? <span className="text-green-600 font-medium">✓</span>
+                            : <span className="text-red-500">✗</span>
+                          : "—"}
                     </td>
                     <td className="px-4 py-3 font-jetbrains text-sm">
-                      {entry?.dauraJuzNumbers?.length ? `Juz ${entry.dauraJuzNumbers.join(", ")}` : entry?.dauraRemarksId ? "Reason" : "—"}
+                      {s.isHafiz && entry
+                        ? [
+                            entry.dauraJuzNumbers?.length ? `D1: Juz ${entry.dauraJuzNumbers.join(", ")}` : null,
+                            entry.daura2JuzNumbers?.length ? `D2: Juz ${entry.daura2JuzNumbers.join(", ")}` : null,
+                          ].filter(Boolean).join(" · ") || (entry.dauraRemarksId || entry.daura2RemarksId ? "Reason" : "—")
+                        : entry?.dauraJuzNumbers?.length ? `Juz ${entry.dauraJuzNumbers.join(", ")}` : entry?.dauraRemarksId ? "Reason" : "—"}
                     </td>
                     <td className="px-4 py-3">
                       <span className="flex items-center gap-1.5 text-xs">

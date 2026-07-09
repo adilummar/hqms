@@ -7,6 +7,7 @@ import {
   Users,
   BookOpen,
   CalendarCheck,
+  CalendarCheck2,
   ClipboardList,
   BarChart3,
   Settings,
@@ -20,7 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { signOut } from "next-auth/react";
+import { logoutAction } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -34,6 +35,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Students",        href: "/admin/students",                icon: Users },
   { label: "Hifz Progress",   href: "/admin/hifz/targets",           icon: BookOpen },
   { label: "Attendance",      href: "/admin/attendance",              icon: CalendarCheck },
+  { label: "Leave Tracker",   href: "/admin/leave-tracker",          icon: CalendarCheck2 },
   { label: "Parent Meetings", href: "/admin/parent-meetings",         icon: UsersRound },
   { label: "Exams",           href: "/admin/exams",                   icon: FileText },
   { label: "Admissions",      href: "/admin/admissions/applications", icon: ClipboardList },
@@ -54,10 +56,11 @@ const TUTOR_NAV: NavItem[] = [
 ];
 
 const PARENT_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/parent",            icon: LayoutDashboard },
-  { label: "Progress",  href: "/parent/progress",   icon: BookOpen },
-  { label: "Attendance",href: "/parent/attendance", icon: CalendarCheck },
-  { label: "Stars",     href: "/parent/stars",      icon: Star },
+  { label: "Dashboard",     href: "/parent",              icon: LayoutDashboard },
+  { label: "Progress",      href: "/parent/progress",     icon: BookOpen },
+  { label: "Attendance",    href: "/parent/attendance",   icon: CalendarCheck },
+  { label: "Leave Tracker", href: "/parent/leave-tracker",icon: CalendarCheck2 },
+  { label: "Stars",         href: "/parent/stars",        icon: Star },
 ];
 
 const STUDENT_NAV: NavItem[] = [
@@ -310,20 +313,22 @@ export function Sidebar({
             </div>
           </div>
 
-          <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            title="Sign out"
-            className={cn(
-              "flex items-center gap-2 text-xs text-white/40 hover:text-white/70 transition-colors mt-1",
-              isTabletExpanded
-                ? "md:justify-start md:w-auto"
-                : "md:justify-center md:w-full",
-              "lg:justify-start lg:w-auto"
-            )}
-          >
-            <LogOut size={14} className="flex-shrink-0" />
-            <span className={cn("whitespace-nowrap", tabletLabelClass)}>Sign out</span>
-          </button>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              title="Sign out"
+              className={cn(
+                "flex items-center gap-2 text-xs text-white/40 hover:text-white/70 transition-colors mt-1",
+                isTabletExpanded
+                  ? "md:justify-start md:w-auto"
+                  : "md:justify-center md:w-full",
+                "lg:justify-start lg:w-auto"
+              )}
+            >
+              <LogOut size={14} className="flex-shrink-0" />
+              <span className={cn("whitespace-nowrap", tabletLabelClass)}>Sign out</span>
+            </button>
+          </form>
         </div>
       </div>
     </aside>

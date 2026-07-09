@@ -6,6 +6,7 @@ import { asc, eq, and } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { AddUserDialog } from "@/components/settings/add-user-dialog";
 import { ResetUserPasswordDialog } from "@/components/settings/reset-user-password-dialog";
+import { UserFilters } from "@/components/settings/user-filters";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -56,33 +57,10 @@ export default async function UsersSettingsPage({ searchParams }: Props) {
     conditions.push(eq(users.isActive, false));
   }
 
-  const [filteredUsers, allUsers] = await Promise.all([
-    db.query.users.findMany({
-      where: conditions.length > 0 ? and(...conditions) : undefined,
-      orderBy: [asc(users.username)],
-    }),
-    db.query.users.findMany({ orderBy: [asc(users.username)] }),
-  ]);
-
-  // Per-role counts for badges (always from unfiltered total)
-  const countByRole = ALL_ROLES.reduce<Record<string, number>>((acc, r) => {
-    acc[r.value] = allUsers.filter((u) => u.role === r.value).length;
-    return acc;
-  }, {});
-  const activeCount   = allUsers.filter((u) =>  u.isActive).length;
-  const inactiveCount = allUsers.filter((u) => !u.isActive).length;
-
-  /** Build a filter href — toggling off when value is already selected */
-  function filterHref(type: "role" | "status", value: string) {
-    const isOn      = type === "role" ? roleFilter === value : statusFilter === value;
-    const newRole   = type === "role"   ? (isOn ? "" : value) : (roleFilter   ?? "");
-    const newStatus = type === "status" ? (isOn ? "" : value) : (statusFilter ?? "");
-    const q = new URLSearchParams();
-    if (newRole)   q.set("role",   newRole);
-    if (newStatus) q.set("status", newStatus);
-    const qs = q.toString();
-    return `/admin/settings/users${qs ? `?${qs}` : ""}`;
-  }
+  const filteredUsers = await db.query.users.findMany({
+    where: conditions.length > 0 ? and(...conditions) : undefined,
+    orderBy: [asc(users.username)],
+  });
 
   const hasFilter = Boolean(roleFilter || statusFilter);
 
@@ -98,73 +76,8 @@ export default async function UsersSettingsPage({ searchParams }: Props) {
         ]}
       />
 
-      {/* ── Filter pills ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-3 mb-5">
-        {/* Role row */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground font-medium w-12 shrink-0">Role</span>
-          <Link
-            href={filterHref("role", "")}
-            className={`inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-xs font-medium border transition-colors ${
-              !roleFilter
-                ? "bg-foreground text-background border-foreground"
-                : "bg-background text-muted-foreground border-border hover:border-foreground/40 hover:text-foreground"
-            }`}
-          >
-            All
-            <span className={`tabular-nums ${!roleFilter ? "opacity-70" : "opacity-50"}`}>
-              {allUsers.length}
-            </span>
-          </Link>
-          {ALL_ROLES.map((r) => {
-            const selected = roleFilter === r.value;
-            return (
-              <Link
-                key={r.value}
-                href={filterHref("role", r.value)}
-                className={`inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-xs font-medium border transition-colors ${
-                  selected
-                    ? "bg-foreground text-background border-foreground"
-                    : "bg-background text-muted-foreground border-border hover:border-foreground/40 hover:text-foreground"
-                }`}
-              >
-                {r.label}
-                <span className={`tabular-nums ${selected ? "opacity-70" : "opacity-50"}`}>
-                  {countByRole[r.value] ?? 0}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Status row */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground font-medium w-12 shrink-0">Status</span>
-          {[
-            { value: "active",   label: "Active",   count: activeCount,   dot: "bg-emerald-500", text: "text-emerald-700" },
-            { value: "inactive", label: "Inactive", count: inactiveCount, dot: "bg-red-500",     text: "text-red-600" },
-          ].map((s) => {
-            const selected = statusFilter === s.value;
-            return (
-              <Link
-                key={s.value}
-                href={filterHref("status", s.value)}
-                className={`inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-xs font-medium border transition-colors ${
-                  selected
-                    ? "bg-foreground text-background border-foreground"
-                    : "bg-background text-muted-foreground border-border hover:border-foreground/40 hover:text-foreground"
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${selected ? "bg-white" : s.dot}`} />
-                {s.label}
-                <span className={`tabular-nums ${selected ? "opacity-70" : s.text}`}>
-                  {s.count}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
+      {/* ── Dropdown filters ────────────────────────────────────────────────────── */}
+      <UserFilters currentRole={roleFilter} currentStatus={statusFilter} />
 
       {/* ── Users table ──────────────────────────────────────────────────────── */}
       <div className="bg-card border border-border rounded-lg shadow-sm overflow-hidden">

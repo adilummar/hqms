@@ -20,6 +20,58 @@ interface Props {
   sabaqRemarks: Remark[];
   sabaqJuzRemarks: Remark[];
   dauraRemarks: Remark[];
+  /** Hafiz mode: Daura-only, two sessions per day (no Sabaq / Sabaq Juz). */
+  isHafiz?: boolean;
+}
+
+/** One Daura session block — a 30-Juz checkbox grid plus a reason dropdown. */
+function DauraBlock({
+  title,
+  juzName,
+  remarksName,
+  defaultJuz,
+  defaultRemarksId,
+  remarks,
+}: {
+  title: string;
+  juzName: string;
+  remarksName: string;
+  defaultJuz?: number[] | null;
+  defaultRemarksId?: string | null;
+  remarks: Remark[];
+}) {
+  return (
+    <div className="bg-card border border-border rounded-lg p-5">
+      <h2 className="font-playfair text-lg font-semibold mb-4">{title}</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-xs text-muted-foreground mb-2">Select Juz Numbers (Multiple allowed)</label>
+          <div className="h-40 overflow-y-auto border border-border rounded-sm p-3 grid grid-cols-5 sm:grid-cols-6 md:grid-cols-5 lg:grid-cols-6 gap-2 bg-background">
+            {Array.from({ length: 30 }).map((_, i) => (
+              <label key={i + 1} className="flex flex-col items-center justify-center p-1 rounded hover:bg-muted cursor-pointer">
+                <input
+                  type="checkbox"
+                  name={juzName}
+                  value={i + 1}
+                  defaultChecked={defaultJuz?.includes(i + 1)}
+                  className="accent-primary w-4 h-4 mb-1"
+                />
+                <span className="text-xs font-medium">{i + 1}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs text-muted-foreground mb-1">Or Select Reason</label>
+          <select name={remarksName} defaultValue={defaultRemarksId ?? ""}
+            className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground bg-background">
+            <option value="">-- No Reason --</option>
+            {remarks.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+          </select>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function calculateSabaqPages(fromValue: string, toValue: string) {
@@ -32,7 +84,7 @@ function calculateSabaqPages(fromValue: string, toValue: string) {
     : "";
 }
 
-export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaqRemarks, sabaqJuzRemarks, dauraRemarks }: Props) {
+export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaqRemarks, sabaqJuzRemarks, dauraRemarks, isHafiz = false }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -61,7 +113,10 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
       
       dauraJuzNumbers: formData.getAll("dauraJuzNumbers").map(Number).filter(Boolean),
       dauraRemarksId: formData.get("dauraRemarksId") as string || undefined,
-      
+
+      daura2JuzNumbers: formData.getAll("daura2JuzNumbers").map(Number).filter(Boolean),
+      daura2RemarksId: formData.get("daura2RemarksId") as string || undefined,
+
       notes: formData.get("notes") as string || undefined,
 
       startJuzNumber: formData.get("startJuzNumber") ? Number(formData.get("startJuzNumber")) : undefined,
@@ -84,6 +139,14 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      {isHafiz && (
+        <div className="bg-card border border-border rounded-lg p-5 border-l-4 border-l-emerald-500">
+          <p className="text-sm font-medium">🎓 Hafiz mode — Daura only, two sessions per day. Sabaq &amp; Sabaq Juz are not applicable.</p>
+        </div>
+      )}
+
+      {!isHafiz && (
+      <>
       {/* Juz Tracking Section */}
       <div className="bg-card border border-border rounded-lg p-5 border-l-4 border-l-primary">
         <h2 className="font-playfair text-lg font-semibold mb-4">Juz Progress Tracking</h2>
@@ -156,8 +219,20 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
           </div>
           <div>
             <label className="block text-xs text-muted-foreground mb-1">Juz</label>
-            <input name="sabaqJuzNumber" type="number" min="1" max="30" defaultValue={existingEntry?.sabaqJuzNumber ?? activeJuz?.juzNumber ?? ""}
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground" />
+            <input
+              name="sabaqJuzNumber"
+              type="number"
+              min="1"
+              max="30"
+              placeholder={activeJuz ? String(activeJuz.juzNumber) : "1–30"}
+              key={`juz-${existingEntry?.id ?? "new"}-${activeJuz?.juzNumber ?? 0}`}
+              defaultValue={
+                existingEntry?.sabaqJuzNumber != null
+                  ? Number(existingEntry.sabaqJuzNumber)
+                  : activeJuz?.juzNumber ?? undefined
+              }
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground"
+            />
           </div>
         </div>
         <div>
@@ -198,37 +273,29 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
         </div>
       </div>
 
-      {/* Daura */}
-      <div className="bg-card border border-border rounded-lg p-5">
-        <h2 className="font-playfair text-lg font-semibold mb-4">Daura (Old Revision)</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-xs text-muted-foreground mb-2">Select Juz Numbers (Multiple allowed)</label>
-            <div className="h-40 overflow-y-auto border border-border rounded-sm p-3 grid grid-cols-5 sm:grid-cols-6 md:grid-cols-5 lg:grid-cols-6 gap-2 bg-background">
-              {Array.from({ length: 30 }).map((_, i) => (
-                <label key={i + 1} className="flex flex-col items-center justify-center p-1 rounded hover:bg-muted cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    name="dauraJuzNumbers" 
-                    value={i + 1} 
-                    defaultChecked={existingEntry?.dauraJuzNumbers?.includes(i + 1)} 
-                    className="accent-primary w-4 h-4 mb-1" 
-                  />
-                  <span className="text-xs font-medium">{i + 1}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs text-muted-foreground mb-1">Or Select Reason</label>
-            <select name="dauraRemarksId" defaultValue={existingEntry?.dauraRemarksId ?? ""}
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground bg-background">
-              <option value="">-- No Reason --</option>
-              {dauraRemarks.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-            </select>
-          </div>
-        </div>
-      </div>
+      </>
+      )}
+
+      {/* Daura — session 1 (both modes). In Hafiz mode a second session follows. */}
+      <DauraBlock
+        title={isHafiz ? "Daura 1 (Old Revision)" : "Daura (Old Revision)"}
+        juzName="dauraJuzNumbers"
+        remarksName="dauraRemarksId"
+        defaultJuz={existingEntry?.dauraJuzNumbers}
+        defaultRemarksId={existingEntry?.dauraRemarksId}
+        remarks={dauraRemarks}
+      />
+
+      {isHafiz && (
+        <DauraBlock
+          title="Daura 2 (Old Revision)"
+          juzName="daura2JuzNumbers"
+          remarksName="daura2RemarksId"
+          defaultJuz={existingEntry?.daura2JuzNumbers}
+          defaultRemarksId={existingEntry?.daura2RemarksId}
+          remarks={dauraRemarks}
+        />
+      )}
 
       {/* General Notes */}
       <div className="bg-card border border-border rounded-lg p-5">

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { addRemarkOption, deleteRemarkOption, toggleRemarkStatus } from "@/app/(dashboard)/admin/settings/remarks/actions";
+import { addRemarkOption, deleteRemarkOption, toggleRemarkStatus, updateRemarkOption } from "@/app/(dashboard)/admin/settings/remarks/actions";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, Pencil, Check, X } from "lucide-react";
 
 interface RemarkOption {
   id: string;
@@ -27,8 +27,34 @@ const CATEGORIES = [
 export function RemarksManager({ initialRemarks }: Props) {
   const [activeTab, setActiveTab] = useState<"sabaq" | "sabaq_juz" | "daura" | "attendance">("sabaq");
   const [isPending, setIsPending] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingLabel, setEditingLabel] = useState("");
 
   const filteredRemarks = initialRemarks.filter(r => r.category === activeTab);
+
+  function startEdit(id: string, label: string) {
+    setEditingId(id);
+    setEditingLabel(label);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditingLabel("");
+  }
+
+  async function handleUpdate(id: string) {
+    if (editingLabel.trim() === "") {
+      toast.error("Label cannot be empty");
+      return;
+    }
+    const res = await updateRemarkOption(id, editingLabel);
+    if (res?.error) {
+      toast.error(res.error);
+    } else {
+      toast.success("Remark updated");
+      cancelEdit();
+    }
+  }
 
   async function handleAdd(formData: FormData) {
     setIsPending(true);
@@ -114,13 +140,28 @@ export function RemarksManager({ initialRemarks }: Props) {
               ) : (
                 filteredRemarks.map((remark) => (
                   <tr key={remark.id} className="hover:bg-muted/30">
-                    <td className="px-5 py-3 font-medium">{remark.label}</td>
+                    <td className="px-5 py-3 font-medium">
+                      {editingId === remark.id ? (
+                        <input
+                          autoFocus
+                          value={editingLabel}
+                          onChange={(e) => setEditingLabel(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleUpdate(remark.id);
+                            if (e.key === "Escape") cancelEdit();
+                          }}
+                          className="w-full h-9 px-2 rounded-md border border-border bg-background"
+                        />
+                      ) : (
+                        remark.label
+                      )}
+                    </td>
                     <td className="px-5 py-3">
                       <button
                         onClick={() => handleToggle(remark.id, remark.isActive)}
                         className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
-                          remark.isActive 
-                            ? "text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20" 
+                          remark.isActive
+                            ? "text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20"
                             : "text-muted-foreground bg-muted hover:bg-muted/80"
                         }`}
                       >
@@ -129,13 +170,41 @@ export function RemarksManager({ initialRemarks }: Props) {
                       </button>
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <button
-                        onClick={() => handleDelete(remark.id)}
-                        className="text-red-500 hover:text-red-700 p-1.5 rounded-md hover:bg-red-50 transition-colors"
-                        title="Delete option"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {editingId === remark.id ? (
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            onClick={() => handleUpdate(remark.id)}
+                            className="text-emerald-600 hover:text-emerald-800 p-1.5 rounded-md hover:bg-emerald-50 transition-colors"
+                            title="Save"
+                          >
+                            <Check size={16} />
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="text-muted-foreground hover:text-foreground p-1.5 rounded-md hover:bg-muted transition-colors"
+                            title="Cancel"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            onClick={() => startEdit(remark.id, remark.label)}
+                            className="text-muted-foreground hover:text-foreground p-1.5 rounded-md hover:bg-muted transition-colors"
+                            title="Edit option"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(remark.id)}
+                            className="text-red-500 hover:text-red-700 p-1.5 rounded-md hover:bg-red-50 transition-colors"
+                            title="Delete option"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))

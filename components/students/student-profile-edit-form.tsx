@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { updateStudentProfile, type UpdateProfileInput } from "@/lib/actions/student-profile";
+import { updateJuzProgress } from "@/lib/actions/hifz";
 import { toast } from "sonner";
-import { Loader2, User, MapPin, GraduationCap, Phone, ArrowLeft } from "lucide-react";
+import { Loader2, User, MapPin, GraduationCap, Phone, ArrowLeft, BookOpen } from "lucide-react";
 import Link from "next/link";
 
 const schema = z.object({
@@ -46,10 +47,20 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+type JuzStatus = "not_started" | "in_progress" | "completed";
+
+interface JuzRow {
+  juzNumber: number;
+  status: JuzStatus;
+  startDate: string | null;
+  completionDate: string | null;
+}
+
 interface Props {
   studentId: string;
   defaultValues: Partial<FormData>;
   studentName: string;
+  juzRows?: JuzRow[];
 }
 
 const inp = "w-full h-10 px-3 rounded-md border border-input bg-background text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none";
@@ -65,8 +76,18 @@ function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string })
   );
 }
 
-export function StudentProfileEditForm({ studentId, defaultValues, studentName }: Props) {
+export function StudentProfileEditForm({ studentId, defaultValues, studentName, juzRows: initialJuzRows = [] }: Props) {
   const [isPending, startTransition] = useTransition();
+  const [isJuzPending, startJuzTransition] = useTransition();
+
+  // Build a full 30-juz state (fill missing juz with not_started)
+  const [juzState, setJuzState] = useState<JuzRow[]>(() => {
+    return Array.from({ length: 30 }, (_, i) => {
+      const n = i + 1;
+      const existing = initialJuzRows.find((r) => r.juzNumber === n);
+      return existing ?? { juzNumber: n, status: "not_started", startDate: null, completionDate: null };
+    });
+  });
 
   const { register, handleSubmit, formState: { errors, isDirty } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -81,6 +102,39 @@ export function StudentProfileEditForm({ studentId, defaultValues, studentName }
       } else {
         toast.error("Failed to update profile");
         console.error(result.error);
+      }
+    });
+  }
+
+  // Cycle juz status: not_started → in_progress → completed → not_started
+  function cycleJuzStatus(juzNumber: number) {
+    setJuzState((prev) =>
+      prev.map((row) => {
+        if (row.juzNumber !== juzNumber) return row;
+        const next: Record<JuzStatus, JuzStatus> = {
+          not_started: "in_progress",
+          in_progress: "completed",
+          completed: "not_started",
+        };
+        const newStatus = next[row.status];
+        const today = new Date().toISOString().split("T")[0];
+        return {
+          ...row,
+          status: newStatus,
+          startDate: newStatus === "in_progress" && !row.startDate ? today : row.startDate,
+          completionDate: newStatus === "completed" ? (row.completionDate ?? today) : null,
+        };
+      })
+    );
+  }
+
+  function saveJuzProgress() {
+    startJuzTransition(async () => {
+      const result = await updateJuzProgress({ studentId, juzRows: juzState });
+      if (result.success) {
+        toast.success("Juz progress saved");
+      } else {
+        toast.error("Failed to save juz progress");
       }
     });
   }
@@ -213,9 +267,82 @@ export function StudentProfileEditForm({ studentId, defaultValues, studentName }
         </div>
       </div>
 
+      {/* Hifz Juz Progress */}
+      <div className="bg-card border border-border rounded-lg p-6">
+        <SectionTitle icon={<BookOpen size={16} />} title="Hifz Juz Progress" />
+
+        {/* Legend */}
+        <div className="flex flex-wrap gap-4 mb-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-sm bg-muted border border-border inline-block" />
+            Not started
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-sm bg-amber-400 inline-block" />
+            In progress
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />
+            Completed
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">Click a juz to cycle its status. Click &ldquo;Save Juz Progress&rdquo; to apply.</p>
+
+        {/* 30-Juz Grid */}
+        <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-10 gap-2 mb-5">
+          {juzState.map((row) => {
+            const colorMap: Record<JuzStatus, string> = {
+              not_started: "bg-muted border-border text-muted-foreground hover:bg-muted/70",
+              in_progress: "bg-amber-100 border-amber-400 text-amber-800 hover:bg-amber-200",
+              completed: "bg-emerald-100 border-emerald-500 text-emerald-800 hover:bg-emerald-200",
+            };
+            const dotMap: Record<JuzStatus, string> = {
+              not_started: "bg-muted-foreground/30",
+              in_progress: "bg-amber-500",
+              completed: "bg-emerald-500",
+            };
+            return (
+              <button
+                key={row.juzNumber}
+                type="button"
+                onClick={() => cycleJuzStatus(row.juzNumber)}
+                title={`Juz ${row.juzNumber} — ${row.status.replace("_", " ")}`}
+                className={`relative flex flex-col items-center justify-center gap-1 h-14 rounded-md border text-xs font-semibold transition-all select-none ${colorMap[row.status]}`}
+              >
+                <span className={`w-2 h-2 rounded-full ${dotMap[row.status]}`} />
+                <span>{row.juzNumber}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Summary */}
+        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-4">
+          <span className="font-medium text-emerald-600">
+            {juzState.filter((r) => r.status === "completed").length} completed
+          </span>
+          <span className="font-medium text-amber-600">
+            {juzState.filter((r) => r.status === "in_progress").length} in progress
+          </span>
+          <span>
+            {juzState.filter((r) => r.status === "not_started").length} not started
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={saveJuzProgress}
+          disabled={isJuzPending}
+          className="px-5 py-2 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+        >
+          {isJuzPending ? <><Loader2 size={14} className="animate-spin" />Saving...</> : "Save Juz Progress"}
+        </button>
+      </div>
+
       {/* Parent & Guardian Details */}
       <div className="bg-card border border-border rounded-lg p-6">
         <SectionTitle icon={<Phone size={16} />} title="Parent & Guardian Details" />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className={lbl}>Father&apos;s Name *</label>

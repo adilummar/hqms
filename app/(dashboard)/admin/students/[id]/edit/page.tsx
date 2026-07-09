@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
-import { students, parents, admissionApplications } from "@/lib/db/schema";
+import { students, parents, admissionApplications, juzTracker } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
@@ -24,7 +24,7 @@ export default async function EditStudentProfilePage({ params }: Props) {
 
   if (!student) notFound();
 
-  const [application, parentInfo] = await Promise.all([
+  const [application, parentInfo, juzRows] = await Promise.all([
     student.applicationId
       ? db.query.admissionApplications.findFirst({
           where: eq(admissionApplications.id, student.applicationId),
@@ -32,6 +32,9 @@ export default async function EditStudentProfilePage({ params }: Props) {
       : Promise.resolve(null),
     db.query.parents.findFirst({
       where: eq(parents.studentId, id),
+    }),
+    db.query.juzTracker.findMany({
+      where: eq(juzTracker.studentId, id),
     }),
   ]);
 
@@ -96,6 +99,12 @@ export default async function EditStudentProfilePage({ params }: Props) {
         studentId={id}
         defaultValues={defaultValues}
         studentName={fullName}
+        juzRows={juzRows.map((r) => ({
+          juzNumber: r.juzNumber,
+          status: r.status as "not_started" | "in_progress" | "completed",
+          startDate: r.startDate ?? null,
+          completionDate: r.completionDate ?? null,
+        }))}
       />
     </div>
   );

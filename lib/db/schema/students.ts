@@ -6,6 +6,7 @@ import {
   date,
   timestamp,
   jsonb,
+  boolean,
   unique,
 } from "drizzle-orm/pg-core";
 import { studentStatusEnum, enrollmentStatusEnum, starTypeEnum } from "./enums";
@@ -52,6 +53,10 @@ export const students = pgTable("students", {
 
   // Status
   status: studentStatusEnum("status").default("active").notNull(),
+  // Hafiz mode — set once the student has completed all 30 Juz.
+  // A Hafiz stays an "active" student; this flag switches them to Daura-only daily entries.
+  isHafiz: boolean("is_hafiz").default(false).notNull(),
+  hafizSince: date("hafiz_since"),
   admissionDate: date("admission_date").notNull(),
   completionDate: date("completion_date"),
   discontinuationDate: date("discontinuation_date"),

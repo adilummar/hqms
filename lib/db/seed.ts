@@ -167,7 +167,29 @@ async function seed() {
       .onConflictDoNothing();
   }
 
+  // 6. Default Leave Tracker activities
+  console.log("🕌 Creating default leave tracker activities...");
+  const defaultActivities = [
+    { name: "Tahajjud",        description: "Pre-Fajr prayer",          displayOrder: 0, isSuspendedOnHoliday: false },
+    { name: "Subh Jama'ah",    description: "Fajr congregation",        displayOrder: 1, isSuspendedOnHoliday: false },
+    { name: "Sabaq Juz",       description: "Morning lesson revision",  displayOrder: 2, isSuspendedOnHoliday: true  },
+    { name: "Zuha Namaz",      description: "Mid-morning prayer",       displayOrder: 3, isSuspendedOnHoliday: false },
+    { name: "Zuhr Jama'ah",    description: "Midday congregation",      displayOrder: 4, isSuspendedOnHoliday: false },
+    { name: "Daura",           description: "Afternoon revision",       displayOrder: 5, isSuspendedOnHoliday: true  },
+    { name: "Asr Jama'ah",     description: "Afternoon congregation",   displayOrder: 6, isSuspendedOnHoliday: false },
+    { name: "Play",            description: "Recreation time",          displayOrder: 7, isSuspendedOnHoliday: false },
+    { name: "Maghrib Jama'ah", description: "Sunset congregation",      displayOrder: 8, isSuspendedOnHoliday: false },
+    { name: "Isha Jama'ah",    description: "Night congregation",       displayOrder: 9, isSuspendedOnHoliday: false },
+  ];
+  for (const act of defaultActivities) {
+    await db
+      .insert(schema.leaveActivities)
+      .values({ ...act, isActive: true })
+      .onConflictDoNothing();
+  }
+
   console.log("✅ Seed complete!");
+
   console.log("");
   console.log("🔑 Login credentials:");
   console.log("   Username: admin");
