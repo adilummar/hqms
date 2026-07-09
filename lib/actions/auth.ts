@@ -35,7 +35,10 @@ export async function loginAction(formData: FormData) {
 }
 
 export async function logoutAction() {
-  await signOut({ redirectTo: "/login" });
+  // Use NEXTAUTH_URL if set (avoids wrong-domain redirects on Vercel).
+  // Falls back to a relative path which NextAuth resolves from the current host.
+  const base = process.env.NEXTAUTH_URL ?? "";
+  await signOut({ redirectTo: `${base}/login` });
 }
 
 export async function resetPasswordAction(userId: string, newPassword: string) {
