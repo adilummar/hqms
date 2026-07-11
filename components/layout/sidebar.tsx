@@ -52,7 +52,6 @@ const TUTOR_NAV: NavItem[] = [
   { label: "Parent Meetings", href: "/tutor/parent-meetings",icon: UsersRound },
   { label: "Stars",           href: "/tutor/stars",          icon: Star },
   { label: "Exams",           href: "/tutor/exams",          icon: FileText },
-  { label: "Students",        href: "/admin/students",       icon: Users },
 ];
 
 const PARENT_NAV: NavItem[] = [

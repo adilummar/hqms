@@ -51,6 +51,7 @@ export const examSubjects = pgTable("exam_subjects", {
   totalMarks: integer("total_marks").notNull().default(100),
   passMarks: integer("pass_marks").notNull().default(35),
   displayOrder: integer("display_order").default(0),
+  examDate: date("exam_date"),                             // date this subject's exam is held
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

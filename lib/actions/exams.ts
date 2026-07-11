@@ -24,6 +24,7 @@ const subjectSchema = z.object({
   totalMarks: z.coerce.number().int().min(1).default(100),
   passMarks: z.coerce.number().int().min(1).default(35),
   displayOrder: z.coerce.number().int().default(0),
+  examDate: z.string().optional().nullable(),
 });
 
 const saveSubjectsSchema = z.object({
@@ -99,6 +100,23 @@ export async function updateExamSession(id: string, input: unknown) {
   return { success: true, data: exam };
 }
 
+export async function deleteExamSession(id: string) {
+  const session = await requireRole(["super_admin", "admin"]);
+
+  // Prevent deleting a published exam
+  const exam = await db.query.examSessions.findFirst({
+    where: eq(examSessions.id, id),
+  });
+  if (!exam) return { success: false, error: "Exam not found" };
+  if (exam.resultStatus === "published")
+    return { success: false, error: "Cannot delete a published exam. Unpublish it first." };
+
+  await db.delete(examSessions).where(eq(examSessions.id, id));
+  await logActivity(session.user.id, "exam.delete", "exam_session", id);
+  revalidatePath("/admin/exams");
+  return { success: true };
+}
+
 export async function publishExamResults(examSessionId: string) {
   await requireRole(["super_admin"]);
 
@@ -147,6 +165,7 @@ export async function saveExamSubjects(input: unknown) {
         totalMarks: s.totalMarks,
         passMarks: s.passMarks,
         displayOrder: s.displayOrder ?? i,
+        examDate: s.examDate ?? null,
       }))
     );
   }

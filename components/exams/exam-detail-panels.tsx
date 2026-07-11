@@ -6,10 +6,10 @@ import { toast } from "sonner";
 import { Plus, Trash2, Loader2, Copy, Globe, EyeOff } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-interface Subject { id?: string; name: string; totalMarks: number; passMarks: number; displayOrder: number; }
+interface Subject { id?: string; name: string; totalMarks: number; passMarks: number; displayOrder: number; examDate?: string | null; }
 interface GradeRule { grade: string; minPercentage: number; label: string; isFailing: boolean; displayOrder: number; }
 interface ClassOption { id: string; name: string; track: string; }
-interface ExamSubjectWithClass { id: string; classId: string; name: string; totalMarks: number; passMarks: number; displayOrder: number; }
+interface ExamSubjectWithClass { id: string; classId: string; name: string; totalMarks: number; passMarks: number; displayOrder: number; examDate?: string | null; }
 
 const inp = "h-9 px-2.5 rounded border border-input bg-background text-sm focus:ring-1 focus:ring-primary/30 focus:border-primary outline-none transition-all w-full";
 
@@ -29,7 +29,7 @@ export function SubjectManager({ examSessionId, classes, initialSubjects }: {
       map[cls.id] = initialSubjects
         .filter(s => s.classId === cls.id)
         .sort((a, b) => a.displayOrder - b.displayOrder)
-        .map(s => ({ id: s.id, name: s.name, totalMarks: s.totalMarks, passMarks: s.passMarks, displayOrder: s.displayOrder }));
+        .map(s => ({ id: s.id, name: s.name, totalMarks: s.totalMarks, passMarks: s.passMarks, displayOrder: s.displayOrder, examDate: s.examDate ?? null }));
     }
     return map;
   });
@@ -45,7 +45,7 @@ export function SubjectManager({ examSessionId, classes, initialSubjects }: {
   function addSubject() {
     setSubjectsByClass(prev => ({
       ...prev,
-      [selectedClass]: [...(prev[selectedClass] ?? []), { name: "", totalMarks: 100, passMarks: 35, displayOrder: (prev[selectedClass]?.length ?? 0) }],
+      [selectedClass]: [...(prev[selectedClass] ?? []), { name: "", totalMarks: 100, passMarks: 35, displayOrder: (prev[selectedClass]?.length ?? 0), examDate: null }],
     }));
   }
   function removeSubject(idx: number) {
@@ -93,6 +93,7 @@ export function SubjectManager({ examSessionId, classes, initialSubjects }: {
             <tr className="bg-muted/50 border-b border-border">
               <th className="text-left px-4 py-2.5 font-medium text-muted-foreground w-8">#</th>
               <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Subject Name</th>
+              <th className="text-left px-4 py-2.5 font-medium text-muted-foreground w-36">Exam Date</th>
               <th className="text-left px-4 py-2.5 font-medium text-muted-foreground w-28">Total Marks</th>
               <th className="text-left px-4 py-2.5 font-medium text-muted-foreground w-28">Pass Marks</th>
               <th className="w-10" />
@@ -100,12 +101,13 @@ export function SubjectManager({ examSessionId, classes, initialSubjects }: {
           </thead>
           <tbody className="divide-y divide-border">
             {subjects.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-sm">No subjects added. Click &ldquo;Add Subject&rdquo; or copy from last exam.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-sm">No subjects added. Click &ldquo;Add Subject&rdquo; or copy from last exam.</td></tr>
             )}
             {subjects.map((s, i) => (
               <tr key={i} className="hover:bg-muted/10">
                 <td className="px-4 py-2 text-muted-foreground text-xs">{i + 1}</td>
                 <td className="px-4 py-2"><input value={s.name} onChange={e => updateSubject(i, "name", e.target.value)} className={inp} placeholder="e.g. English, Quran, Thareek" /></td>
+                <td className="px-4 py-2"><input type="date" value={s.examDate ?? ""} onChange={e => updateSubject(i, "examDate", e.target.value)} className={inp} /></td>
                 <td className="px-4 py-2"><input type="number" value={s.totalMarks} onChange={e => updateSubject(i, "totalMarks", Number(e.target.value))} className={inp} min={1} /></td>
                 <td className="px-4 py-2"><input type="number" value={s.passMarks} onChange={e => updateSubject(i, "passMarks", Number(e.target.value))} className={inp} min={1} /></td>
                 <td className="px-4 py-2"><button onClick={() => removeSubject(i)} className="text-muted-foreground hover:text-red-500 transition-colors"><Trash2 size={14} /></button></td>

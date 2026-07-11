@@ -1,12 +1,13 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { students, parents, admissionApplications } from "@/lib/db/schema";
+import { students, parents, admissionApplications, users } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+
 
 const updateProfileSchema = z.object({
   studentId: z.string().uuid(),
@@ -147,5 +148,32 @@ export async function updateStudentProfile(input: unknown) {
   revalidatePath(`/admin/students/${d.studentId}`);
   revalidatePath(`/admin/students/${d.studentId}/admission-form`);
 
+  return { success: true };
+}
+
+// ── Update Admission Number (inline edit from profile page) ───────────────────
+export async function updateAdmissionNumber(studentId: string, admissionNumber: string) {
+  const session = await requireRole(["admin", "super_admin"]);
+
+  const trimmed = admissionNumber.trim();
+
+  // Check uniqueness (ignore if same student already has it)
+  if (trimmed) {
+    const existing = await db.query.students.findFirst({
+      where: eq(students.admissionNumber, trimmed),
+      columns: { id: true },
+    });
+    if (existing && existing.id !== studentId) {
+      return { success: false, error: "Admission number already assigned to another student." };
+    }
+  }
+
+  await db
+    .update(students)
+    .set({ admissionNumber: trimmed || null, updatedAt: new Date() })
+    .where(eq(students.id, studentId));
+
+  await logActivity(session.user.id, "student.admission_number_update", "student", studentId);
+  revalidatePath(`/admin/students/${studentId}`);
   return { success: true };
 }

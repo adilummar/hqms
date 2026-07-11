@@ -8,6 +8,7 @@ import { JuzGrid } from "@/components/hifz/juz-grid";
 import { StatusBadge } from "@/components/students/status-badge";
 import { StudentStatusPanel } from "@/components/students/student-status-panel";
 import { PreMemorizedJuzMarker } from "@/components/hifz/pre-memorized-juz-marker";
+import { AdmissionNumberEditor } from "@/components/students/admission-number-editor";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -111,11 +112,10 @@ export default async function StudentProfilePage({ params }: Props) {
             <span className="font-jetbrains text-xs bg-muted px-2 py-0.5 rounded">
               {student.studentCode}
             </span>
-            {student.admissionNumber && (
-              <span className="font-jetbrains text-xs bg-foreground text-background px-2 py-0.5 rounded">
-                AD No. {student.admissionNumber}
-              </span>
-            )}
+            <AdmissionNumberEditor
+              studentId={student.id}
+              currentAdmissionNumber={student.admissionNumber ?? null}
+            />
           </span>
         }
         breadcrumbs={[

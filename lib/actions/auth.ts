@@ -35,11 +35,16 @@ export async function loginAction(formData: FormData) {
 }
 
 export async function logoutAction() {
-  // Use NEXTAUTH_URL if set (avoids wrong-domain redirects on Vercel).
-  // Falls back to a relative path which NextAuth resolves from the current host.
-  const base = process.env.NEXTAUTH_URL ?? "";
-  await signOut({ redirectTo: `${base}/login` });
+  // Dynamically build the redirect URL from the actual request host.
+  // This works on any deployment (localhost, hqms-five.vercel.app, custom domain)
+  // without relying on NEXTAUTH_URL being correct in the environment.
+  const { headers } = await import("next/headers");
+  const headersList = await headers();
+  const host = headersList.get("host") ?? "localhost:3000";
+  const proto = headersList.get("x-forwarded-proto") ?? "http";
+  await signOut({ redirectTo: `${proto}://${host}/login` });
 }
+
 
 export async function resetPasswordAction(userId: string, newPassword: string) {
   const passwordHash = await bcrypt.hash(newPassword, 12);

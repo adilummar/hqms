@@ -58,6 +58,12 @@ export default async function ExamDetailPage({ params }: Props) {
             <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${TRACK_COLOR[exam.track]}`}>
               {exam.track}
             </span>
+            <Link
+              href={`/admin/exams/${id}/edit`}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-border text-xs font-medium rounded hover:bg-muted transition-colors"
+            >
+              ✎ Edit Exam
+            </Link>
             <PublishControls
               examSessionId={exam.id}
               resultStatus={exam.resultStatus}
@@ -96,6 +102,14 @@ export default async function ExamDetailPage({ params }: Props) {
                 <p className="text-xs text-muted-foreground mt-0.5">Select a class to manage its subjects for this exam</p>
               </div>
               <div className="flex items-center gap-2">
+                {exam.track === "school" && (
+                  <Link
+                    href={`/admin/exams/${id}/halltickets`}
+                    className="px-3 py-1.5 border border-border text-xs font-medium rounded hover:bg-muted transition-colors flex items-center gap-1.5"
+                  >
+                    🎫 Hall Tickets
+                  </Link>
+                )}
                 <Link
                   href={`/admin/exams/${id}/results`}
                   className="px-3 py-1.5 border border-border text-xs font-medium rounded hover:bg-muted transition-colors"
@@ -121,6 +135,7 @@ export default async function ExamDetailPage({ params }: Props) {
                   totalMarks: s.totalMarks,
                   passMarks: s.passMarks,
                   displayOrder: s.displayOrder ?? 0,
+                  examDate: s.examDate ?? null,
                 }))}
               />
             </div>

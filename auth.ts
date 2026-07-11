@@ -3,7 +3,7 @@ import type { Session, User } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 import { db } from "@/lib/db";
-import { users, settings } from "@/lib/db/schema";
+import { users, settings, students, parents } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -31,6 +31,42 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const { username, password } = parsed.data;
 
+        // ── Path 1: Admission Number + Mobile login (for Parents) ──────────────
+        // If the username looks like an admission number (numeric), try matching
+        // a student by admissionNumber and verify password against parent's phone.
+        const looksLikeAdmissionNumber = /^\d+$/.test(username.trim());
+        if (looksLikeAdmissionNumber) {
+          const student = await db.query.students.findFirst({
+            where: eq(students.admissionNumber, username.trim()),
+          });
+          if (student) {
+            const parent = await db.query.parents.findFirst({
+              where: eq(parents.studentId, student.id),
+              with: { user: true },
+            });
+            // Password must match primaryPhone (strip spaces/dashes for comparison)
+            const normalize = (v: string) => v.replace(/[\s\-]/g, "");
+            if (
+              parent &&
+              parent.user &&
+              parent.user.isActive &&
+              normalize(parent.primaryPhone) === normalize(password)
+            ) {
+              await db
+                .update(users)
+                .set({ lastLoginAt: new Date() })
+                .where(eq(users.id, parent.user.id));
+              return {
+                id: parent.user.id,
+                name: parent.user.username,
+                email: parent.user.email ?? undefined,
+                role: parent.user.role,
+              };
+            }
+          }
+        }
+
+        // ── Path 2: Normal username + bcrypt password login ────────────────────
         const user = await db.query.users.findFirst({
           where: eq(users.username, username),
         });

@@ -37,7 +37,15 @@ export default function LoginPage() {
         <p className="text-center text-xs text-muted-foreground mt-6">
           Contact your administrator to reset your password
         </p>
+
+        {/* Parent login hint */}
+        <div className="mt-4 bg-muted/50 border border-border rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1">
+          <p className="font-medium text-foreground/70">Parents</p>
+          <p>Username → <span className="font-jetbrains">Admission Number</span> (e.g. 150)</p>
+          <p>Password → <span className="font-jetbrains">Mobile Number</span></p>
+        </div>
       </div>
     </div>
+
   );
 }

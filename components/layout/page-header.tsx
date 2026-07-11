@@ -31,19 +31,19 @@ export function PageHeader({
               {i > 0 && (
                 <ChevronRight
                   size={12}
-                  className="text-muted-foreground/60 mx-1 flex-shrink-0"
+                  className="text-muted-foreground/60 mx-1 shrink-0"
                   aria-hidden="true"
                 />
               )}
               {crumb.href ? (
                 <Link
                   href={crumb.href}
-                  className="text-xs leading-none text-muted-foreground hover:text-foreground transition-colors font-dm-sans"
+                  className="inline-flex items-center text-xs text-muted-foreground hover:text-foreground transition-colors font-dm-sans"
                 >
                   {crumb.label}
                 </Link>
               ) : (
-                <span className="text-xs leading-none text-muted-foreground font-dm-sans">
+                <span className="inline-flex items-center text-xs text-muted-foreground font-dm-sans">
                   {crumb.label}
                 </span>
               )}

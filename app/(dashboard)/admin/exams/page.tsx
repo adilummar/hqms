@@ -4,6 +4,7 @@ import { examSessions } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import Link from "next/link";
+import { ExamActions } from "@/components/exams/exam-actions";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Exams" };
@@ -102,12 +103,11 @@ export default async function ExamsPage() {
                             </span>
                           </td>
                           <td className="px-5 py-3 text-right">
-                            <Link
-                              href={`/admin/exams/${exam.id}`}
-                              className="text-xs text-primary hover:underline font-medium"
-                            >
-                              Manage →
-                            </Link>
+                            <ExamActions
+                              examId={exam.id}
+                              examName={exam.name}
+                              resultStatus={exam.resultStatus}
+                            />
                           </td>
                         </tr>
                       ))}
