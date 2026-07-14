@@ -4,7 +4,7 @@ import { useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveDailyHifzEntry } from "@/lib/actions/hifz";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import type { hifzDailyEntries, juzTracker } from "@/lib/db/schema";
 
 interface Remark {
@@ -22,6 +22,8 @@ interface Props {
   dauraRemarks: Remark[];
   /** Hafiz mode: Daura-only, two sessions per day (no Sabaq / Sabaq Juz). */
   isHafiz?: boolean;
+  /** sabaqToPage from the most recent prior entry — used to suggest today's From Page. */
+  lastSabaqToPage?: string;
 }
 
 /** One Daura session block — a 30-Juz checkbox grid plus a reason dropdown. */
@@ -84,11 +86,40 @@ function calculateSabaqPages(fromValue: string, toValue: string) {
     : "";
 }
 
-export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaqRemarks, sabaqJuzRemarks, dauraRemarks, isHafiz = false }: Props) {
+export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaqRemarks, sabaqJuzRemarks, dauraRemarks, isHafiz = false, lastSabaqToPage }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isNavigating, startNavTransition] = useTransition();
 
-  const [sabaqFromPage, setSabaqFromPage] = useState(existingEntry?.sabaqFromPage?.toString() ?? "");
+  const today = new Date().toISOString().split("T")[0];
+
+  // Navigate to a different date — triggers full server re-render
+  function navigateToDate(newDate: string) {
+    if (!newDate || newDate === date) return;
+    startNavTransition(() => {
+      router.push(`/tutor/hifz/entry/${studentId}?date=${newDate}`);
+    });
+  }
+
+  // Step one day forward / backward
+  function stepDate(direction: 1 | -1) {
+    const d = new Date(date);
+    d.setDate(d.getDate() + direction);
+    const next = d.toISOString().split("T")[0];
+    if (next <= today) navigateToDate(next);
+  }
+
+  // From Page suggestion logic:
+  // - If last toPage is a half-page (e.g. 14.5) → student wasn't done with that page → start from SAME page (14.5)
+  // - If last toPage is a whole page (e.g. 14) → student finished that page → start from NEXT page (15)
+  const suggestedFromPage = !existingEntry && lastSabaqToPage
+    ? (() => {
+        const last = parseFloat(lastSabaqToPage);
+        return (last % 1 === 0 ? last + 1 : last).toString();
+      })()
+    : undefined;
+
+  const [sabaqFromPage, setSabaqFromPage] = useState(existingEntry?.sabaqFromPage?.toString() ?? suggestedFromPage ?? "");
   const [sabaqToPage, setSabaqToPage] = useState(existingEntry?.sabaqToPage?.toString() ?? "");
   const [sabaqPages, setSabaqPages] = useState(existingEntry?.sabaqPages?.toString() ?? "");
 
@@ -138,7 +169,51 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form onSubmit={handleSubmit} className="space-y-6">
+
+      {/* ── Date Navigator ─────────────────────────────────────────── */}
+      <div className="bg-card border border-border rounded-lg px-5 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <CalendarDays size={16} />
+          <span className="text-xs font-medium uppercase tracking-wide">Entry Date</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => stepDate(-1)}
+            disabled={isNavigating}
+            className="h-8 w-8 flex items-center justify-center rounded-sm border border-border hover:bg-muted transition-colors disabled:opacity-40"
+            title="Previous day"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <input
+            type="date"
+            value={date}
+            max={today}
+            disabled={isNavigating}
+            onChange={(e) => navigateToDate(e.target.value)}
+            className="h-8 px-3 text-sm font-medium border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground disabled:opacity-50"
+          />
+          <button
+            type="button"
+            onClick={() => stepDate(1)}
+            disabled={isNavigating || date >= today}
+            className="h-8 w-8 flex items-center justify-center rounded-sm border border-border hover:bg-muted transition-colors disabled:opacity-40"
+            title="Next day"
+          >
+            <ChevronRight size={14} />
+          </button>
+          {isNavigating && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {existingEntry ? (
+            <span className="inline-flex items-center gap-1 text-green-700 bg-green-100 px-2 py-0.5 rounded font-medium">✓ Entry exists</span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-100 px-2 py-0.5 rounded font-medium">⊘ No entry yet</span>
+          )}
+        </div>
+      </div>
       {isHafiz && (
         <div className="bg-card border border-border rounded-lg p-5 border-l-4 border-l-emerald-500">
           <p className="text-sm font-medium">🎓 Hafiz mode — Daura only, two sessions per day. Sabaq &amp; Sabaq Juz are not applicable.</p>
@@ -160,31 +235,26 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
               </div>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end mt-2">
+            <div className="grid grid-cols-1 gap-4 items-center mt-2">
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium">
                   <input type="checkbox" name="completeJuzId" value={activeJuz.id} className="accent-primary w-4 h-4" />
-                  Mark Juz {activeJuz.juzNumber} as Completed Today
+                  Mark Juz {activeJuz.juzNumber} as Completed Today ({date})
                 </label>
-              </div>
-              <div>
-                <label className="block text-xs text-muted-foreground mb-1">Completion Date</label>
-                <input name="completeJuzDate" type="date" defaultValue={date}
-                  className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground bg-background" />
+                {/* Completion date = the entry date — no separate picker needed */}
+                <input type="hidden" name="completeJuzDate" value={date} />
               </div>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-xs text-muted-foreground mb-1">Start New Juz Number</label>
               <input name="startJuzNumber" type="number" min="1" max="30" placeholder="e.g. 1"
-                className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground bg-background" />
-            </div>
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">Start Date</label>
-              <input name="startJuzDate" type="date" defaultValue={date}
-                className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground bg-background" />
+                className="w-48 h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground bg-background" />
+              {/* Start date = the entry date — no separate picker needed */}
+              <input type="hidden" name="startJuzDate" value={date} />
+              <p className="text-xs text-muted-foreground mt-1.5">Will be recorded as starting on <span className="font-medium">{date}</span></p>
             </div>
           </div>
         )}
@@ -195,7 +265,14 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
         <h2 className="font-playfair text-lg font-semibold mb-4">Sabaq (New Lesson)</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">From Page</label>
+            <label className="block text-xs text-muted-foreground mb-1">
+              From Page
+              {suggestedFromPage && (
+                <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-medium text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">
+                  ↩ continued from pg {lastSabaqToPage}
+                </span>
+              )}
+            </label>
             <input name="sabaqFromPage" type="number" step="0.5" value={sabaqFromPage} onChange={(e) => {
               const nextFrom = e.target.value;
               setSabaqFromPage(nextFrom);

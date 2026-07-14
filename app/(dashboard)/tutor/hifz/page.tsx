@@ -7,6 +7,7 @@ import {
   hifzDailyEntries,
   juzTracker,
   academicYears,
+  leavePeriods,
 } from "@/lib/db/schema";
 import { eq, and, asc, inArray, ne } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
@@ -25,6 +26,11 @@ export default async function TutorHifzPage({ searchParams }: Props) {
 
   const today = new Date().toISOString().split("T")[0];
   const selectedDate = params.date ?? today;
+
+  // ── Check for active leave period — Hifz tracker is paused during leave ──
+  const activeLeave = await db.query.leavePeriods.findFirst({
+    where: eq(leavePeriods.isActive, true),
+  });
 
   // Get available Hifz classes
   const hifzClasses = await db.query.classes.findMany({
@@ -114,9 +120,33 @@ export default async function TutorHifzPage({ searchParams }: Props) {
     <div>
       <PageHeader
         title="Daily Hifz Entry"
-        description={`${enteredCount} entered · ${pendingCount} pending`}
+        description={activeLeave ? `Paused — ${activeLeave.name} is active` : `${enteredCount} entered · ${pendingCount} pending`}
         breadcrumbs={[{ label: "Tutor" }, { label: "Hifz Entry" }]}
       />
+
+      {/* ── Leave Period Lock Banner ──────────────────────────────────────── */}
+      {activeLeave && (
+        <div className="mb-6 border border-amber-300 bg-amber-50 rounded-lg px-5 py-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl mt-0.5">🌙</span>
+            <div className="flex-1">
+              <p className="font-semibold text-amber-900 text-sm">
+                Hifz Tracker paused — Leave period is active
+              </p>
+              <p className="text-xs text-amber-700 mt-1">
+                <span className="font-medium">{activeLeave.name}</span> ({activeLeave.startDate} → {activeLeave.endDate}) is currently active.
+                New Hifz entries are disabled until the leave period ends.
+              </p>
+              <Link
+                href="/admin/leave-tracker/overview"
+                className="inline-flex items-center gap-1.5 mt-2.5 text-xs font-medium text-amber-800 underline underline-offset-2 hover:text-amber-900"
+              >
+                View Leave Tracker →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Promotion Banner */}
       {pendingPromotionCount > 0 && currentYear && (
@@ -140,6 +170,19 @@ export default async function TutorHifzPage({ searchParams }: Props) {
           </Link>
         </div>
       )}
+
+      {/* ── View toggle ──────────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 mb-4">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-foreground text-background">
+          Individual View
+        </span>
+        <Link
+          href={`/tutor/hifz/bulk?classId=${selectedClassId ?? ""}&date=${selectedDate}`}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-border hover:bg-muted transition-colors"
+        >
+          ⚡ Bulk Entry
+        </Link>
+      </div>
 
       {/* Controls */}
       <form method="GET" className="flex flex-wrap gap-3 mb-6 items-end">
@@ -266,12 +309,18 @@ export default async function TutorHifzPage({ searchParams }: Props) {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/tutor/hifz/entry/${s.id}?date=${selectedDate}`}
-                        className="text-xs px-3 py-1.5 border border-border rounded-sm hover:bg-muted transition-colors"
-                      >
-                        {isEntered ? "Edit" : "Enter"}
-                      </Link>
+                      {activeLeave ? (
+                        <span className="text-xs px-3 py-1.5 border border-amber-200 text-amber-600 bg-amber-50 rounded-sm cursor-not-allowed select-none">
+                          On Leave
+                        </span>
+                      ) : (
+                        <Link
+                          href={`/tutor/hifz/entry/${s.id}?date=${selectedDate}`}
+                          className="text-xs px-3 py-1.5 border border-border rounded-sm hover:bg-muted transition-colors"
+                        >
+                          {isEntered ? "Edit" : "Enter"}
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 );

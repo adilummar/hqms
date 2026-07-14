@@ -251,3 +251,79 @@ export async function revertFromHafiz(studentId: string): Promise<{ success: boo
   revalidatePath(`/admin/students/${studentId}`);
   return { success: true };
 }
+
+// ── Bulk Hifz Entry ───────────────────────────────────────────────────────────
+// Save entries for multiple students in one action (bulk entry mode).
+
+const bulkEntryItemSchema = z.object({
+  studentId: z.string().uuid(),
+  sabaqFromPage: z.string().nullable().optional(),
+  sabaqToPage: z.string().nullable().optional(),
+  sabaqPages: z.string().nullable().optional(),
+  sabaqRemarksId: z.string().uuid().nullable().optional(),
+  sabaqJuzGiven: z.boolean().default(true),
+  sabaqJuzRemarksId: z.string().uuid().nullable().optional(),
+  dauraJuzNumbers: z.array(z.number().int().min(1).max(30)).nullable().optional(),
+  dauraRemarksId: z.string().uuid().nullable().optional(),
+});
+
+const bulkHifzEntrySchema = z.object({
+  date: z.string(),
+  entries: z.array(bulkEntryItemSchema),
+});
+
+export async function saveBulkHifzEntries(input: unknown) {
+  const session = await requireRole(["tutor", "admin", "super_admin"]);
+  const parsed = bulkHifzEntrySchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: "Invalid data" };
+
+  const { date, entries } = parsed.data;
+  let saved = 0;
+
+  for (const entry of entries) {
+    // Check for existing entry on this date
+    const existing = await db.query.hifzDailyEntries.findFirst({
+      where: and(
+        eq(hifzDailyEntries.studentId, entry.studentId),
+        eq(hifzDailyEntries.date, date)
+      ),
+    });
+
+    const values = {
+      sabaqFromPage: entry.sabaqFromPage ?? null,
+      sabaqToPage: entry.sabaqToPage ?? null,
+      sabaqPages: entry.sabaqPages ?? null,
+      sabaqRemarksId: entry.sabaqRemarksId ?? null,
+      sabaqJuzGiven: entry.sabaqJuzGiven,
+      sabaqJuzRemarksId: entry.sabaqJuzRemarksId ?? null,
+      dauraJuzNumbers: entry.dauraJuzNumbers ?? null,
+      dauraRemarksId: entry.dauraRemarksId ?? null,
+    };
+
+    if (existing) {
+      await db.update(hifzDailyEntries)
+        .set({ ...values, updatedAt: new Date() })
+        .where(eq(hifzDailyEntries.id, existing.id));
+    } else {
+      await db.insert(hifzDailyEntries).values({
+        studentId: entry.studentId,
+        date,
+        recordedBy: session.user.id,
+        ...values,
+      });
+    }
+
+    await logActivity(
+      session.user.id,
+      existing ? "hifz_entry.bulk_update" : "hifz_entry.bulk_create",
+      "hifz_daily_entries",
+      entry.studentId
+    );
+    saved++;
+  }
+
+  revalidatePath("/tutor/hifz");
+  revalidatePath("/tutor/hifz/bulk");
+  return { success: true, saved };
+}
+

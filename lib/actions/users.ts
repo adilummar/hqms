@@ -106,3 +106,78 @@ export async function adminResetUserPassword(input: z.infer<typeof adminResetPas
   revalidatePath("/admin/settings/users");
   return { success: true };
 }
+
+// ── Disable / Enable ──────────────────────────────────────────────────────────
+
+export async function toggleUserStatus(targetUserId: string, makeActive: boolean) {
+  const session = await requireRole(["super_admin", "admin"]);
+
+  if (session.user.id === targetUserId) {
+    return { success: false, error: "You cannot change your own account status." };
+  }
+
+  const targetUser = await db.query.users.findFirst({ where: eq(users.id, targetUserId) });
+  if (!targetUser) return { success: false, error: "User not found." };
+
+  // Regular admins cannot touch super_admins
+  if (targetUser.role === "super_admin" && session.user.role !== "super_admin") {
+    return { success: false, error: "Only super admins can modify super admin accounts." };
+  }
+
+  await db
+    .update(users)
+    .set({ isActive: makeActive, updatedAt: new Date() })
+    .where(eq(users.id, targetUserId));
+
+  await logActivity(
+    session.user.id as string,
+    makeActive ? "user.enable" : "user.disable",
+    "users",
+    targetUserId
+  );
+
+  revalidatePath("/admin/settings/users");
+  return { success: true };
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+// activityLogs.userId is NOT NULL + onDelete:restrict, so we check for logs
+// first and return a friendly error rather than letting the DB reject it.
+
+export async function deleteUser(targetUserId: string) {
+  const session = await requireRole(["super_admin", "admin"]);
+
+  if (session.user.id === targetUserId) {
+    return { success: false, error: "You cannot delete your own account." };
+  }
+
+  const targetUser = await db.query.users.findFirst({ where: eq(users.id, targetUserId) });
+  if (!targetUser) return { success: false, error: "User not found." };
+
+  if (targetUser.role === "super_admin" && session.user.role !== "super_admin") {
+    return { success: false, error: "Only super admins can delete super admin accounts." };
+  }
+
+  // Check for activity logs (FK restrict prevents deletion if any exist)
+  const { activityLogs } = await import("@/lib/db/schema");
+  const { count } = await import("drizzle-orm");
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(activityLogs)
+    .where(eq(activityLogs.userId, targetUserId));
+
+  if (Number(total) > 0) {
+    return {
+      success: false,
+      error: `Cannot delete — this user has ${total} activity log${Number(total) !== 1 ? "s" : ""}. Disable the account instead.`,
+    };
+  }
+
+  await db.delete(users).where(eq(users.id, targetUserId));
+
+  await logActivity(session.user.id as string, "user.delete", "users", targetUserId);
+
+  revalidatePath("/admin/settings/users");
+  return { success: true };
+}
+

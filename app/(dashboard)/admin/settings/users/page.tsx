@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { AddUserDialog } from "@/components/settings/add-user-dialog";
 import { ResetUserPasswordDialog } from "@/components/settings/reset-user-password-dialog";
 import { UserFilters } from "@/components/settings/user-filters";
+import { UserActionsCell } from "@/components/settings/user-actions-cell";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -161,11 +162,20 @@ export default async function UsersSettingsPage({ searchParams }: Props) {
                       )}
                     </td>
                     <td className="px-5 py-3">
-                      <ResetUserPasswordDialog
-                        userId={u.id}
-                        username={u.username}
-                        role={u.role}
-                      />
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <ResetUserPasswordDialog
+                          userId={u.id}
+                          username={u.username}
+                          role={u.role}
+                        />
+                        <UserActionsCell
+                          userId={u.id}
+                          username={u.username}
+                          role={u.role}
+                          isActive={u.isActive}
+                          isCurrentUser={u.id === currentUserId}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))

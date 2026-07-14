@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Trash2, CheckCircle, Circle, Edit2, ChevronDown } from "lucide-react";
+import { Plus, Trash2, ChevronDown, PowerOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   createLeavePeriod,
   activateLeavePeriod,
+  deactivateLeavePeriod,
   deleteLeavePeriod,
   createLeaveActivity,
   updateLeaveActivity,
@@ -64,6 +65,11 @@ export function LeaveSettingsClient({ periods, activities }: Props) {
 
   const handleActivate = (id: string) => {
     startTransition(async () => { await activateLeavePeriod(id); router.refresh(); });
+  };
+
+  const handleDeactivate = (id: string, name: string) => {
+    if (!confirm(`Turn off "${name}"?\n\nThis will resume the Hifz tracker and hide the Leave Tracker from parents. You can re-activate it at any time.`)) return;
+    startTransition(async () => { await deactivateLeavePeriod(id); router.refresh(); });
   };
 
   const handleDeletePeriod = (id: string) => {
@@ -126,6 +132,18 @@ export function LeaveSettingsClient({ periods, activities }: Props) {
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Active period — show Turn Off button */}
+                  {period.isActive && (
+                    <button
+                      onClick={() => handleDeactivate(period.id, period.name)}
+                      disabled={isPending}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-all disabled:opacity-50"
+                    >
+                      <PowerOff size={12} />
+                      Turn Off
+                    </button>
+                  )}
+                  {/* Inactive period — show Activate button */}
                   {!period.isActive && (
                     <button
                       onClick={() => handleActivate(period.id)}
@@ -156,54 +174,94 @@ export function LeaveSettingsClient({ periods, activities }: Props) {
 
               {/* Day suspension editor */}
               {expandedPeriod === period.id && (
-                <div className="border-t border-border bg-muted/30 px-5 py-4">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                    Per-Day Activity Suspension
-                  </p>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    Toggle activities to suspend them for specific days. Suspended activities will be shown as greyed-out to parents.
-                  </p>
-                  <div className="space-y-4">
-                    {period.days.map((day) => {
-                      const suspendedIds = new Set(day.suspensions.map((s) => s.activityId));
-                      return (
-                        <div key={day.id}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <p className="text-xs font-bold">
-                              Day {day.dayNumber} — {formatDate(day.date)}
-                            </p>
-                            {/* Day label editor */}
-                            <input
-                              defaultValue={day.label ?? ""}
-                              placeholder="Label (e.g. Eid Day)"
-                              onBlur={(e) => handleUpdateDayLabel(day.id, e.target.value)}
-                              className="text-xs px-2 py-0.5 border border-border rounded bg-background outline-none focus:ring-1 focus:ring-foreground/20 w-36"
-                            />
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {activities.filter((a) => a.isActive).map((act) => {
-                              const suspended = suspendedIds.has(act.id);
-                              return (
-                                <button
-                                  key={act.id}
-                                  onClick={() => handleToggleSuspension(day.id, act.id, suspended)}
-                                  disabled={isPending}
-                                  className={cn(
-                                    "text-xs px-2.5 py-1 rounded-full border transition-all",
-                                    suspended
-                                      ? "bg-red-50 border-red-200 text-red-600 line-through opacity-75"
-                                      : "bg-card border-border text-foreground hover:border-foreground/30"
-                                  )}
-                                >
-                                  {suspended ? "✕ " : ""}{act.name}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
+                <div className="border-t border-border bg-muted/20 px-5 py-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                        Day-by-Day Activity Management
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Click an activity to <span className="text-red-600 font-medium">remove</span> it from that day. Click again to <span className="text-green-700 font-medium">restore</span> it.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500" />
+                        Included
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500" />
+                        Removed
+                      </span>
+                    </div>
                   </div>
+
+                  {period.days.map((day) => {
+                    const suspendedIds = new Set((day.suspensions ?? []).map((s) => s.activityId));
+                    const removedCount = activities.filter((a) => a.isActive && suspendedIds.has(a.id)).length;
+                    const totalActive = activities.filter((a) => a.isActive).length;
+
+                    return (
+                      <div key={day.id} className="bg-card border border-border rounded-lg overflow-hidden">
+                        {/* Day header */}
+                        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-muted/40">
+                          <div className="flex-1">
+                            <span className="text-xs font-bold text-foreground">
+                              Day {day.dayNumber}
+                            </span>
+                            <span className="text-xs text-muted-foreground ml-2">
+                              {formatDate(day.date)}
+                            </span>
+                            {removedCount > 0 && (
+                              <span className="ml-2 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded">
+                                {removedCount} removed
+                              </span>
+                            )}
+                            {removedCount === 0 && (
+                              <span className="ml-2 text-[10px] font-medium text-green-700 bg-green-50 px-1.5 py-0.5 rounded">
+                                All {totalActive} active
+                              </span>
+                            )}
+                          </div>
+                          <input
+                            defaultValue={day.label ?? ""}
+                            placeholder="Special label (e.g. Eid Day)"
+                            onBlur={(e) => handleUpdateDayLabel(day.id, e.target.value)}
+                            className="text-xs px-2 py-1 border border-border rounded bg-background outline-none focus:ring-1 focus:ring-foreground/20 w-44 placeholder:text-muted-foreground/50"
+                          />
+                        </div>
+
+                        {/* Activity toggles */}
+                        <div className="px-4 py-3 flex flex-wrap gap-2">
+                          {activities.filter((a) => a.isActive).length === 0 && (
+                            <p className="text-xs text-muted-foreground">No active activities configured.</p>
+                          )}
+                          {activities.filter((a) => a.isActive).map((act) => {
+                            const isRemoved = suspendedIds.has(act.id);
+                            return (
+                              <button
+                                key={act.id}
+                                onClick={() => handleToggleSuspension(day.id, act.id, isRemoved)}
+                                disabled={isPending}
+                                title={isRemoved ? `Restore "${act.name}" for Day ${day.dayNumber}` : `Remove "${act.name}" from Day ${day.dayNumber}`}
+                                className={cn(
+                                  "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all font-medium disabled:opacity-60",
+                                  isRemoved
+                                    ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
+                                    : "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                                )}
+                              >
+                                <span className={cn("text-sm leading-none", isRemoved ? "text-red-500" : "text-green-600")}>
+                                  {isRemoved ? "✗" : "✓"}
+                                </span>
+                                {act.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

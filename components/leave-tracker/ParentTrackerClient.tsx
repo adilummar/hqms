@@ -317,28 +317,28 @@ export function ParentTrackerClient({
         ))}
       </div>
 
-      {/* Fixed Save button */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-3 bg-gradient-to-t from-background via-background/95 to-transparent pointer-events-none">
-        <div className="max-w-3xl mx-auto lg:ml-64 pointer-events-auto">
+      {/* Fixed Save button — sidebar-aware so it doesn't bleed under the nav */}
+      <div className="fixed bottom-0 left-0 right-0 md:left-16 lg:left-64 z-40 pointer-events-none">
+        <div className="px-4 pb-5 pt-8 bg-gradient-to-t from-white via-white/95 to-transparent pointer-events-auto">
           <button
             onClick={handleSave}
             disabled={saving}
             className={cn(
-              "w-full flex items-center justify-center gap-2 py-3.5 rounded-lg font-semibold text-sm transition-all",
+              "w-full max-w-2xl mx-auto flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all shadow-md",
               saving
-                ? "bg-foreground/60 text-background cursor-not-allowed"
+                ? "bg-foreground/50 text-background cursor-not-allowed"
                 : saveStatus === "saved"
                 ? "bg-green-600 text-white"
                 : saveStatus === "error"
                 ? "bg-red-600 text-white"
-                : "bg-foreground text-background hover:bg-foreground/90"
+                : "bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98]"
             )}
           >
-            <Save size={16} />
+            <Save size={15} />
             {saving
               ? "Saving…"
               : saveStatus === "saved"
-              ? "Saved!"
+              ? "✓ Saved!"
               : saveStatus === "error"
               ? "Error — Try again"
               : `Save Day ${dayNumber}`}
@@ -346,5 +346,6 @@ export function ParentTrackerClient({
         </div>
       </div>
     </div>
+
   );
 }

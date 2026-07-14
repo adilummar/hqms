@@ -86,8 +86,28 @@ export async function activateLeavePeriod(periodId: string) {
   await logActivity(session.user.id, "leave_period.activate", "leave_periods", periodId);
   revalidatePath("/admin/leave-tracker");
   revalidatePath("/parent/leave-tracker");
+  revalidatePath("/tutor/hifz");
   return { success: true };
 }
+
+export async function deactivateLeavePeriod(periodId: string) {
+  const session = await requireRole(["admin", "super_admin"]);
+
+  await db
+    .update(leavePeriods)
+    .set({ isActive: false, updatedAt: new Date() })
+    .where(eq(leavePeriods.id, periodId));
+
+  await logActivity(session.user.id, "leave_period.deactivate", "leave_periods", periodId);
+  // Revalidate everywhere that checks for an active leave period
+  revalidatePath("/admin/leave-tracker");
+  revalidatePath("/admin/leave-tracker/settings");
+  revalidatePath("/parent/leave-tracker");
+  revalidatePath("/tutor/hifz");
+  revalidatePath("/tutor/hifz/bulk");
+  return { success: true };
+}
+
 
 export async function deleteLeavePeriod(periodId: string) {
   const session = await requireRole(["admin", "super_admin"]);
@@ -100,7 +120,13 @@ export async function deleteLeavePeriod(periodId: string) {
 export async function getLeavePeriods() {
   return db.query.leavePeriods.findMany({
     orderBy: desc(leavePeriods.createdAt),
-    with: { days: { orderBy: asc(leavePeriodDays.dayNumber) } },
+    with: {
+      days: {
+        orderBy: asc(leavePeriodDays.dayNumber),
+        // Must include suspensions so the settings UI can display/toggle them correctly
+        with: { suspensions: true },
+      },
+    },
   });
 }
 
