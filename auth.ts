@@ -26,76 +26,83 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials: Partial<Record<"username" | "password", unknown>>) {
-        const parsed = credentialsSchema.safeParse(credentials);
-        if (!parsed.success) return null;
+        try {
+          const parsed = credentialsSchema.safeParse(credentials);
+          if (!parsed.success) return null;
 
-        const { username, password } = parsed.data;
+          const { username, password } = parsed.data;
 
-        // ── Path 1: Admission Number + Mobile login (for Parents) ──────────────
-        // If the username looks like an admission number (numeric), try matching
-        // a student by admissionNumber and verify password against parent's phone.
-        const looksLikeAdmissionNumber = /^\d+$/.test(username.trim());
-        if (looksLikeAdmissionNumber) {
-          const student = await db.query.students.findFirst({
-            where: eq(students.admissionNumber, username.trim()),
-          });
-          if (student) {
-            const parent = await db.query.parents.findFirst({
-              where: eq(parents.studentId, student.id),
-              with: { user: true },
+          // ── Path 1: Admission Number + Mobile login (for Parents) ──────────────
+          // If the username looks like an admission number (numeric), try matching
+          // a student by admissionNumber and verify password against parent's phone.
+          const looksLikeAdmissionNumber = /^\d+$/.test(username.trim());
+          if (looksLikeAdmissionNumber) {
+            const student = await db.query.students.findFirst({
+              where: eq(students.admissionNumber, username.trim()),
             });
-            // Password must match primaryPhone (strip spaces/dashes for comparison)
-            const normalize = (v: string) => v.replace(/[\s\-]/g, "");
-            if (
-              parent &&
-              parent.user &&
-              parent.user.isActive &&
-              normalize(parent.primaryPhone) === normalize(password)
-            ) {
-              await db
-                .update(users)
-                .set({ lastLoginAt: new Date() })
-                .where(eq(users.id, parent.user.id));
-              return {
-                id: parent.user.id,
-                name: parent.user.username,
-                email: parent.user.email ?? undefined,
-                role: parent.user.role,
-              };
+            if (student) {
+              const parent = await db.query.parents.findFirst({
+                where: eq(parents.studentId, student.id),
+                with: { user: true },
+              });
+              // Password must match primaryPhone (strip spaces/dashes for comparison)
+              const normalize = (v: string) => v.replace(/[\s\-]/g, "");
+              if (
+                parent &&
+                parent.user &&
+                parent.user.isActive &&
+                normalize(parent.primaryPhone) === normalize(password)
+              ) {
+                await db
+                  .update(users)
+                  .set({ lastLoginAt: new Date() })
+                  .where(eq(users.id, parent.user.id));
+                return {
+                  id: parent.user.id,
+                  name: parent.user.username,
+                  email: parent.user.email ?? undefined,
+                  role: parent.user.role,
+                };
+              }
             }
           }
-        }
 
-        // ── Path 2: Normal username + bcrypt password login ────────────────────
-        const user = await db.query.users.findFirst({
-          where: eq(users.username, username),
-        });
-
-        if (!user || !user.isActive) return null;
-
-        const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-        if (!passwordMatch) return null;
-
-        // Check student login toggle
-        if (user.role === "student") {
-          const studentLoginSetting = await db.query.settings.findFirst({
-            where: eq(settings.key, "student_login_enabled"),
+          // ── Path 2: Normal username + bcrypt password login ────────────────────
+          const user = await db.query.users.findFirst({
+            where: eq(users.username, username),
           });
-          if (studentLoginSetting?.value !== "true") return null;
+
+          if (!user || !user.isActive) return null;
+
+          const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+          if (!passwordMatch) return null;
+
+          // Check student login toggle
+          if (user.role === "student") {
+            const studentLoginSetting = await db.query.settings.findFirst({
+              where: eq(settings.key, "student_login_enabled"),
+            });
+            if (studentLoginSetting?.value !== "true") return null;
+          }
+
+          // Update last login
+          await db
+            .update(users)
+            .set({ lastLoginAt: new Date() })
+            .where(eq(users.id, user.id));
+
+          return {
+            id: user.id,
+            name: user.username,
+            email: user.email ?? undefined,
+            role: user.role,
+          };
+        } catch (err) {
+          // DB unreachable — return null so Auth.js returns a proper JSON error
+          // instead of crashing and returning an HTML error page
+          console.error("[auth] authorize error:", err instanceof Error ? err.message : err);
+          return null;
         }
-
-        // Update last login
-        await db
-          .update(users)
-          .set({ lastLoginAt: new Date() })
-          .where(eq(users.id, user.id));
-
-        return {
-          id: user.id,
-          name: user.username,
-          email: user.email ?? undefined,
-          role: user.role,
-        };
       },
     }),
   ],

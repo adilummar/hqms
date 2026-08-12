@@ -23,27 +23,28 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   return (
-    <div className={cn("mb-4 md:mb-6", className)}>
+    <div className={cn("mb-6 md:mb-8", className)}>
+      {/* Breadcrumbs */}
       {breadcrumbs && breadcrumbs.length > 0 && (
-        <nav aria-label="Breadcrumb" className="flex items-center mb-2">
+        <nav aria-label="Breadcrumb" className="flex items-center mb-3">
           {breadcrumbs.map((crumb, i) => (
             <span key={i} className="inline-flex items-center">
               {i > 0 && (
                 <ChevronRight
-                  size={12}
-                  className="text-muted-foreground/60 mx-1 shrink-0"
+                  size={11}
+                  className="text-slate-300 mx-1.5 shrink-0"
                   aria-hidden="true"
                 />
               )}
               {crumb.href ? (
                 <Link
                   href={crumb.href}
-                  className="inline-flex items-center text-xs text-muted-foreground hover:text-foreground transition-colors font-dm-sans"
+                  className="text-[12px] text-slate-400 hover:text-slate-700 transition-colors font-dm-sans"
                 >
                   {crumb.label}
                 </Link>
               ) : (
-                <span className="inline-flex items-center text-xs text-muted-foreground font-dm-sans">
+                <span className="text-[12px] text-slate-400 font-dm-sans">
                   {crumb.label}
                 </span>
               )}
@@ -52,21 +53,26 @@ export function PageHeader({
         </nav>
       )}
 
-      {/* Stack vertically on mobile, row on sm+ */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Title row */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-playfair text-2xl md:text-3xl font-semibold text-foreground tracking-tight">
+          <h1 className="font-inter text-2xl md:text-[28px] font-bold text-foreground tracking-tight leading-tight">
             {title}
           </h1>
           {description && (
-            <div className="text-sm text-muted-foreground mt-1 font-dm-sans">
+            <div className="text-[14px] text-muted-foreground mt-1.5 font-dm-sans leading-relaxed">
               {description}
             </div>
           )}
         </div>
         {action && <div className="flex-shrink-0">{action}</div>}
       </div>
-      <div className="mt-3 md:mt-4 h-px bg-border" />
+
+      {/* Subtle accent underline */}
+      <div className="mt-4 flex items-center gap-2">
+        <div className="w-8 h-0.5 bg-teal rounded-full" />
+        <div className="flex-1 h-px bg-border" />
+      </div>
     </div>
   );
 }

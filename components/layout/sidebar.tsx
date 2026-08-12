@@ -43,7 +43,6 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Reports",         href: "/admin/reports",                 icon: BarChart3 },
 ];
 
-
 const TUTOR_NAV: NavItem[] = [
   { label: "Dashboard",       href: "/tutor",                icon: LayoutDashboard },
   { label: "Hifz Entry",      href: "/tutor/hifz",           icon: BookOpen },
@@ -122,91 +121,105 @@ export function Sidebar({
     : role === "student" ? "/student"
     : "/admin";
 
-  // On tablet: show labels when expanded, hide when collapsed
-  // "tablet-label" = visible on tablet only when expanded
   const tabletLabelClass = isTabletExpanded
-    ? "md:inline lg:inline"   // expanded: show
-    : "md:hidden lg:inline";  // collapsed: hide on tablet, show on desktop
+    ? "md:inline lg:inline"
+    : "md:hidden lg:inline";
 
   const tabletIconCenterClass = isTabletExpanded
-    ? "md:justify-start lg:justify-start" // expanded: left-align like desktop
-    : "md:justify-center lg:justify-start"; // collapsed: center on tablet
+    ? "md:justify-start lg:justify-start"
+    : "md:justify-center lg:justify-start";
 
   const tabletPxClass = isTabletExpanded
-    ? "md:px-3 lg:px-3"   // expanded: normal padding
-    : "md:px-0 lg:px-3";  // collapsed: no side-pad on tablet
+    ? "md:px-3 lg:px-3"
+    : "md:px-0 lg:px-3";
+
+  // First letter of username for avatar
+  const avatarLetter = username.charAt(0).toUpperCase();
+  const roleLabel = role.replace(/_/g, " ");
 
   return (
     <aside
       className={cn(
-        // Base layout
-        "fixed left-0 top-0 h-full bg-[#111] text-white flex flex-col z-40",
-        // Smooth width + position transitions
+        // Base
+        "fixed left-0 top-0 h-full flex flex-col z-40",
+        // Deep slate background with subtle border
+        "bg-[#0F172A] border-r border-white/[0.06]",
+        // Transitions
         "transition-all duration-300 ease-in-out",
-        // Desktop: always full width
+        // Desktop: always full
         "lg:w-64 lg:translate-x-0",
-        // Tablet: width depends on expand state
+        // Tablet
         isTabletExpanded ? "md:w-64" : "md:w-16",
         "md:translate-x-0",
-        // Mobile: full-width drawer
+        // Mobile drawer
         "w-72",
         isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
       )}
     >
-      {/* Logo */}
-      <div className="px-4 py-5 border-b border-white/10 flex items-center justify-between lg:px-6 lg:py-6 overflow-hidden">
+      {/* ── Logo / Brand ────────────────────────────────────────── */}
+      <div className="px-4 py-5 border-b border-white/[0.06] flex items-center justify-between lg:px-5 overflow-hidden">
         <Link
           href={homeHref}
           onClick={onClose}
-          className="flex items-center gap-2 min-w-0"
+          className="flex items-center gap-3 min-w-0 group"
         >
-          {/* Book icon — always visible */}
-          <div className="w-8 h-8 rounded-sm bg-[#C9A84C]/20 flex items-center justify-center flex-shrink-0">
-            <BookOpen size={16} className="text-[#C9A84C]" />
+          {/* Icon mark */}
+          <div className="w-8 h-8 rounded-lg bg-teal/20 flex items-center justify-center flex-shrink-0 ring-1 ring-teal/30 group-hover:bg-teal/30 transition-colors duration-200">
+            <BookOpen size={15} className="text-teal" />
           </div>
-          {/* Label: shown on mobile & desktop always; on tablet only when expanded */}
+
+          {/* Brand text */}
           <div className={cn(
             "overflow-hidden transition-all duration-300",
             isTabletExpanded ? "md:block lg:block" : "md:hidden lg:block"
           )}>
-            <h1 className="font-playfair text-xl font-bold text-white tracking-wide leading-none whitespace-nowrap">
-              HQMS
-            </h1>
-            <p className="text-xs text-white/40 mt-0.5 font-dm-sans whitespace-nowrap">
-              Hifzul Quran Management
+            <p className="font-inter text-[15px] font-700 font-bold text-white tracking-tight leading-none whitespace-nowrap">
+              MIC Hifz Portal
+            </p>
+            <p className="text-[10px] text-white/35 mt-0.5 font-dm-sans whitespace-nowrap tracking-wide uppercase">
+              Markaz Islamic College
             </p>
           </div>
         </Link>
 
-        {/* Right side of logo bar: tablet toggle OR mobile close */}
+        {/* Controls */}
         <div className="flex items-center gap-1 flex-shrink-0">
-          {/* Tablet expand/collapse — visible only on md (not mobile, not desktop) */}
+          {/* Tablet toggle */}
           <button
             onClick={onTabletToggle}
             title={isTabletExpanded ? "Collapse sidebar" : "Expand sidebar"}
-            className="hidden md:flex lg:hidden items-center justify-center w-7 h-7 rounded-sm text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+            className="hidden md:flex lg:hidden items-center justify-center w-6 h-6 rounded-md text-white/30 hover:text-white/70 hover:bg-white/8 transition-all duration-200"
             aria-label={isTabletExpanded ? "Collapse sidebar" : "Expand sidebar"}
           >
-            {isTabletExpanded ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+            {isTabletExpanded ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
           </button>
 
-          {/* Mobile close button — only inside the drawer */}
+          {/* Mobile close */}
           <button
             onClick={onClose}
-            className="flex md:hidden text-white/40 hover:text-white transition-colors p-1"
+            className="flex md:hidden text-white/30 hover:text-white/70 transition-colors p-1 rounded-md hover:bg-white/8"
             aria-label="Close menu"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* ── Navigation ──────────────────────────────────────────── */}
       <nav className={cn(
-        "flex-1 px-2 py-4 space-y-0.5 overflow-y-auto overflow-x-hidden",
+        "flex-1 px-2 py-4 overflow-y-auto overflow-x-hidden space-y-0.5",
+        "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
         isTabletExpanded ? "md:px-3" : "md:px-2",
         "lg:px-3"
       )}>
+        {/* Section label */}
+        <p className={cn(
+          "text-[10px] font-semibold text-white/20 uppercase tracking-widest px-3 pb-2 mb-1 font-dm-sans",
+          isTabletExpanded ? "md:block lg:block" : "md:hidden lg:block"
+        )}>
+          Navigation
+        </p>
+
         {navItems.map((item) => {
           const active = isActive(item.href);
           return (
@@ -216,65 +229,73 @@ export function Sidebar({
               onClick={onClose}
               title={item.label}
               className={cn(
-                "flex items-center gap-3 px-2 py-2.5 rounded-sm text-sm transition-colors overflow-hidden",
+                // Base
+                "flex items-center gap-3 py-2.5 rounded-lg text-sm transition-all duration-200 overflow-hidden group",
                 tabletIconCenterClass,
                 tabletPxClass,
-                "lg:justify-start lg:px-3",
+                "px-3 lg:justify-start lg:px-3",
                 active
-                  ? "bg-[#1a1a1a] text-[#C9A84C] border-l-2 border-[#C9A84C]"
-                  : "text-white/60 hover:text-white hover:bg-white/5"
+                  ? "bg-teal/15 text-teal border border-teal/20"
+                  : "text-white/50 hover:text-white/90 hover:bg-white/[0.06] border border-transparent"
               )}
             >
               <item.icon
-                size={18}
-                className={cn("flex-shrink-0", active ? "text-[#C9A84C]" : "text-white/40")}
+                size={16}
+                className={cn(
+                  "flex-shrink-0 transition-colors duration-200",
+                  active ? "text-teal" : "text-white/35 group-hover:text-white/70"
+                )}
               />
               <span className={cn(
-                "font-dm-sans font-medium whitespace-nowrap transition-all duration-300",
+                "font-dm-sans font-medium whitespace-nowrap transition-all duration-300 text-[13px]",
                 tabletLabelClass
               )}>
                 {item.label}
               </span>
+              {/* Active indicator dot */}
+              {active && (
+                <span className={cn(
+                  "ml-auto w-1.5 h-1.5 rounded-full bg-teal flex-shrink-0",
+                  isTabletExpanded ? "md:flex lg:flex" : "md:hidden lg:flex"
+                )} />
+              )}
             </Link>
           );
         })}
       </nav>
 
-      {/* Bottom section */}
+      {/* ── Bottom Section ──────────────────────────────────────── */}
       <div className={cn(
-        "border-t border-white/10 space-y-0.5",
-        "px-2 py-4",
+        "border-t border-white/[0.06] px-2 py-4 space-y-1",
         isTabletExpanded ? "md:px-3" : "md:px-2",
         "lg:px-3"
       )}>
 
-
-
-        {/* Settings link */}
+        {/* Settings */}
         {(role === "super_admin" || role === "admin") && (
           <Link
             href="/admin/settings"
             onClick={onClose}
             title="Settings"
             className={cn(
-              "flex items-center gap-3 px-2 py-2.5 rounded-sm text-sm transition-colors overflow-hidden",
+              "flex items-center gap-3 py-2.5 rounded-lg text-sm transition-all duration-200 overflow-hidden group border",
               tabletIconCenterClass,
               tabletPxClass,
-              "lg:justify-start lg:px-3",
+              "px-3 lg:justify-start lg:px-3",
               pathname.startsWith("/admin/settings")
-                ? "bg-[#1a1a1a] text-[#C9A84C] border-l-2 border-[#C9A84C]"
-                : "text-white/60 hover:text-white hover:bg-white/5"
+                ? "bg-teal/15 text-teal border-teal/20"
+                : "text-white/50 hover:text-white/90 hover:bg-white/[0.06] border-transparent"
             )}
           >
             <Settings
-              size={18}
+              size={16}
               className={cn(
                 "flex-shrink-0",
-                pathname.startsWith("/admin/settings") ? "text-[#C9A84C]" : "text-white/40"
+                pathname.startsWith("/admin/settings") ? "text-teal" : "text-white/35 group-hover:text-white/70"
               )}
             />
             <span className={cn(
-              "font-dm-sans font-medium whitespace-nowrap transition-all duration-300",
+              "font-dm-sans font-medium whitespace-nowrap transition-all duration-300 text-[13px]",
               tabletLabelClass
             )}>
               Settings
@@ -282,50 +303,52 @@ export function Sidebar({
           </Link>
         )}
 
-        {/* User info + logout */}
+        {/* ── User Card ─────────────────────────────────────────── */}
         <div className={cn(
-          "py-2 mt-2",
-          isTabletExpanded ? "md:px-3" : "md:px-0",
-          "px-2 lg:px-3"
+          "mt-3 pt-3 border-t border-white/[0.06]",
+          isTabletExpanded ? "md:px-1" : "md:px-0",
+          "px-1 lg:px-1"
         )}>
-          {/* Full user info row: shown on mobile + desktop + tablet when expanded */}
+          {/* Full user row: mobile + desktop + tablet expanded */}
           <div className={cn(
-            "flex items-center gap-2 mb-2",
+            "flex items-center gap-3 mb-3",
             isTabletExpanded ? "md:flex lg:flex" : "md:hidden lg:flex"
           )}>
-            <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-              <GraduationCap size={14} className="text-white/60" />
+            {/* Avatar */}
+            <div className="w-8 h-8 rounded-lg bg-teal/20 ring-1 ring-teal/30 flex items-center justify-center flex-shrink-0">
+              <span className="text-xs font-bold text-teal font-inter">{avatarLetter}</span>
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-white/80 truncate">{username}</p>
-              <p className="text-xs text-white/40 capitalize truncate">{role.replace("_", " ")}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold text-white/85 truncate font-inter leading-none">{username}</p>
+              <p className="text-[11px] text-white/35 capitalize truncate font-dm-sans mt-0.5">{roleLabel}</p>
             </div>
           </div>
 
-          {/* Tablet collapsed: just avatar centered */}
+          {/* Tablet collapsed: avatar only */}
           <div className={cn(
-            "justify-center mb-2",
+            "justify-center mb-3",
             isTabletExpanded ? "hidden" : "hidden md:flex lg:hidden"
           )}>
-            <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
-              <GraduationCap size={14} className="text-white/60" />
+            <div className="w-8 h-8 rounded-lg bg-teal/20 ring-1 ring-teal/30 flex items-center justify-center">
+              <span className="text-xs font-bold text-teal font-inter">{avatarLetter}</span>
             </div>
           </div>
 
+          {/* Sign out button */}
           <form action={logoutAction}>
             <button
               type="submit"
               title="Sign out"
               className={cn(
-                "flex items-center gap-2 text-xs text-white/40 hover:text-white/70 transition-colors mt-1",
+                "flex items-center gap-2 text-[12px] text-white/30 hover:text-red-400 transition-all duration-200 rounded-md py-1.5 px-2 hover:bg-red-500/8 w-full",
                 isTabletExpanded
-                  ? "md:justify-start md:w-auto"
-                  : "md:justify-center md:w-full",
-                "lg:justify-start lg:w-auto"
+                  ? "md:justify-start"
+                  : "md:justify-center",
+                "lg:justify-start"
               )}
             >
-              <LogOut size={14} className="flex-shrink-0" />
-              <span className={cn("whitespace-nowrap", tabletLabelClass)}>Sign out</span>
+              <LogOut size={13} className="flex-shrink-0" />
+              <span className={cn("whitespace-nowrap font-dm-sans", tabletLabelClass)}>Sign out</span>
             </button>
           </form>
         </div>
