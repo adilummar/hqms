@@ -104,7 +104,7 @@ export default async function HifzBulkPage({ searchParams }: Props) {
       sabaqToPage: string | null;
       sabaqPages: string | null;
       sabaqRemarksId: string | null;
-      sabaqJuzGiven: boolean;
+      sabaqJuzGiven: boolean | null;
       sabaqJuzRemarksId: string | null;
       dauraJuzNumbers: number[] | null;
       dauraRemarksId: string | null;

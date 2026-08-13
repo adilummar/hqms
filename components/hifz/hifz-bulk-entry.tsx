@@ -16,7 +16,7 @@ type ExistingEntry = {
   sabaqToPage: string | null;
   sabaqPages: string | null;
   sabaqRemarksId: string | null;
-  sabaqJuzGiven: boolean;
+  sabaqJuzGiven: boolean | null;
   sabaqJuzRemarksId: string | null;
   dauraJuzNumbers: number[] | null;
   dauraRemarksId: string | null;
@@ -96,7 +96,7 @@ export function HifzBulkEntry({
       sabaqPages: s.existingEntry?.sabaqPages ?? "",
       sabaqRemarksId: s.existingEntry?.sabaqRemarksId ?? "",
       // Default sabaqJuzGiven = true for new entries, use existing value otherwise
-      sabaqJuzGiven: s.existingEntry ? s.existingEntry.sabaqJuzGiven : true,
+      sabaqJuzGiven: s.existingEntry ? (s.existingEntry.sabaqJuzGiven ?? true) : true,
       sabaqJuzRemarksId: s.existingEntry?.sabaqJuzRemarksId ?? "",
       dauraJuz: (s.existingEntry?.dauraJuzNumbers ?? []).join(" "),
       dauraRemarksId: s.existingEntry?.dauraRemarksId ?? "",
