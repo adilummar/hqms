@@ -22,7 +22,7 @@ interface Props {
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-50 text-yellow-800 border border-yellow-200",
   shortlisted: "bg-blue-50 text-blue-800 border border-blue-200",
-  selected: "bg-green-50 text-green-800 border border-green-200",
+  selected: "bg-primary/5 text-green-800 border border-primary/20",
   rejected: "bg-red-50 text-red-800 border border-red-200",
 };
 
@@ -55,7 +55,7 @@ function ClassSelect({
         required
         name={name}
         defaultValue={options[0]?.id ?? ""}
-        className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+        className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
       >
         <option value="">Select {label}</option>
         {options.map((option) => (
@@ -232,7 +232,7 @@ export default async function ApplicationDetailsPage({ params, searchParams }: P
               )}
 
               {canAdmit ? (
-                <form action={admitApplicationFromForm} className="space-y-3 border border-green-200 bg-green-50/60 rounded-sm p-3">
+                <form action={admitApplicationFromForm} className="space-y-3 border border-primary/20 bg-primary/5/60 rounded-sm p-3">
                   <input type="hidden" name="applicationId" value={application.id} />
                   <ClassSelect label="Hifz Class" name="hifzClassId" options={hifzClasses} />
                   <ClassSelect label="Madrasa Class" name="madrasaClassId" options={madrasaClasses} />

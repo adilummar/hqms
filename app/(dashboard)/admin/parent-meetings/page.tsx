@@ -246,7 +246,7 @@ export default async function AdminParentMeetingsPage({ searchParams }: Props) {
                           href={`/admin/parent-meetings?meetingId=${selectedMeetingId ?? ""}&classId=${cls.id}`}
                           className={`flex items-center justify-between gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
                             selectedClassId === cls.id
-                              ? "bg-foreground text-background"
+                              ? "bg-primary text-primary-foreground"
                               : "hover:bg-muted text-muted-foreground hover:text-foreground"
                           }`}
                         >

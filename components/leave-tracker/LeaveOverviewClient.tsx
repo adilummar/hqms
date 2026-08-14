@@ -148,7 +148,7 @@ export function LeaveOverviewClient({ period, students, activities, responses }:
           className={cn(
             "px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
             classFilter === "all"
-              ? "bg-foreground text-background border-foreground"
+              ? "bg-primary text-primary-foreground border-foreground"
               : "bg-card text-muted-foreground border-border hover:border-foreground/30"
           )}
         >
@@ -161,7 +161,7 @@ export function LeaveOverviewClient({ period, students, activities, responses }:
             className={cn(
               "px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
               classFilter === cls
-                ? "bg-foreground text-background border-foreground"
+                ? "bg-primary text-primary-foreground border-foreground"
                 : "bg-card text-muted-foreground border-border hover:border-foreground/30"
             )}
           >
@@ -224,7 +224,7 @@ export function LeaveOverviewClient({ period, students, activities, responses }:
                               sc.total === 0
                                 ? "bg-muted text-muted-foreground"
                                 : pct === 100
-                                ? "bg-foreground text-background"
+                                ? "bg-primary text-primary-foreground"
                                 : pct >= 80
                                 ? "bg-foreground/80 text-background"
                                 : pct >= 60

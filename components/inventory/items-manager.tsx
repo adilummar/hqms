@@ -42,7 +42,7 @@ function ItemForm({
             onChange={(e) => setData({ ...data, name: e.target.value })}
             placeholder="e.g. A4 Paper"
             required
-            className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+            className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
         </div>
         <div>
@@ -51,7 +51,7 @@ function ItemForm({
             value={data.description}
             onChange={(e) => setData({ ...data, description: e.target.value })}
             placeholder="Optional details"
-            className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+            className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
         </div>
         <div>
@@ -62,7 +62,7 @@ function ItemForm({
             value={data.quantity}
             onChange={(e) => setData({ ...data, quantity: e.target.value })}
             required
-            className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+            className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
         </div>
         <div>
@@ -70,7 +70,7 @@ function ItemForm({
           <select
             value={data.unit}
             onChange={(e) => setData({ ...data, unit: e.target.value })}
-            className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+            className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
           >
             {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
           </select>
@@ -82,7 +82,7 @@ function ItemForm({
             min="0"
             value={data.minStockAlert}
             onChange={(e) => setData({ ...data, minStockAlert: e.target.value })}
-            className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+            className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
         </div>
         <div>
@@ -91,7 +91,7 @@ function ItemForm({
             value={data.notes}
             onChange={(e) => setData({ ...data, notes: e.target.value })}
             placeholder="Any extra notes"
-            className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+            className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
         </div>
       </div>
@@ -106,7 +106,7 @@ function ItemForm({
         <button
           type="submit"
           disabled={isPending || !data.name}
-          className="flex items-center gap-1.5 px-4 py-1.5 bg-foreground text-background text-xs font-medium rounded-sm disabled:opacity-50"
+          className="flex items-center gap-1.5 px-4 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-sm disabled:opacity-50"
         >
           {isPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
           {submitLabel}

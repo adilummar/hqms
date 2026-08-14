@@ -29,7 +29,7 @@ const ROLE_COLORS: Record<string, string> = {
   admin:        "bg-blue-100   text-blue-800   border border-blue-200",
   tutor:        "bg-orange-100 text-orange-800 border border-orange-200",
   school_admin: "bg-teal-100   text-teal-800   border border-teal-200",
-  parent:       "bg-green-100  text-green-800  border border-green-200",
+  parent:       "bg-green-100  text-green-800  border border-primary/20",
   student:      "bg-gray-100   text-gray-800   border border-gray-200",
 };
 

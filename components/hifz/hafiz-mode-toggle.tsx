@@ -82,7 +82,7 @@ export function HafizModeToggle({ studentId, isHafiz, completedJuzCount, canReve
         onClick={handleConvert}
         disabled={!eligible || isPending}
         title={eligible ? undefined : "Complete all 30 Juz first"}
-        className="shrink-0 inline-flex items-center gap-2 px-3 py-1.5 bg-foreground text-background text-xs font-medium rounded-sm hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="shrink-0 inline-flex items-center gap-2 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isPending && <Loader2 size={12} className="animate-spin" />}
         <GraduationCap size={14} />

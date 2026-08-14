@@ -9,16 +9,16 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex">
+    <div className="min-h-screen bg-background flex">
       {/* ── Left Panel — Brand ────────────────────────────────── */}
-      <div className="hidden lg:flex flex-col justify-between w-[420px] xl:w-[480px] flex-shrink-0 bg-[#0F172A] p-10 relative overflow-hidden">
+      <div className="hidden lg:flex flex-col justify-between w-[420px] xl:w-[480px] flex-shrink-0 bg-primary p-10 relative overflow-hidden">
         {/* Subtle radial glow */}
         <div
           aria-hidden="true"
           className="absolute top-0 left-0 w-full h-full pointer-events-none"
           style={{
             background:
-              "radial-gradient(ellipse 80% 60% at 30% 20%, rgba(20,184,166,0.12) 0%, transparent 70%)",
+              "radial-gradient(ellipse 80% 60% at 30% 20%, rgba(255,255,255,0.15) 0%, transparent 70%)",
           }}
         />
         {/* Grid pattern */}
@@ -35,8 +35,8 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-12">
-            <div className="w-10 h-10 rounded-xl bg-teal/20 ring-1 ring-teal/30 flex items-center justify-center">
-              <BookOpen size={18} className="text-teal" />
+            <div className="w-10 h-10 rounded-xl bg-white/20 ring-1 ring-white/30 flex items-center justify-center">
+              <BookOpen size={18} className="text-white" />
             </div>
             <div>
               <p className="font-inter text-xl font-bold text-white tracking-tight leading-none">HQMS</p>
@@ -48,7 +48,7 @@ export default function LoginPage() {
           <h1 className="font-inter text-4xl xl:text-5xl font-bold text-white leading-[1.1] tracking-tight">
             Manage your
             <br />
-            <span className="text-teal">Quran journey.</span>
+            <span className="text-accent">Quran journey.</span>
           </h1>
           <p className="text-white/45 text-[15px] font-dm-sans mt-5 leading-relaxed max-w-sm">
             Track Hifz progress, attendance, admissions, and student milestones — all in one place.
@@ -64,8 +64,8 @@ export default function LoginPage() {
             "Role-based access for staff & parents",
           ].map((feat) => (
             <div key={feat} className="flex items-center gap-3">
-              <div className="w-5 h-5 rounded-full bg-teal/20 flex items-center justify-center flex-shrink-0">
-                <div className="w-1.5 h-1.5 rounded-full bg-teal" />
+              <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                <div className="w-1.5 h-1.5 rounded-full bg-white" />
               </div>
               <p className="text-[13px] text-white/55 font-dm-sans">{feat}</p>
             </div>
@@ -84,8 +84,8 @@ export default function LoginPage() {
         {/* Mobile logo — only visible below lg */}
         <div className="lg:hidden mb-10 text-center">
           <div className="flex items-center justify-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0F172A] flex items-center justify-center ring-1 ring-teal/30">
-              <BookOpen size={17} className="text-teal" />
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center ring-1 ring-primary/30">
+              <BookOpen size={17} className="text-primary-foreground" />
             </div>
             <p className="font-inter text-2xl font-bold text-foreground tracking-tight">HQMS</p>
           </div>

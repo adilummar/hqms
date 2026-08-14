@@ -114,7 +114,7 @@ export default async function StudentsPage({ searchParams }: Props) {
             </Link>
             <Link
               href="/admin/admissions/new"
-              className="px-4 py-2 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors"
+              className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors"
             >
               + New Admission
             </Link>
@@ -160,7 +160,7 @@ export default async function StudentsPage({ searchParams }: Props) {
             href={buildLink({ tab: "inactive", subTab: "completed", page: "1" })}
             className={`px-3 py-1.5 text-xs font-medium rounded-sm transition-colors ${
               subTab === "completed"
-                ? "bg-foreground text-background"
+                ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -170,7 +170,7 @@ export default async function StudentsPage({ searchParams }: Props) {
             href={buildLink({ tab: "inactive", subTab: "discontinued", page: "1" })}
             className={`px-3 py-1.5 text-xs font-medium rounded-sm transition-colors ${
               subTab === "discontinued"
-                ? "bg-foreground text-background"
+                ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -191,7 +191,7 @@ export default async function StudentsPage({ searchParams }: Props) {
             name="search"
             defaultValue={search}
             placeholder="Search by name, code, or admission no..."
-            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground w-64"
+            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 w-64"
           />
         </form>
 
@@ -203,7 +203,7 @@ export default async function StudentsPage({ searchParams }: Props) {
               href={buildLink({ batch: undefined, page: "1" })}
               className={`px-3 py-1.5 text-xs font-medium rounded-sm border transition-colors ${
                 !batchFilter
-                  ? "bg-foreground text-background border-foreground"
+                  ? "bg-primary text-primary-foreground border-foreground"
                   : "bg-background text-muted-foreground border-border hover:border-foreground/50"
               }`}
             >
@@ -215,7 +215,7 @@ export default async function StudentsPage({ searchParams }: Props) {
                 href={buildLink({ batch: b.id, page: "1" })}
                 className={`px-3 py-1.5 text-xs font-medium rounded-sm border transition-colors ${
                   batchFilter === b.id
-                    ? "bg-foreground text-background border-foreground"
+                    ? "bg-primary text-primary-foreground border-foreground"
                     : "bg-background text-muted-foreground border-border hover:border-foreground/50"
                 }`}
               >

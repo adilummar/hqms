@@ -116,7 +116,7 @@ export default async function TutorStarsPage({ searchParams }: Props) {
               href={`/tutor/stars?classId=${classItem.id}`}
               className={`rounded-sm border px-3 py-1.5 text-sm transition-colors ${
                 selectedClassId === classItem.id
-                  ? "border-foreground bg-foreground text-background"
+                  ? "border-foreground bg-primary text-primary-foreground"
                   : "border-border hover:bg-muted"
               }`}
             >

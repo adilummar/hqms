@@ -210,7 +210,7 @@ export function ParentMeetingRoster({
                         }
                         placeholder="Reason for absence..."
                         rows={2}
-                        className="w-full text-xs px-2 py-1.5 border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground resize-none"
+                        className="w-full text-xs px-2 py-1.5 border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"
                       />
                     </div>
                     {!showRemarks && attended === true && (
@@ -239,7 +239,7 @@ export function ParentMeetingRoster({
           <button
             onClick={handleSave}
             disabled={isPending || students.length === 0}
-            className="px-6 py-2.5 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-6 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isPending && <Loader2 size={14} className="animate-spin" />}
             {isPending ? "Saving..." : "Save Attendance"}

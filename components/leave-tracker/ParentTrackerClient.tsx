@@ -331,7 +331,7 @@ export function ParentTrackerClient({
                 ? "bg-green-600 text-white"
                 : saveStatus === "error"
                 ? "bg-red-600 text-white"
-                : "bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98]"
+                : "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]"
             )}
           >
             <Save size={15} />

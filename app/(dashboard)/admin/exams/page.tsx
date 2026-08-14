@@ -18,7 +18,7 @@ const TRACK_COLORS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-muted text-muted-foreground",
   ongoing:   "bg-yellow-500/10 text-yellow-600",
-  completed: "bg-green-500/10 text-green-600",
+  completed: "bg-primary/10 text-primary",
   cancelled: "bg-red-500/10 text-red-600",
 };
 
@@ -96,7 +96,7 @@ export default async function ExamsPage() {
                           <td className="px-5 py-3">
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
                               exam.resultStatus === "published"
-                                ? "bg-green-500/10 text-green-600 border-green-500/20"
+                                ? "bg-primary/10 text-primary border-green-500/20"
                                 : "bg-muted text-muted-foreground border-border"
                             }`}>
                               {exam.resultStatus === "published" ? "Published" : "Draft"}

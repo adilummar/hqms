@@ -24,7 +24,7 @@ const ROLE_COLORS: Record<string, string> = {
   admin: "bg-teal-50 text-teal-700",
   tutor: "bg-blue-50 text-blue-700",
   school_admin: "bg-orange-50 text-orange-700",
-  parent: "bg-green-50 text-green-700",
+  parent: "bg-primary/5 text-primary",
   student: "bg-slate-100 text-slate-600",
 };
 
@@ -73,7 +73,7 @@ export function Header({ username, role, onMenuToggle, isTabletExpanded = false 
         >
           <Bell size={16} />
           {/* Notification dot */}
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-teal" />
+          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
         </button>
 
         {/* Divider */}
@@ -90,8 +90,8 @@ export function Header({ username, role, onMenuToggle, isTabletExpanded = false 
           </div>
 
           {/* Avatar */}
-          <div className="w-8 h-8 rounded-lg bg-[#0F172A] flex items-center justify-center ring-2 ring-offset-1 ring-teal/40 transition-all duration-200 hover:ring-teal/70">
-            <span className="text-[12px] font-bold text-teal uppercase font-inter">{avatarLetter}</span>
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center ring-2 ring-offset-1 ring-primary/40 transition-all duration-200 hover:ring-primary/70">
+            <span className="text-[12px] font-bold text-primary-foreground uppercase font-inter">{avatarLetter}</span>
           </div>
         </div>
       </div>

@@ -87,7 +87,7 @@ export function UserActionsCell({
           "inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg border transition-all disabled:opacity-50",
           isActive
             ? "border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100"
-            : "border-green-200 text-green-700 bg-green-50 hover:bg-green-100"
+            : "border-primary/20 text-primary bg-primary/5 hover:bg-primary/10"
         )}
       >
         {isPending ? (

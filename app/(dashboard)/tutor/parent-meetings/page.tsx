@@ -126,7 +126,7 @@ export default async function TutorParentMeetingsPage({ searchParams }: Props) {
                       href={`/tutor/parent-meetings?meetingId=${selectedMeetingId ?? ""}&classId=${cls.id}`}
                       className={`flex items-center gap-2 px-3 py-2 rounded-sm text-sm transition-colors ${
                         selectedClassId === cls.id
-                          ? "bg-foreground text-background"
+                          ? "bg-primary text-primary-foreground"
                           : "hover:bg-muted text-muted-foreground hover:text-foreground"
                       }`}
                     >

@@ -222,7 +222,7 @@ export function HifzBulkEntry({
             className={cn(
               "bg-card border rounded-xl p-4 transition-all duration-200",
               isSaved
-                ? "border-green-200 bg-green-50/30"
+                ? "border-primary/20 bg-primary/5"
                 : touched
                 ? "border-foreground/25 shadow-sm"
                 : "border-border"
@@ -247,7 +247,7 @@ export function HifzBulkEntry({
               </div>
 
               {isSaved ? (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                   <CheckCircle2 size={10} /> Saved
                 </span>
               ) : (
@@ -271,7 +271,7 @@ export function HifzBulkEntry({
                 onChange={(e) =>
                   updateRow(student.id, { sabaqFromPage: e.target.value })
                 }
-                className="w-[74px] h-8 px-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+                className="w-[74px] h-8 px-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
               />
               <span className="text-muted-foreground text-xs">→</span>
               <input
@@ -283,7 +283,7 @@ export function HifzBulkEntry({
                 onChange={(e) =>
                   updateRow(student.id, { sabaqToPage: e.target.value })
                 }
-                className="w-[74px] h-8 px-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+                className="w-[74px] h-8 px-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
               />
               {row.sabaqPages && (
                 <span className="text-xs font-medium text-foreground bg-muted px-2 py-1 rounded-lg tabular-nums">
@@ -296,7 +296,7 @@ export function HifzBulkEntry({
                   onChange={(e) =>
                     updateRow(student.id, { sabaqRemarksId: e.target.value })
                   }
-                  className="h-8 px-2 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-foreground text-muted-foreground"
+                  className="h-8 px-2 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 text-muted-foreground"
                 >
                   <option value="">Remark…</option>
                   {sabaqRemarks.map((r) => (
@@ -321,7 +321,7 @@ export function HifzBulkEntry({
                   onChange={(e) =>
                     updateRow(student.id, { sabaqJuzGiven: e.target.checked })
                   }
-                  className="accent-foreground w-4 h-4 rounded"
+                  className="accent-primary w-4 h-4 rounded"
                 />
                 <span
                   className={cn(
@@ -338,7 +338,7 @@ export function HifzBulkEntry({
                   onChange={(e) =>
                     updateRow(student.id, { sabaqJuzRemarksId: e.target.value })
                   }
-                  className="h-8 px-2 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-foreground text-muted-foreground"
+                  className="h-8 px-2 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 text-muted-foreground"
                 >
                   <option value="">Remark…</option>
                   {sabaqJuzRemarks.map((r) => (
@@ -360,7 +360,7 @@ export function HifzBulkEntry({
                 onChange={(e) =>
                   updateRow(student.id, { dauraJuz: e.target.value })
                 }
-                className="w-28 h-8 px-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+                className="w-28 h-8 px-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
               />
               {dauraRemarks.length > 0 && (
                 <select
@@ -368,7 +368,7 @@ export function HifzBulkEntry({
                   onChange={(e) =>
                     updateRow(student.id, { dauraRemarksId: e.target.value })
                   }
-                  className="h-8 px-2 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-foreground text-muted-foreground"
+                  className="h-8 px-2 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 text-muted-foreground"
                 >
                   <option value="">Remark…</option>
                   {dauraRemarks.map((r) => (
@@ -393,7 +393,7 @@ export function HifzBulkEntry({
               "w-full max-w-2xl mx-auto flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all shadow-md",
               saving || readyCount === 0
                 ? "bg-foreground/40 text-background cursor-not-allowed"
-                : "bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98]"
+                : "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]"
             )}
           >
             {saving ? (

@@ -214,7 +214,7 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
           <select
             name="track"
             defaultValue={track}
-            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
           >
             <option value="hifz">Hifz</option>
             <option value="madrasa">Madrasa</option>
@@ -226,7 +226,7 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
           <select
             name="classId"
             defaultValue={selectedClassId}
-            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
           >
             {allClasses.map((cls) => (
               <option key={cls.id} value={cls.id}>
@@ -242,12 +242,12 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
             name="date"
             defaultValue={selectedDate}
             max={today}
-            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
         </div>
         <button
           type="submit"
-          className="h-9 px-4 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors"
+          className="h-9 px-4 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors"
         >
           View
         </button>

@@ -39,12 +39,12 @@ export function PageHeader({
               {crumb.href ? (
                 <Link
                   href={crumb.href}
-                  className="text-[12px] text-slate-400 hover:text-slate-700 transition-colors font-dm-sans"
+                  className="text-[12px] text-muted-foreground hover:text-foreground transition-colors font-dm-sans"
                 >
                   {crumb.label}
                 </Link>
               ) : (
-                <span className="text-[12px] text-slate-400 font-dm-sans">
+                <span className="text-[12px] text-muted-foreground font-dm-sans">
                   {crumb.label}
                 </span>
               )}
@@ -68,11 +68,8 @@ export function PageHeader({
         {action && <div className="flex-shrink-0">{action}</div>}
       </div>
 
-      {/* Subtle accent underline */}
-      <div className="mt-4 flex items-center gap-2">
-        <div className="w-8 h-0.5 bg-teal rounded-full" />
-        <div className="flex-1 h-px bg-border" />
-      </div>
+      {/* Subtle bottom border without accent */}
+      <div className="mt-4 border-b border-border" />
     </div>
   );
 }

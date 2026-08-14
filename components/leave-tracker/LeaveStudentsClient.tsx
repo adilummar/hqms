@@ -103,7 +103,7 @@ export function LeaveStudentsClient({ period, students, activities, responses }:
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search students…"
-          className="flex-1 min-w-[200px] px-3 py-2 text-sm border border-border rounded-lg bg-card outline-none focus:ring-1 focus:ring-foreground/20"
+          className="flex-1 min-w-[200px] px-3 py-2 text-sm border border-border rounded-lg bg-card outline-none focus:ring-1 focus:ring-primary/50/20"
         />
         <div className="flex gap-2 flex-wrap">
           {["all", ...hifzClasses].map((cls) => (
@@ -113,7 +113,7 @@ export function LeaveStudentsClient({ period, students, activities, responses }:
               className={cn(
                 "px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
                 classFilter === cls
-                  ? "bg-foreground text-background border-foreground"
+                  ? "bg-primary text-primary-foreground border-foreground"
                   : "bg-card text-muted-foreground border-border hover:border-foreground/30"
               )}
             >

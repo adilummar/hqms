@@ -142,8 +142,8 @@ export function Sidebar({
       className={cn(
         // Base
         "fixed left-0 top-0 h-full flex flex-col z-40",
-        // Deep slate background with subtle border
-        "bg-[#0F172A] border-r border-white/[0.06]",
+        // Light sidebar background with subtle border
+        "bg-sidebar border-r border-sidebar-border",
         // Transitions
         "transition-all duration-300 ease-in-out",
         // Desktop: always full
@@ -157,15 +157,15 @@ export function Sidebar({
       )}
     >
       {/* ── Logo / Brand ────────────────────────────────────────── */}
-      <div className="px-4 py-5 border-b border-white/[0.06] flex items-center justify-between lg:px-5 overflow-hidden">
+      <div className="px-4 py-5 border-b border-sidebar-border flex items-center justify-between lg:px-5 overflow-hidden">
         <Link
           href={homeHref}
           onClick={onClose}
           className="flex items-center gap-3 min-w-0 group"
         >
           {/* Icon mark */}
-          <div className="w-8 h-8 rounded-lg bg-teal/20 flex items-center justify-center flex-shrink-0 ring-1 ring-teal/30 group-hover:bg-teal/30 transition-colors duration-200">
-            <BookOpen size={15} className="text-teal" />
+          <div className="w-8 h-8 rounded-lg bg-sidebar-primary/10 flex items-center justify-center flex-shrink-0 ring-1 ring-sidebar-primary/20 group-hover:bg-sidebar-primary/20 transition-colors duration-200">
+            <BookOpen size={15} className="text-sidebar-primary" />
           </div>
 
           {/* Brand text */}
@@ -173,10 +173,10 @@ export function Sidebar({
             "overflow-hidden transition-all duration-300",
             isTabletExpanded ? "md:block lg:block" : "md:hidden lg:block"
           )}>
-            <p className="font-inter text-[15px] font-700 font-bold text-white tracking-tight leading-none whitespace-nowrap">
+            <p className="font-inter text-[15px] font-700 font-bold text-sidebar-foreground tracking-tight leading-none whitespace-nowrap">
               MIC Hifz Portal
             </p>
-            <p className="text-[10px] text-white/35 mt-0.5 font-dm-sans whitespace-nowrap tracking-wide uppercase">
+            <p className="text-[10px] text-sidebar-foreground/60 mt-0.5 font-dm-sans whitespace-nowrap tracking-wide uppercase">
               Markaz Islamic College
             </p>
           </div>
@@ -188,7 +188,7 @@ export function Sidebar({
           <button
             onClick={onTabletToggle}
             title={isTabletExpanded ? "Collapse sidebar" : "Expand sidebar"}
-            className="hidden md:flex lg:hidden items-center justify-center w-6 h-6 rounded-md text-white/30 hover:text-white/70 hover:bg-white/8 transition-all duration-200"
+            className="hidden md:flex lg:hidden items-center justify-center w-6 h-6 rounded-md text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-200"
             aria-label={isTabletExpanded ? "Collapse sidebar" : "Expand sidebar"}
           >
             {isTabletExpanded ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
@@ -197,7 +197,7 @@ export function Sidebar({
           {/* Mobile close */}
           <button
             onClick={onClose}
-            className="flex md:hidden text-white/30 hover:text-white/70 transition-colors p-1 rounded-md hover:bg-white/8"
+            className="flex md:hidden text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors p-1 rounded-md hover:bg-sidebar-accent"
             aria-label="Close menu"
           >
             <X size={16} />
@@ -214,7 +214,7 @@ export function Sidebar({
       )}>
         {/* Section label */}
         <p className={cn(
-          "text-[10px] font-semibold text-white/20 uppercase tracking-widest px-3 pb-2 mb-1 font-dm-sans",
+          "text-[10px] font-semibold text-sidebar-foreground/40 uppercase tracking-widest px-3 pb-2 mb-1 font-dm-sans",
           isTabletExpanded ? "md:block lg:block" : "md:hidden lg:block"
         )}>
           Navigation
@@ -235,15 +235,15 @@ export function Sidebar({
                 tabletPxClass,
                 "px-3 lg:justify-start lg:px-3",
                 active
-                  ? "bg-teal/15 text-teal border border-teal/20"
-                  : "text-white/50 hover:text-white/90 hover:bg-white/[0.06] border border-transparent"
+                  ? "bg-sidebar-primary/10 text-sidebar-primary border-sidebar-primary/20"
+                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent border-transparent"
               )}
             >
               <item.icon
                 size={16}
                 className={cn(
                   "flex-shrink-0 transition-colors duration-200",
-                  active ? "text-teal" : "text-white/35 group-hover:text-white/70"
+                  active ? "text-sidebar-primary" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground"
                 )}
               />
               <span className={cn(
@@ -255,7 +255,7 @@ export function Sidebar({
               {/* Active indicator dot */}
               {active && (
                 <span className={cn(
-                  "ml-auto w-1.5 h-1.5 rounded-full bg-teal flex-shrink-0",
+                  "ml-auto w-1.5 h-1.5 rounded-full bg-sidebar-primary flex-shrink-0",
                   isTabletExpanded ? "md:flex lg:flex" : "md:hidden lg:flex"
                 )} />
               )}
@@ -266,7 +266,7 @@ export function Sidebar({
 
       {/* ── Bottom Section ──────────────────────────────────────── */}
       <div className={cn(
-        "border-t border-white/[0.06] px-2 py-4 space-y-1",
+        "border-t border-sidebar-border px-2 py-4 space-y-1",
         isTabletExpanded ? "md:px-3" : "md:px-2",
         "lg:px-3"
       )}>
@@ -283,15 +283,15 @@ export function Sidebar({
               tabletPxClass,
               "px-3 lg:justify-start lg:px-3",
               pathname.startsWith("/admin/settings")
-                ? "bg-teal/15 text-teal border-teal/20"
-                : "text-white/50 hover:text-white/90 hover:bg-white/[0.06] border-transparent"
+                ? "bg-sidebar-primary/10 text-sidebar-primary border-sidebar-primary/20"
+                : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent border-transparent"
             )}
           >
             <Settings
               size={16}
               className={cn(
                 "flex-shrink-0",
-                pathname.startsWith("/admin/settings") ? "text-teal" : "text-white/35 group-hover:text-white/70"
+                pathname.startsWith("/admin/settings") ? "text-sidebar-primary" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground"
               )}
             />
             <span className={cn(
@@ -305,7 +305,7 @@ export function Sidebar({
 
         {/* ── User Card ─────────────────────────────────────────── */}
         <div className={cn(
-          "mt-3 pt-3 border-t border-white/[0.06]",
+          "mt-3 pt-3 border-t border-sidebar-border",
           isTabletExpanded ? "md:px-1" : "md:px-0",
           "px-1 lg:px-1"
         )}>
@@ -315,12 +315,12 @@ export function Sidebar({
             isTabletExpanded ? "md:flex lg:flex" : "md:hidden lg:flex"
           )}>
             {/* Avatar */}
-            <div className="w-8 h-8 rounded-lg bg-teal/20 ring-1 ring-teal/30 flex items-center justify-center flex-shrink-0">
-              <span className="text-xs font-bold text-teal font-inter">{avatarLetter}</span>
+            <div className="w-8 h-8 rounded-lg bg-sidebar-primary/10 ring-1 ring-sidebar-primary/20 flex items-center justify-center flex-shrink-0">
+              <span className="text-xs font-bold text-sidebar-primary font-inter">{avatarLetter}</span>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-white/85 truncate font-inter leading-none">{username}</p>
-              <p className="text-[11px] text-white/35 capitalize truncate font-dm-sans mt-0.5">{roleLabel}</p>
+              <p className="text-[13px] font-semibold text-sidebar-foreground truncate font-inter leading-none">{username}</p>
+              <p className="text-[11px] text-sidebar-foreground/60 capitalize truncate font-dm-sans mt-0.5">{roleLabel}</p>
             </div>
           </div>
 
@@ -329,8 +329,8 @@ export function Sidebar({
             "justify-center mb-3",
             isTabletExpanded ? "hidden" : "hidden md:flex lg:hidden"
           )}>
-            <div className="w-8 h-8 rounded-lg bg-teal/20 ring-1 ring-teal/30 flex items-center justify-center">
-              <span className="text-xs font-bold text-teal font-inter">{avatarLetter}</span>
+            <div className="w-8 h-8 rounded-lg bg-sidebar-primary/10 ring-1 ring-sidebar-primary/20 flex items-center justify-center">
+              <span className="text-xs font-bold text-sidebar-primary font-inter">{avatarLetter}</span>
             </div>
           </div>
 
@@ -340,7 +340,7 @@ export function Sidebar({
               type="submit"
               title="Sign out"
               className={cn(
-                "flex items-center gap-2 text-[12px] text-white/30 hover:text-red-400 transition-all duration-200 rounded-md py-1.5 px-2 hover:bg-red-500/8 w-full",
+                "flex items-center gap-2 text-[12px] text-sidebar-foreground/50 hover:text-destructive transition-all duration-200 rounded-md py-1.5 px-2 hover:bg-destructive/10 w-full",
                 isTabletExpanded
                   ? "md:justify-start"
                   : "md:justify-center",

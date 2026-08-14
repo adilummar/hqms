@@ -43,7 +43,7 @@ export function AddUserDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<button className="px-3 py-1.5 bg-foreground text-background text-sm rounded-sm hover:bg-foreground/90 transition-colors" />}>
+      <DialogTrigger render={<button className="px-3 py-1.5 bg-primary text-primary-foreground text-sm rounded-sm hover:bg-primary/90 transition-colors" />}>
         + Add User
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
@@ -62,7 +62,7 @@ export function AddUserDialog() {
               required 
               minLength={3}
               placeholder="e.g. tutor1"
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground" 
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50" 
             />
           </div>
           
@@ -72,7 +72,7 @@ export function AddUserDialog() {
               name="email" 
               type="email"
               placeholder="e.g. tutor1@example.com"
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground" 
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50" 
             />
           </div>
 
@@ -84,7 +84,7 @@ export function AddUserDialog() {
               required 
               minLength={6}
               placeholder="At least 6 characters"
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground" 
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50" 
             />
           </div>
 
@@ -94,7 +94,7 @@ export function AddUserDialog() {
               name="role" 
               required
               defaultValue="tutor"
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground bg-background"
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 bg-background"
             >
               <option value="tutor">Tutor</option>
               <option value="admin">Admin</option>
@@ -113,7 +113,7 @@ export function AddUserDialog() {
             <button 
               type="submit" 
               disabled={isPending}
-              className="px-4 py-2 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {isPending && <Loader2 size={14} className="animate-spin" />}
               Create User

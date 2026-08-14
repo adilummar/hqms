@@ -23,9 +23,9 @@ export function StudentStatusPanel({ studentId, currentStatus, studentName }: Pr
   const statusConfig = {
     active: {
       label: "Active",
-      color: "bg-green-50 border-green-200 text-green-800",
-      dot: "bg-green-500",
-      icon: <CheckCircle size={14} className="text-green-600" />,
+      color: "bg-primary/5 border-primary/20 text-primary",
+      dot: "bg-primary",
+      icon: <CheckCircle size={14} className="text-primary" />,
     },
     completed: {
       label: "Completed",
@@ -154,7 +154,7 @@ export function StudentStatusPanel({ studentId, currentStatus, studentName }: Pr
                       type="date"
                       required
                       defaultValue={new Date().toISOString().split("T")[0]}
-                      className="w-full h-9 px-3 border border-border rounded-sm text-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+                      className="w-full h-9 px-3 border border-border rounded-sm text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
                     />
                   </div>
                   <div>
@@ -166,7 +166,7 @@ export function StudentStatusPanel({ studentId, currentStatus, studentName }: Pr
                       name="discontinuationReason"
                       rows={2}
                       placeholder="e.g. Family relocation, health reasons…"
-                      className="w-full px-3 py-2 border border-border rounded-sm text-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground resize-none"
+                      className="w-full px-3 py-2 border border-border rounded-sm text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"
                     />
                   </div>
                 </>
@@ -189,16 +189,16 @@ export function StudentStatusPanel({ studentId, currentStatus, studentName }: Pr
                       type="date"
                       required
                       defaultValue={new Date().toISOString().split("T")[0]}
-                      className="w-full h-9 px-3 border border-border rounded-sm text-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+                      className="w-full h-9 px-3 border border-border rounded-sm text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
                     />
                   </div>
                 </>
               )}
 
               {newStatus === "active" && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-md flex items-start gap-2">
-                  <CheckCircle size={14} className="text-green-500 mt-0.5 shrink-0" />
-                  <p className="text-xs text-green-700">
+                <div className="p-3 bg-primary/5 border border-primary/20 rounded-md flex items-start gap-2">
+                  <CheckCircle size={14} className="text-primary mt-0.5 shrink-0" />
+                  <p className="text-xs text-primary">
                     This will reactivate the student. They will appear in all active student reports again.
                   </p>
                 </div>
@@ -220,7 +220,7 @@ export function StudentStatusPanel({ studentId, currentStatus, studentName }: Pr
                       ? "bg-red-600 hover:bg-red-700"
                       : newStatus === "completed"
                       ? "bg-blue-600 hover:bg-blue-700"
-                      : "bg-green-600 hover:bg-green-700"
+                      : "bg-primary hover:bg-primary/90"
                   }`}
                 >
                   {isPending && <Loader2 size={13} className="animate-spin" />}

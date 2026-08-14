@@ -64,7 +64,7 @@ export function LeaveAnalysisClient({ period, students, activities, responses }:
           <select
             value={selectedDayNum}
             onChange={(e) => setSelectedDayNum(Number(e.target.value))}
-            className="w-full px-3 py-2.5 text-sm border border-border rounded-lg bg-card outline-none focus:ring-1 focus:ring-foreground/20"
+            className="w-full px-3 py-2.5 text-sm border border-border rounded-lg bg-card outline-none focus:ring-1 focus:ring-primary/50/20"
           >
             {period.days.map((day) => (
               <option key={day.dayNumber} value={day.dayNumber}>
@@ -78,7 +78,7 @@ export function LeaveAnalysisClient({ period, students, activities, responses }:
           <select
             value={selectedActId}
             onChange={(e) => setSelectedActId(e.target.value)}
-            className="w-full px-3 py-2.5 text-sm border border-border rounded-lg bg-card outline-none focus:ring-1 focus:ring-foreground/20"
+            className="w-full px-3 py-2.5 text-sm border border-border rounded-lg bg-card outline-none focus:ring-1 focus:ring-primary/50/20"
           >
             {activities.filter((a) => a.isActive).map((act) => (
               <option key={act.id} value={act.id}>{act.name}</option>
@@ -115,9 +115,9 @@ export function LeaveAnalysisClient({ period, students, activities, responses }:
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Completed */}
             <div className={cn("bg-card border border-border rounded-lg overflow-hidden", view === "pending" ? "hidden sm:block" : "")}>
-              <div className="px-4 py-3 border-b border-border bg-green-50 dark:bg-green-950/20 flex items-center gap-2">
-                <CheckCircle2 size={14} className="text-green-600" />
-                <span className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">
+              <div className="px-4 py-3 border-b border-border bg-primary/5 dark:bg-green-950/20 flex items-center gap-2">
+                <CheckCircle2 size={14} className="text-primary" />
+                <span className="text-xs font-semibold text-primary dark:text-green-400 uppercase tracking-wide">
                   Completed ({completed.length})
                 </span>
               </div>
@@ -128,7 +128,7 @@ export function LeaveAnalysisClient({ period, students, activities, responses }:
                       <p className="text-sm font-medium">{s.firstName} {s.lastName ?? ""}</p>
                       <p className="text-xs text-muted-foreground font-jetbrains">{getHifzClass(s)}</p>
                     </div>
-                    <span className="text-xs font-jetbrains bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
+                    <span className="text-xs font-jetbrains bg-green-100 dark:bg-green-950/30 text-primary dark:text-green-400 px-2 py-0.5 rounded-full">
                       Done
                     </span>
                   </div>

@@ -88,14 +88,14 @@ export function CategoryManager({ categories: initial }: Props) {
               ))}
             </div>
             <input value={editName} onChange={(e) => setEditName(e.target.value)}
-              className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground" />
+              className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50" />
             <input value={editDesc} onChange={(e) => setEditDesc(e.target.value)}
               placeholder="Description (optional)"
-              className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground" />
+              className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50" />
             <div className="flex gap-2 justify-end">
               <button onClick={() => setEditingId(null)} className="p-1.5 hover:bg-muted rounded-sm"><X size={14} /></button>
               <button onClick={() => handleUpdate(cat.id)} disabled={isPending || !editName}
-                className="flex items-center gap-1 px-3 py-1.5 bg-foreground text-background text-xs rounded-sm disabled:opacity-50">
+                className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground text-xs rounded-sm disabled:opacity-50">
                 {isPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Save
               </button>
             </div>
@@ -127,13 +127,13 @@ export function CategoryManager({ categories: initial }: Props) {
             ))}
           </div>
           <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Category name *" required
-            className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground" />
+            className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50" />
           <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Description (optional)"
-            className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground" />
+            className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50" />
           <div className="flex gap-2 justify-end">
             <button type="button" onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-xs border border-border rounded-sm hover:bg-muted">Cancel</button>
             <button type="submit" disabled={isPending || !newName}
-              className="flex items-center gap-1 px-3 py-1.5 bg-foreground text-background text-xs rounded-sm disabled:opacity-50">
+              className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground text-xs rounded-sm disabled:opacity-50">
               {isPending ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Add Category
             </button>
           </div>

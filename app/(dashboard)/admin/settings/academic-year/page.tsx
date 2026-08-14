@@ -183,8 +183,8 @@ export default async function AcademicYearPage() {
                       </td>
                       <td className="px-5 py-3">
                         {year.isCurrent ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-primary/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                             Current
                           </span>
                         ) : (

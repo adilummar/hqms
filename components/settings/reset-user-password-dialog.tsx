@@ -91,7 +91,7 @@ export function ResetUserPasswordDialog({
                 required
                 minLength={6}
                 placeholder="At least 6 characters"
-                className="w-full h-9 px-3 pr-10 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground"
+                className="w-full h-9 px-3 pr-10 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
               />
               <button
                 type="button"
@@ -118,7 +118,7 @@ export function ResetUserPasswordDialog({
             <button
               type="submit"
               disabled={isPending || password.length < 6}
-              className="px-4 py-2 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {isPending && <Loader2 size={14} className="animate-spin" />}
               Reset Password

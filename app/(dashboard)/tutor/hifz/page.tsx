@@ -173,7 +173,7 @@ export default async function TutorHifzPage({ searchParams }: Props) {
 
       {/* ── View toggle ──────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 mb-4">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-foreground text-background">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-primary text-primary-foreground">
           Individual View
         </span>
         <Link
@@ -193,7 +193,7 @@ export default async function TutorHifzPage({ searchParams }: Props) {
             name="date"
             defaultValue={selectedDate}
             max={today}
-            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
         </div>
 
@@ -202,7 +202,7 @@ export default async function TutorHifzPage({ searchParams }: Props) {
           <select
             name="classId"
             defaultValue={selectedClassId}
-            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
+            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
           >
             {hifzClasses.map((cls) => (
               <option key={cls.id} value={cls.id}>
@@ -214,7 +214,7 @@ export default async function TutorHifzPage({ searchParams }: Props) {
 
         <button
           type="submit"
-          className="h-9 px-4 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors"
+          className="h-9 px-4 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors"
         >
           Load
         </button>
@@ -288,7 +288,7 @@ export default async function TutorHifzPage({ searchParams }: Props) {
                         ? "—"
                         : entry
                           ? entry.sabaqJuzGiven
-                            ? <span className="text-green-600 font-medium">✓</span>
+                            ? <span className="text-primary font-medium">✓</span>
                             : <span className="text-red-500">✗</span>
                           : "—"}
                     </td>
@@ -303,7 +303,7 @@ export default async function TutorHifzPage({ searchParams }: Props) {
                     <td className="px-4 py-3">
                       <span className="flex items-center gap-1.5 text-xs">
                         <span
-                          className={`w-2 h-2 rounded-full ${isEntered ? "bg-green-500" : "bg-gray-300"}`}
+                          className={`w-2 h-2 rounded-full ${isEntered ? "bg-primary" : "bg-gray-300"}`}
                         />
                         {isEntered ? "Entered" : "Pending"}
                       </span>

@@ -66,7 +66,7 @@ function DauraBlock({
         <div>
           <label className="block text-xs text-muted-foreground mb-1">Or Select Reason</label>
           <select name={remarksName} defaultValue={defaultRemarksId ?? ""}
-            className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground bg-background">
+            className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 bg-background">
             <option value="">-- No Reason --</option>
             {remarks.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
           </select>
@@ -193,7 +193,7 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
             max={today}
             disabled={isNavigating}
             onChange={(e) => navigateToDate(e.target.value)}
-            className="h-8 px-3 text-sm font-medium border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground disabled:opacity-50"
+            className="h-8 px-3 text-sm font-medium border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 disabled:opacity-50"
           />
           <button
             type="button"
@@ -208,7 +208,7 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
         </div>
         <div className="text-xs text-muted-foreground">
           {existingEntry ? (
-            <span className="inline-flex items-center gap-1 text-green-700 bg-green-100 px-2 py-0.5 rounded font-medium">✓ Entry exists</span>
+            <span className="inline-flex items-center gap-1 text-primary bg-primary/10 px-2 py-0.5 rounded font-medium">✓ Entry exists</span>
           ) : (
             <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-100 px-2 py-0.5 rounded font-medium">⊘ No entry yet</span>
           )}
@@ -251,7 +251,7 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
             <div>
               <label className="block text-xs text-muted-foreground mb-1">Start New Juz Number</label>
               <input name="startJuzNumber" type="number" min="1" max="30" placeholder="e.g. 1"
-                className="w-48 h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground bg-background" />
+                className="w-48 h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 bg-background" />
               {/* Start date = the entry date — no separate picker needed */}
               <input type="hidden" name="startJuzDate" value={date} />
               <p className="text-xs text-muted-foreground mt-1.5">Will be recorded as starting on <span className="font-medium">{date}</span></p>
@@ -278,7 +278,7 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
               setSabaqFromPage(nextFrom);
               setSabaqPages(calculateSabaqPages(nextFrom, sabaqToPage));
             }}
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground" />
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50" />
           </div>
           <div>
             <label className="block text-xs text-muted-foreground mb-1">To Page</label>
@@ -287,12 +287,12 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
               setSabaqToPage(nextTo);
               setSabaqPages(calculateSabaqPages(sabaqFromPage, nextTo));
             }}
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground" />
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50" />
           </div>
           <div>
             <label className="block text-xs text-muted-foreground mb-1">Total Pages</label>
             <input name="sabaqPages" type="number" step="0.5" value={sabaqPages} onChange={(e) => setSabaqPages(e.target.value)}
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground" />
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50" />
           </div>
           <div>
             <label className="block text-xs text-muted-foreground mb-1">Juz</label>
@@ -308,14 +308,14 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
                   ? Number(existingEntry.sabaqJuzNumber)
                   : activeJuz?.juzNumber ?? undefined
               }
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground"
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
             />
           </div>
         </div>
         <div>
           <label className="block text-xs text-muted-foreground mb-1">Or Select Reason (if no Sabaq)</label>
           <select name="sabaqRemarksId" defaultValue={existingEntry?.sabaqRemarksId ?? ""} disabled={hasSabaq}
-            className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground bg-background disabled:opacity-50 disabled:bg-muted">
+            className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 bg-background disabled:opacity-50 disabled:bg-muted">
             <option value="">-- No Reason --</option>
             {sabaqRemarks.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
           </select>
@@ -330,11 +330,11 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
             <label className="block text-xs text-muted-foreground mb-1">Status</label>
             <div className="flex gap-4 items-center h-9">
               <label className="flex items-center gap-2 cursor-pointer text-sm">
-                <input type="radio" name="sabaqJuzGiven" value="true" defaultChecked={existingEntry?.sabaqJuzGiven === true} className="accent-foreground" />
+                <input type="radio" name="sabaqJuzGiven" value="true" defaultChecked={existingEntry?.sabaqJuzGiven === true} className="accent-primary" />
                 Given
               </label>
               <label className="flex items-center gap-2 cursor-pointer text-sm">
-                <input type="radio" name="sabaqJuzGiven" value="false" defaultChecked={existingEntry?.sabaqJuzGiven === false} className="accent-foreground" />
+                <input type="radio" name="sabaqJuzGiven" value="false" defaultChecked={existingEntry?.sabaqJuzGiven === false} className="accent-primary" />
                 Not Given
               </label>
             </div>
@@ -342,7 +342,7 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
           <div>
             <label className="block text-xs text-muted-foreground mb-1">Or Select Reason</label>
             <select name="sabaqJuzRemarksId" defaultValue={existingEntry?.sabaqJuzRemarksId ?? ""}
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground bg-background">
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 bg-background">
               <option value="">-- No Reason --</option>
               {sabaqJuzRemarks.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
             </select>
@@ -378,7 +378,7 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
       <div className="bg-card border border-border rounded-lg p-5">
         <label className="block text-xs font-semibold text-foreground mb-2">Tutor Notes (Optional)</label>
         <textarea name="notes" rows={3} defaultValue={existingEntry?.notes ?? ""}
-          className="w-full px-3 py-2 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground resize-none"
+          className="w-full px-3 py-2 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"
           placeholder="Any specific observations about today's progress..." />
       </div>
 
@@ -388,7 +388,7 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
           Cancel
         </button>
         <button type="submit" disabled={isPending}
-          className="px-6 py-2.5 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors disabled:opacity-50 flex items-center gap-2">
+          className="px-6 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2">
           {isPending && <Loader2 size={14} className="animate-spin" />}
           {existingEntry ? "Update Entry" : "Save Entry"}
         </button>

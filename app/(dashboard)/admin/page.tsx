@@ -51,6 +51,7 @@ export default async function AdminDashboard() {
           description="Currently enrolled"
           icon={Users}
           accentColor="teal"
+          variant="solid"
         />
         <StatCard
           label="Pending Applications"

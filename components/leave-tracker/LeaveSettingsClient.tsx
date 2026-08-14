@@ -179,7 +179,7 @@ export function LeaveSettingsClient({ periods, activities }: Props) {
                   <div className="flex items-center gap-2">
                     <p className="font-medium text-sm">{period.name}</p>
                     {period.isActive && (
-                      <span className="text-[10px] font-bold uppercase tracking-wide bg-foreground text-background px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-bold uppercase tracking-wide bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
                         Active
                       </span>
                     )}
@@ -273,10 +273,10 @@ export function LeaveSettingsClient({ periods, activities }: Props) {
                                         "flex items-center gap-1.5 text-[11px] px-3 py-1 rounded-full border transition-all font-medium disabled:opacity-60",
                                         isSuspended
                                           ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
-                                          : "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                                          : "bg-primary/5 border-primary/20 text-primary hover:bg-primary/10"
                                       )}
                                     >
-                                      <span className={cn("text-xs font-bold leading-none", isSuspended ? "text-red-500" : "text-green-600")}>
+                                      <span className={cn("text-xs font-bold leading-none", isSuspended ? "text-red-500" : "text-primary")}>
                                         {isSuspended ? "✗" : "✓"}
                                       </span>
                                       <span>D{day.dayNumber} · {formattedDate}{day.label ? ` (${day.label})` : ""}</span>
@@ -294,7 +294,7 @@ export function LeaveSettingsClient({ periods, activities }: Props) {
                       <button
                         onClick={handleSaveSuspensions}
                         disabled={isPending || savingSuspensions}
-                        className="flex items-center gap-2 px-4 py-2 bg-foreground text-background text-xs font-semibold rounded-lg hover:bg-foreground/90 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
                       >
                         {savingSuspensions ? "Saving..." : "Save Exclusions"}
                       </button>
@@ -324,7 +324,7 @@ export function LeaveSettingsClient({ periods, activities }: Props) {
                               defaultValue={day.label ?? ""}
                               placeholder="e.g. Eid Day"
                               onBlur={(e) => handleUpdateDayLabel(day.id, e.target.value)}
-                              className="text-xs px-2 py-1.5 border border-border rounded bg-background outline-none focus:ring-1 focus:ring-foreground/20 w-28 placeholder:text-muted-foreground/45"
+                              className="text-xs px-2 py-1.5 border border-border rounded bg-background outline-none focus:ring-1 focus:ring-primary/50/20 w-28 placeholder:text-muted-foreground/45"
                             />
                           </div>
                         );
@@ -349,25 +349,25 @@ export function LeaveSettingsClient({ periods, activities }: Props) {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Name (e.g. July Leave 2026)"
-              className="col-span-1 sm:col-span-1 px-3 py-2 text-sm border border-border rounded-lg bg-card outline-none focus:ring-1 focus:ring-foreground/20"
+              className="col-span-1 sm:col-span-1 px-3 py-2 text-sm border border-border rounded-lg bg-card outline-none focus:ring-1 focus:ring-primary/50/20"
             />
             <input
               type="date"
               value={newStart}
               onChange={(e) => setNewStart(e.target.value)}
-              className="px-3 py-2 text-sm border border-border rounded-lg bg-card outline-none focus:ring-1 focus:ring-foreground/20"
+              className="px-3 py-2 text-sm border border-border rounded-lg bg-card outline-none focus:ring-1 focus:ring-primary/50/20"
             />
             <input
               type="date"
               value={newEnd}
               onChange={(e) => setNewEnd(e.target.value)}
-              className="px-3 py-2 text-sm border border-border rounded-lg bg-card outline-none focus:ring-1 focus:ring-foreground/20"
+              className="px-3 py-2 text-sm border border-border rounded-lg bg-card outline-none focus:ring-1 focus:ring-primary/50/20"
             />
           </div>
           <button
             onClick={handleCreatePeriod}
             disabled={isPending}
-            className="flex items-center gap-2 px-4 py-2 bg-foreground text-background text-sm font-medium rounded-lg hover:bg-foreground/90 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             <Plus size={14} /> Create Period
           </button>
@@ -427,13 +427,13 @@ export function LeaveSettingsClient({ periods, activities }: Props) {
               value={newActName}
               onChange={(e) => setNewActName(e.target.value)}
               placeholder="Activity name (e.g. Tahajjud)"
-              className="px-3 py-2 text-sm border border-border rounded-lg bg-card outline-none focus:ring-1 focus:ring-foreground/20"
+              className="px-3 py-2 text-sm border border-border rounded-lg bg-card outline-none focus:ring-1 focus:ring-primary/50/20"
             />
             <input
               value={newActDesc}
               onChange={(e) => setNewActDesc(e.target.value)}
               placeholder="Description (optional, e.g. Pre-Fajr prayer)"
-              className="px-3 py-2 text-sm border border-border rounded-lg bg-card outline-none focus:ring-1 focus:ring-foreground/20"
+              className="px-3 py-2 text-sm border border-border rounded-lg bg-card outline-none focus:ring-1 focus:ring-primary/50/20"
             />
           </div>
           <label className="flex items-center gap-2 text-xs text-muted-foreground mb-3 cursor-pointer">
@@ -448,7 +448,7 @@ export function LeaveSettingsClient({ periods, activities }: Props) {
           <button
             onClick={handleCreateActivity}
             disabled={isPending}
-            className="flex items-center gap-2 px-4 py-2 bg-foreground text-background text-sm font-medium rounded-lg hover:bg-foreground/90 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             <Plus size={14} /> Add Activity
           </button>

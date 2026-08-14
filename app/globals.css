@@ -43,54 +43,56 @@
 }
 
 :root {
-  /* ── HQMS Slate-Teal Design System ───────────────────────────── */
+  /* ── HQMS Forest Green Design System ───────────────────────── */
 
   /* Surfaces */
-  --background: oklch(0.98 0.003 240);       /* Slate-50 #F8FAFC */
+  --background: oklch(0.97 0.005 240);       /* Light gray #F3F4F6 */
   --foreground: oklch(0.13 0.025 256);       /* Slate-900 #0F172A */
   --card: oklch(1 0 0);                      /* Pure white */
   --card-foreground: oklch(0.13 0.025 256);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.13 0.025 256);
 
-  /* Primary — deep slate (buttons, badge backgrounds) */
-  --primary: oklch(0.13 0.025 256);          /* #0F172A */
-  --primary-foreground: oklch(0.98 0.003 240);
+  /* Primary — Forest Green (buttons, badge backgrounds) */
+  --primary: oklch(0.42 0.08 145);           /* #2E683E approx */
+  --primary-foreground: oklch(1 0 0);        /* White */
 
   /* Secondary */
-  --secondary: oklch(0.94 0.005 248);        /* Slate-100 #F1F5F9 */
-  --secondary-foreground: oklch(0.35 0.02 252);
+  --secondary: oklch(0.95 0.01 145);         /* Very light green */
+  --secondary-foreground: oklch(0.35 0.06 145); /* Darker green */
 
   /* Muted */
-  --muted: oklch(0.94 0.005 248);            /* Slate-100 */
-  --muted-foreground: oklch(0.47 0.018 252); /* Slate-500 #64748B */
+  --muted: oklch(0.96 0.005 248);            /* Very Light Slate */
+  --muted-foreground: oklch(0.5 0.01 252);   /* Slate-500 */
 
-  /* Teal accent */
-  --accent: oklch(0.66 0.14 184);            /* Teal-500 #14B8A6 */
-  --accent-foreground: oklch(1 0 0);
-  --teal: oklch(0.66 0.14 184);              /* #14B8A6 */
-  --teal-light: oklch(0.95 0.04 184);        /* Teal-50 #CCFBF1 */
+  /* Accent - Light Forest Green */
+  --accent: oklch(0.93 0.03 145);            
+  --accent-foreground: oklch(0.3 0.08 145);
+  
+  /* Retaining teal vars for compatibility, but mapped to green */
+  --teal: oklch(0.42 0.08 145);              
+  --teal-light: oklch(0.95 0.03 145);        
 
   /* Semantic */
   --destructive: oklch(0.577 0.245 27.325);  /* Red-500 */
-  --success: oklch(0.65 0.15 162);           /* Emerald-500 #10B981 */
-  --warning: oklch(0.77 0.14 72);            /* Amber-500 #F59E0B */
+  --success: oklch(0.65 0.15 162);           /* Emerald-500 */
+  --warning: oklch(0.77 0.14 72);            /* Amber-500 */
 
   /* Borders & Inputs */
-  --border: oklch(0.89 0.008 252);           /* Slate-200 #E2E8F0 */
-  --input: oklch(0.89 0.008 252);
-  --ring: oklch(0.66 0.14 184);              /* Teal focus ring */
-  --radius: 0.5rem;                          /* 8px */
+  --border: oklch(0.92 0.005 248);           /* Light border */
+  --input: oklch(0.92 0.005 248);
+  --ring: oklch(0.42 0.08 145);              /* Forest Green ring */
+  --radius: 0.75rem;                         /* 12px for softer cards */
 
-  /* ── Sidebar — Deep Slate ──────────────────────────────────── */
-  --sidebar: oklch(0.13 0.025 256);          /* #0F172A */
-  --sidebar-foreground: oklch(0.94 0.005 248);
-  --sidebar-primary: oklch(0.66 0.14 184);   /* Teal */
-  --sidebar-primary-foreground: oklch(0.13 0.025 256);
-  --sidebar-accent: oklch(0.19 0.025 256);   /* Slate-800 hover */
-  --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: oklch(0.22 0.02 256);    /* Subtle slate border */
-  --sidebar-ring: oklch(0.66 0.14 184);
+  /* ── Sidebar — Light Theme ─────────────────────────────────── */
+  --sidebar: oklch(1 0 0);                   /* White */
+  --sidebar-foreground: oklch(0.2 0.01 250); /* Dark slate */
+  --sidebar-primary: oklch(0.42 0.08 145);   /* Forest Green */
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.96 0.01 145);    /* Very light green hover */
+  --sidebar-accent-foreground: oklch(0.3 0.08 145);
+  --sidebar-border: oklch(0.92 0.005 248);   /* Light border */
+  --sidebar-ring: oklch(0.42 0.08 145);
 }
 
 @layer base {
@@ -131,7 +133,7 @@
 
   /* Focus rings */
   :focus-visible {
-    outline: 2px solid oklch(0.66 0.14 184);
+    outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
 }
@@ -150,21 +152,21 @@
     font-family: var(--font-mono-custom), ui-monospace, monospace;
   }
 
-  /* Teal accent utilities */
+  /* Forest Green accent utilities (retaining .text-teal names for compatibility) */
   .text-teal {
-    color: #14B8A6;
+    color: var(--teal);
   }
   .bg-teal {
-    background-color: #14B8A6;
+    background-color: var(--teal);
   }
   .border-teal {
-    border-color: #14B8A6;
+    border-color: var(--teal);
   }
   .bg-teal-light {
-    background-color: #CCFBF1;
+    background-color: var(--teal-light);
   }
   .text-teal-dark {
-    color: #0F766E;
+    color: var(--sidebar-primary);
   }
 
   /* Micro-animation: card hover lift */
@@ -173,7 +175,7 @@
   }
   .card-hover:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px -4px oklch(0.13 0.025 256 / 0.1);
+    box-shadow: 0 12px 30px -6px oklch(0.13 0.025 256 / 0.06);
   }
 
   /* Smooth fade-in */
@@ -183,7 +185,7 @@
 
   /* Gradient text */
   .text-gradient-teal {
-    background: linear-gradient(135deg, #14B8A6 0%, #0EA5E9 100%);
+    background: linear-gradient(135deg, var(--teal) 0%, oklch(0.6 0.15 145) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

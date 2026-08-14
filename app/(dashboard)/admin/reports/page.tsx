@@ -108,6 +108,7 @@ export default async function ReportsPage({ searchParams }: Props) {
     const clsStudents = reportData.filter(r => r.className === cls.name);
     const completions = clsStudents.reduce((sum, s) => sum + s.actual, 0);
     return {
+      id: cls.id,
       className: cls.name,
       completions: completions,
       students: clsStudents.length,
@@ -161,7 +162,7 @@ export default async function ReportsPage({ searchParams }: Props) {
         <div>
           <label className="block text-xs text-muted-foreground mb-1">Month</label>
           <select name="month" defaultValue={month}
-            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground">
+            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50">
             {Array.from({ length: 12 }, (_, i) => (
               <option key={i + 1} value={i + 1}>
                 {new Date(2024, i).toLocaleDateString("en-IN", { month: "long" })}
@@ -172,11 +173,11 @@ export default async function ReportsPage({ searchParams }: Props) {
         <div>
           <label className="block text-xs text-muted-foreground mb-1">Year</label>
           <select name="year" defaultValue={year}
-            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground">
+            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50">
             {[2023, 2024, 2025, 2026].map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
-        <button type="submit" className="h-9 px-4 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors">
+        <button type="submit" className="h-9 px-4 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors">
           View
         </button>
       </form>
@@ -207,8 +208,8 @@ export default async function ReportsPage({ searchParams }: Props) {
             <p className="text-sm text-muted-foreground">No classes found</p>
           ) : (
             <div className="space-y-3">
-              {classStats.map((cls) => (
-                <div key={cls.className}>
+              {classStats.map((cls, idx) => (
+                <div key={cls.id || `${cls.className}-${idx}`}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="font-medium text-foreground">{cls.className}</span>
                     <span className="font-jetbrains text-muted-foreground">{cls.completions} Juz</span>

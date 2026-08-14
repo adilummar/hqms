@@ -228,7 +228,7 @@ export default async function StudentProfilePage({ params }: Props) {
               ].map(({ label, cls }) => (
                 <div key={label} className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">{label}</span>
-                  <span className={`font-medium px-2 py-0.5 rounded-sm text-xs ${cls ? "bg-foreground text-background" : "bg-muted text-muted-foreground"}`}>
+                  <span className={`font-medium px-2 py-0.5 rounded-sm text-xs ${cls ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
                     {cls?.class.name ?? "Not enrolled"}
                   </span>
                 </div>
@@ -309,7 +309,7 @@ export default async function StudentProfilePage({ params }: Props) {
                         </td>
                         <td className="px-4 py-2.5">
                           {entry.sabaqJuzGiven === true ? (
-                            <span className="text-green-600">✓</span>
+                            <span className="text-primary">✓</span>
                           ) : entry.sabaqJuzGiven === false ? (
                             <span className="text-red-500">✗</span>
                           ) : "—"}

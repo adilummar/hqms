@@ -235,7 +235,7 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
                       href={`/admin/reports/parent-meetings?meetingId=${selectedMeetingId ?? ""}&track=${t.value}&classId=all`}
                       className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
                         trackFilter === t.value
-                          ? "bg-foreground text-background"
+                          ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
@@ -252,7 +252,7 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
                     <Link
                       href={`/admin/reports/parent-meetings?meetingId=${selectedMeetingId ?? ""}&track=${trackFilter}&classId=all`}
                       className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
-                        !selectedClassId ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        !selectedClassId ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
                       All Classes
@@ -263,7 +263,7 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
                         href={`/admin/reports/parent-meetings?meetingId=${selectedMeetingId ?? ""}&track=${trackFilter}&classId=${cls.id}`}
                         className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
                           selectedClassId === cls.id
-                            ? "bg-foreground text-background"
+                            ? "bg-primary text-primary-foreground"
                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                         }`}
                       >

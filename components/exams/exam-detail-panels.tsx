@@ -228,7 +228,7 @@ export function PublishControls({ examSessionId, resultStatus, isSuperAdmin }: {
 
   if (!isSuperAdmin) {
     return (
-      <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm ${isPublished ? "border-green-500/20 bg-green-500/5 text-green-600" : "border-border bg-muted text-muted-foreground"}`}>
+      <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm ${isPublished ? "border-green-500/20 bg-primary/5 text-primary" : "border-border bg-muted text-muted-foreground"}`}>
         {isPublished ? <><Globe size={14} />Results published</> : <><EyeOff size={14} />Results not yet published</>}
       </div>
     );
@@ -238,7 +238,7 @@ export function PublishControls({ examSessionId, resultStatus, isSuperAdmin }: {
     <button onClick={toggle} disabled={isPending} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 ${
       isPublished
         ? "bg-red-500/10 text-red-600 hover:bg-red-500/20 border border-red-500/20"
-        : "bg-green-500/10 text-green-600 hover:bg-green-500/20 border border-green-500/20"
+        : "bg-primary/10 text-primary hover:bg-primary/20 border border-green-500/20"
     }`}>
       {isPending ? <Loader2 size={14} className="animate-spin" /> : isPublished ? <EyeOff size={14} /> : <Globe size={14} />}
       {isPublished ? "Unpublish Results" : "Publish Results to Students"}
