@@ -13,6 +13,7 @@ import {
   deleteLeaveActivity,
   toggleActivitySuspension,
   updateDayLabel,
+  savePeriodSuspensions,
 } from "@/lib/actions/leave-tracker";
 import { useRouter } from "next/navigation";
 
@@ -39,6 +40,62 @@ export function LeaveSettingsClient({ periods, activities }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [expandedPeriod, setExpandedPeriod] = useState<string | null>(null);
+
+  // Exclusions local state
+  const [tempSuspensions, setTempSuspensions] = useState<Set<string>>(new Set());
+  const [lastExpandedPeriod, setLastExpandedPeriod] = useState<string | null>(null);
+  const [savingSuspensions, setSavingSuspensions] = useState(false);
+
+  // Re-initialize state when expanded period changes
+  const getInitialSuspensions = (periodId: string | null) => {
+    const set = new Set();
+    if (!periodId) return set;
+    const period = periods.find((p) => p.id === periodId);
+    if (!period) return set;
+    for (const day of period.days) {
+      for (const susp of day.suspensions ?? []) {
+        set.add(`${day.id}:${susp.activityId}`);
+      }
+    }
+    return set;
+  };
+
+  if (expandedPeriod !== lastExpandedPeriod) {
+    setLastExpandedPeriod(expandedPeriod);
+    setTempSuspensions(getInitialSuspensions(expandedPeriod));
+  }
+
+  const handleLocalToggleSuspension = (dayId: string, actId: string) => {
+    setTempSuspensions((prev) => {
+      const next = new Set(prev);
+      const key = `${dayId}:${actId}`;
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const handleSaveSuspensions = () => {
+    if (!expandedPeriod) return;
+    setSavingSuspensions(true);
+    startTransition(async () => {
+      const suspensionsArray = [];
+      tempSuspensions.forEach((key) => {
+        const [dayId, activityId] = key.split(":");
+        suspensionsArray.push({ dayId, activityId });
+      });
+      const res = await savePeriodSuspensions(expandedPeriod, suspensionsArray);
+      setSavingSuspensions(false);
+      if (res.success) {
+        router.refresh();
+      } else {
+        alert("Failed to save exclusions.");
+      }
+    });
+  };
   
   // New period form
   const [newName, setNewName] = useState("");
@@ -172,96 +229,108 @@ export function LeaveSettingsClient({ periods, activities }: Props) {
                 </div>
               </div>
 
-              {/* Day suspension editor */}
+              {/* Activity-wise suspension editor */}
               {expandedPeriod === period.id && (
-                <div className="border-t border-border bg-muted/20 px-5 py-5 space-y-4">
-                  <div className="flex items-center justify-between">
+                <div className="border-t border-border bg-muted/20 px-5 py-5 space-y-5">
+                  {/* Activity wise Date selection */}
+                  <div className="bg-card border border-border rounded-xl p-5 space-y-4 shadow-sm">
                     <div>
-                      <p className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                        Day-by-Day Activity Management
+                      <p className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                        Activity-wise Date Exclusions
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Click an activity to <span className="text-red-600 font-medium">remove</span> it from that day. Click again to <span className="text-green-700 font-medium">restore</span> it.
+                        Choose active dates for each activity. Click a date to <span className="text-red-600 font-medium">disable / hide</span> the activity for that day.
                       </p>
                     </div>
-                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500" />
-                        Included
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500" />
-                        Removed
-                      </span>
+
+                    <div className="space-y-4 divide-y divide-border/60">
+                      {activities.filter((a) => a.isActive).length === 0 ? (
+                        <p className="text-xs text-muted-foreground py-2">No active activities configured.</p>
+                      ) : (
+                        activities.filter((a) => a.isActive).map((act) => {
+                          return (
+                            <div key={act.id} className="pt-4 first:pt-0 flex flex-col md:flex-row md:items-start gap-4">
+                              <div className="md:w-48 flex-shrink-0">
+                                <p className="font-semibold text-sm text-foreground">{act.name}</p>
+                                {act.description && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">{act.description}</p>
+                                )}
+                              </div>
+                              <div className="flex-1 flex flex-wrap gap-1.5">
+                                {period.days.map((day) => {
+                                  const key = `${day.id}:${act.id}`;
+                                  const isSuspended = tempSuspensions.has(key);
+                                  
+                                  const formattedDate = new Date(day.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+
+                                  return (
+                                    <button
+                                      key={day.id}
+                                      onClick={() => handleLocalToggleSuspension(day.id, act.id)}
+                                      disabled={isPending || savingSuspensions}
+                                      title={isSuspended ? `Enable "${act.name}" for Day ${day.dayNumber}` : `Disable "${act.name}" for Day ${day.dayNumber}`}
+                                      className={cn(
+                                        "flex items-center gap-1.5 text-[11px] px-3 py-1 rounded-full border transition-all font-medium disabled:opacity-60",
+                                        isSuspended
+                                          ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
+                                          : "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                                      )}
+                                    >
+                                      <span className={cn("text-xs font-bold leading-none", isSuspended ? "text-red-500" : "text-green-600")}>
+                                        {isSuspended ? "✗" : "✓"}
+                                      </span>
+                                      <span>D{day.dayNumber} · {formattedDate}{day.label ? ` (${day.label})` : ""}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    <div className="flex justify-end pt-3 border-t border-border">
+                      <button
+                        onClick={handleSaveSuspensions}
+                        disabled={isPending || savingSuspensions}
+                        className="flex items-center gap-2 px-4 py-2 bg-foreground text-background text-xs font-semibold rounded-lg hover:bg-foreground/90 transition-colors disabled:opacity-50"
+                      >
+                        {savingSuspensions ? "Saving..." : "Save Exclusions"}
+                      </button>
                     </div>
                   </div>
 
-                  {period.days.map((day) => {
-                    const suspendedIds = new Set((day.suspensions ?? []).map((s) => s.activityId));
-                    const removedCount = activities.filter((a) => a.isActive && suspendedIds.has(a.id)).length;
-                    const totalActive = activities.filter((a) => a.isActive).length;
-
-                    return (
-                      <div key={day.id} className="bg-card border border-border rounded-lg overflow-hidden">
-                        {/* Day header */}
-                        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-muted/40">
-                          <div className="flex-1">
-                            <span className="text-xs font-bold text-foreground">
-                              Day {day.dayNumber}
-                            </span>
-                            <span className="text-xs text-muted-foreground ml-2">
-                              {formatDate(day.date)}
-                            </span>
-                            {removedCount > 0 && (
-                              <span className="ml-2 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded">
-                                {removedCount} removed
-                              </span>
-                            )}
-                            {removedCount === 0 && (
-                              <span className="ml-2 text-[10px] font-medium text-green-700 bg-green-50 px-1.5 py-0.5 rounded">
-                                All {totalActive} active
-                              </span>
-                            )}
+                  {/* Day labels section */}
+                  <div className="bg-card border border-border rounded-xl p-5 space-y-4 shadow-sm">
+                    <div>
+                      <p className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                        Special Day Labels
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Add custom labels (like "Eid Day" or "Friday") to specific days.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {period.days.map((day) => {
+                        const formattedDate = new Date(day.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+                        return (
+                          <div key={day.id} className="border border-border rounded-lg p-2.5 bg-muted/10 flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-foreground">Day {day.dayNumber}</p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">{formattedDate}</p>
+                            </div>
+                            <input
+                              defaultValue={day.label ?? ""}
+                              placeholder="e.g. Eid Day"
+                              onBlur={(e) => handleUpdateDayLabel(day.id, e.target.value)}
+                              className="text-xs px-2 py-1.5 border border-border rounded bg-background outline-none focus:ring-1 focus:ring-foreground/20 w-28 placeholder:text-muted-foreground/45"
+                            />
                           </div>
-                          <input
-                            defaultValue={day.label ?? ""}
-                            placeholder="Special label (e.g. Eid Day)"
-                            onBlur={(e) => handleUpdateDayLabel(day.id, e.target.value)}
-                            className="text-xs px-2 py-1 border border-border rounded bg-background outline-none focus:ring-1 focus:ring-foreground/20 w-44 placeholder:text-muted-foreground/50"
-                          />
-                        </div>
-
-                        {/* Activity toggles */}
-                        <div className="px-4 py-3 flex flex-wrap gap-2">
-                          {activities.filter((a) => a.isActive).length === 0 && (
-                            <p className="text-xs text-muted-foreground">No active activities configured.</p>
-                          )}
-                          {activities.filter((a) => a.isActive).map((act) => {
-                            const isRemoved = suspendedIds.has(act.id);
-                            return (
-                              <button
-                                key={act.id}
-                                onClick={() => handleToggleSuspension(day.id, act.id, isRemoved)}
-                                disabled={isPending}
-                                title={isRemoved ? `Restore "${act.name}" for Day ${day.dayNumber}` : `Remove "${act.name}" from Day ${day.dayNumber}`}
-                                className={cn(
-                                  "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all font-medium disabled:opacity-60",
-                                  isRemoved
-                                    ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
-                                    : "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-                                )}
-                              >
-                                <span className={cn("text-sm leading-none", isRemoved ? "text-red-500" : "text-green-600")}>
-                                  {isRemoved ? "✗" : "✓"}
-                                </span>
-                                {act.name}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

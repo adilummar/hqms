@@ -1,7 +1,7 @@
 import { requireParent, getParentStudentId } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
-import { students, juzTracker, hifzDailyEntries, monthlyTargets, studentStars } from "@/lib/db/schema";
-import { eq, and, between, count, desc, asc } from "drizzle-orm";
+import { students, juzTracker, hifzDailyEntries, monthlyTargets, studentStars, examSessions, examSubjects } from "@/lib/db/schema";
+import { eq, and, between, count, desc, asc, inArray } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { JuzGrid } from "@/components/hifz/juz-grid";
 import { Progress } from "@/components/ui/progress";
@@ -9,6 +9,8 @@ import { StarSummary } from "@/components/stars/star-summary";
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
+import { Trophy, FileText } from "lucide-react";
+import { format } from "date-fns";
 
 export const metadata: Metadata = { title: "My Child's Progress" };
 
@@ -26,7 +28,22 @@ export default async function ParentDashboard() {
   const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0];
   const today = now.toISOString().split("T")[0];
 
-  const [student, juzData, recentEntries, monthlyTarget, juzCompletions, starCounts] =
+  // Find classes the student is enrolled in
+  const studentEnrollments = await db.query.enrollments.findMany({
+    where: eq(enrollments.studentId, studentId),
+  });
+  const enrolledClassIds = studentEnrollments.map((e) => e.classId);
+
+  // Find subjects assigned to these classes
+  let relevantSubjects = [];
+  if (enrolledClassIds.length > 0) {
+    relevantSubjects = await db.query.examSubjects.findMany({
+      where: inArray(examSubjects.classId, enrolledClassIds),
+    });
+  }
+  const examSessionIds = [...new Set(relevantSubjects.map((s) => s.examSessionId))];
+
+  const [student, juzData, recentEntries, monthlyTarget, juzCompletions, starCounts, exams] =
     await Promise.all([
       db.query.students.findFirst({
         where: eq(students.id, studentId),
@@ -61,6 +78,15 @@ export default async function ParentDashboard() {
         where: eq(studentStars.studentId, studentId),
         columns: { type: true },
       }),
+      examSessionIds.length > 0
+        ? db.query.examSessions.findMany({
+            where: and(
+              inArray(examSessions.id, examSessionIds),
+              eq(examSessions.resultStatus, "published")
+            ),
+            orderBy: [desc(examSessions.createdAt)],
+          })
+        : Promise.resolve([]),
     ]);
 
   if (!student) {
@@ -204,6 +230,47 @@ export default async function ParentDashboard() {
           </table>
         </div>
       </div>
+
+      {/* Exam Results Card */}
+      <div>
+        <h3 className="text-xl font-semibold mb-4 flex items-center gap-2 font-playfair">
+          <Trophy className="w-5 h-5 text-amber-500" />
+          Exam Results
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {exams.length === 0 ? (
+            <div className="col-span-full text-center py-8 text-muted-foreground bg-muted/20 rounded-lg border border-dashed text-sm">
+              No exam results have been published yet.
+            </div>
+          ) : (
+            exams.map((exam) => (
+              <Link key={exam.id} href={`/parent/results/${exam.id}`}>
+                <div className="bg-card border border-border hover:border-foreground/30 transition-all rounded-lg p-5 cursor-pointer h-full shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-semibold text-base text-foreground leading-tight">{exam.name}</h4>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {exam.startDate ? format(new Date(exam.startDate), "MMMM yyyy") : ""}
+                        </p>
+                      </div>
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border border-border bg-slate-50 text-muted-foreground">
+                        {exam.track}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-4 pt-3 border-t border-border/50">
+                    <FileText size={13} />
+                    View term progress card
+                  </div>
+                </div>
+              </Link>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }
+
