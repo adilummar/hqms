@@ -1,6 +1,6 @@
 import { requireParent, getParentStudentId } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
-import { students, juzTracker, hifzDailyEntries, monthlyTargets, studentStars, examSessions, examSubjects } from "@/lib/db/schema";
+import { students, juzTracker, hifzDailyEntries, monthlyTargets, studentStars, examSessions, examSubjects, enrollments } from "@/lib/db/schema";
 import { eq, and, between, count, desc, asc, inArray } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { JuzGrid } from "@/components/hifz/juz-grid";
@@ -35,7 +35,7 @@ export default async function ParentDashboard() {
   const enrolledClassIds = studentEnrollments.map((e) => e.classId);
 
   // Find subjects assigned to these classes
-  let relevantSubjects = [];
+  let relevantSubjects: any[] = [];
   if (enrolledClassIds.length > 0) {
     relevantSubjects = await db.query.examSubjects.findMany({
       where: inArray(examSubjects.classId, enrolledClassIds),

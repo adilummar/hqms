@@ -145,6 +145,15 @@ export default async function ReportsPage({ searchParams }: Props) {
       tags: ["By meeting", "By class", "By track", "Attendance %", "Printable"],
       tagStyle: "bg-blue-50 text-blue-700 border-blue-200",
     },
+    {
+      href: "/admin/reports/parent-meetings-yearly",
+      emoji: "📅",
+      bg: "bg-indigo-100",
+      title: "Yearly Parent Meeting Report",
+      description: "Consolidated attendance report across all meetings in an academic year. See total meetings attended per student.",
+      tags: ["By year", "By student", "Consolidated", "Printable"],
+      tagStyle: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    },
   ];
 
   return (

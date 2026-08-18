@@ -48,7 +48,7 @@ export function LeaveSettingsClient({ periods, activities }: Props) {
 
   // Re-initialize state when expanded period changes
   const getInitialSuspensions = (periodId: string | null) => {
-    const set = new Set();
+    const set = new Set<string>();
     if (!periodId) return set;
     const period = periods.find((p) => p.id === periodId);
     if (!period) return set;
@@ -82,7 +82,7 @@ export function LeaveSettingsClient({ periods, activities }: Props) {
     if (!expandedPeriod) return;
     setSavingSuspensions(true);
     startTransition(async () => {
-      const suspensionsArray = [];
+      const suspensionsArray: { dayId: string; activityId: string }[] = [];
       tempSuspensions.forEach((key) => {
         const [dayId, activityId] = key.split(":");
         suspensionsArray.push({ dayId, activityId });

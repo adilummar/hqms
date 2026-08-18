@@ -39,9 +39,13 @@ export default async function TutorParentMeetingsPage({ searchParams }: Props) {
   const selectedMeetingId = params.meetingId ?? sortedMeetings[0]?.id;
   const selectedMeeting = sortedMeetings.find((m) => m.id === selectedMeetingId);
 
-  // Get tutor's classes
+  // Get tutor's hifz classes
   const tutorClasses = await db.query.classes.findMany({
-    where: and(eq(classes.tutorId, session.user.id), eq(classes.isActive, true)),
+    where: and(
+      eq(classes.tutorId, session.user.id),
+      eq(classes.isActive, true),
+      eq(classes.track, "hifz")
+    ),
   });
 
   const selectedClassId = params.classId ?? tutorClasses[0]?.id;

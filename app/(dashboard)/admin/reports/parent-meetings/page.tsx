@@ -51,9 +51,9 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
   const selectedMeetingId = params.meetingId ?? sortedMeetings[0]?.id;
   const selectedMeeting = sortedMeetings.find((m) => m.id === selectedMeetingId);
 
-  // ── All active classes ────────────────────────────────────────────────────────
+  // ── All active hifz classes ────────────────────────────────────────────────────────
   const allClasses = await db.query.classes.findMany({
-    where: eq(classes.isActive, true),
+    where: and(eq(classes.isActive, true), eq(classes.track, "hifz")),
     orderBy: [asc(classes.name)],
   });
 
