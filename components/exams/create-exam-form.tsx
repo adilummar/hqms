@@ -4,14 +4,14 @@ import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { createExamSession } from "@/lib/actions/exams";
+import { createExamination } from "@/lib/actions/examinations";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 const schema = z.object({
   name: z.string().min(1, "Required"),
-  track: z.enum(["school", "madrasa", "hifz"]),
+  tracks: z.array(z.enum(["school", "madrasa", "hifz"])).min(1, "Select at least one track"),
   academicYearId: z.string().min(1, "Required"),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
@@ -31,19 +31,19 @@ export function CreateExamForm({ academicYears }: Props) {
   const [isPending, startTransition] = useTransition();
   const currentYear = academicYears.find(y => y.isCurrent);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors }, watch } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { track: "madrasa", academicYearId: currentYear?.id ?? "" },
+    defaultValues: { tracks: ["school", "madrasa", "hifz"], academicYearId: currentYear?.id ?? "" },
   });
 
   function onSubmit(data: FormData) {
     startTransition(async () => {
-      const result = await createExamSession(data);
-      if (result.success && result.data) {
-        toast.success("Exam session created");
-        router.push(`/admin/exams/${result.data.id}`);
+      const result = await createExamination(data);
+      if (result.success && result.id) {
+        toast.success("Examination created");
+        router.push(`/admin/exams/${result.id}`);
       } else {
-        toast.error("Failed to create exam");
+        toast.error(result.error ?? "Failed to create examination");
       }
     });
   }
@@ -57,12 +57,16 @@ export function CreateExamForm({ academicYears }: Props) {
       </div>
 
       <div>
-        <label className={lbl}>Track *</label>
-        <select {...register("track")} className={sel}>
-          <option value="school">School</option>
-          <option value="madrasa">Madrasa</option>
-          <option value="hifz">Hifz</option>
-        </select>
+        <label className={lbl}>Tracks Included *</label>
+        <div className="flex gap-4 items-center">
+          {(["school", "madrasa", "hifz"] as const).map(track => (
+            <label key={track} className="flex items-center gap-2 text-sm">
+              <input type="checkbox" value={track} {...register("tracks")} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+              <span className="capitalize">{track}</span>
+            </label>
+          ))}
+        </div>
+        {errors.tracks && <p className="text-xs text-red-500 mt-1">{errors.tracks.message}</p>}
       </div>
 
       <div>

@@ -18,8 +18,8 @@ export default async function NewExamPage() {
   return (
     <div>
       <PageHeader
-        title="Create Exam Session"
-        description="Set up a new exam for School, Madrasa, or Hifz"
+        title="Create Examination"
+        description="Set up a new Examination and initialize its tracks"
         breadcrumbs={[
           { label: "Admin" },
           { label: "Exams", href: "/admin/exams" },

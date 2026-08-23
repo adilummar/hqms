@@ -207,6 +207,7 @@ export default async function TutorParentMeetingsPage({ searchParams }: Props) {
                   </div>
                 )}
                 <ParentMeetingRoster
+                  key={`${selectedMeeting.id}-${selectedClassId}`}
                   meetingId={selectedMeeting.id}
                   meetingTitle={selectedMeeting.title}
                   meetingDate={selectedMeeting.meetingDate}

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { auth } from "@/auth";
 
 export const metadata: Metadata = { title: "Unauthorized" };
 
-export default function UnauthorizedPage() {
+export default async function UnauthorizedPage() {
+  const session = await auth();
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="text-center">
@@ -13,6 +15,8 @@ export default function UnauthorizedPage() {
         </h1>
         <p className="text-sm text-muted-foreground mb-6">
           You don&apos;t have permission to access this page.
+          <br />
+          <span className="text-xs opacity-50">Debug Role: {session?.user?.role || "no role"}</span>
         </p>
         <Link
           href="/login"

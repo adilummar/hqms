@@ -115,3 +115,36 @@ export async function updateClass(input: z.infer<typeof updateClassSchema>) {
   
   return { success: true };
 }
+
+const deleteClassSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export async function deleteClass(input: z.infer<typeof deleteClassSchema>) {
+  const session = await requireRole(["super_admin", "admin"]);
+
+  const parsed = deleteClassSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid class ID" };
+  }
+
+  const { id } = parsed.data;
+
+  try {
+    await db.delete(classes).where(eq(classes.id, id));
+    await logActivity(session.user.id, "class.delete", "classes", id);
+    revalidatePath("/admin/settings/classes");
+    return { success: true };
+  } catch (err: any) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[deleteClass] Error:", err);
+    // Foreign key violation (Postgres code 23503) — class still has students/exams linked
+    if (err.code === "23503" || msg.includes("foreign key") || msg.includes("violates")) {
+      return {
+        success: false,
+        error: "Cannot delete this class — it still has students or exam records linked to it.",
+      };
+    }
+    return { success: false, error: "Failed to delete class: " + msg };
+  }
+}

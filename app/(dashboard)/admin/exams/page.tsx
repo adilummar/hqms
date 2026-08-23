@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
-import { examSessions } from "@/lib/db/schema";
+import { examinations } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import Link from "next/link";
@@ -25,16 +25,13 @@ const STATUS_COLORS: Record<string, string> = {
 export default async function ExamsPage() {
   await requireAdmin();
 
-  const sessions = await db.query.examSessions.findMany({
-    with: { academicYear: true },
-    orderBy: [desc(examSessions.createdAt)],
+  const allExaminations = await db.query.examinations.findMany({
+    with: { 
+      academicYear: true,
+      examSessions: true,
+    },
+    orderBy: [desc(examinations.createdAt)],
   });
-
-  const grouped = {
-    school:  sessions.filter(s => s.track === "school"),
-    madrasa: sessions.filter(s => s.track === "madrasa"),
-    hifz:    sessions.filter(s => s.track === "hifz"),
-  };
 
   return (
     <div>
@@ -52,72 +49,65 @@ export default async function ExamsPage() {
         }
       />
 
-      {sessions.length === 0 ? (
+      {allExaminations.length === 0 ? (
         <div className="bg-card border border-border rounded-lg p-16 text-center">
-          <p className="text-muted-foreground text-sm mb-4">No exam sessions yet.</p>
+          <p className="text-muted-foreground text-sm mb-4">No examinations yet.</p>
           <Link href="/admin/exams/new" className="px-4 py-2 bg-primary text-primary-foreground text-sm rounded-sm">
-            Create First Exam
+            Create First Examination
           </Link>
         </div>
       ) : (
-        <div className="space-y-8">
-          {(["school", "madrasa", "hifz"] as const).map((track) => {
-            const items = grouped[track];
-            if (items.length === 0) return null;
-            return (
-              <div key={track}>
-                <h2 className="font-playfair text-lg font-semibold capitalize mb-3">{track} Exams</h2>
-                <div className="bg-card border border-border rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-muted/50 border-b border-border">
-                        <th className="text-left px-5 py-3 font-medium text-muted-foreground">Name</th>
-                        <th className="text-left px-5 py-3 font-medium text-muted-foreground">Academic Year</th>
-                        <th className="text-left px-5 py-3 font-medium text-muted-foreground">Dates</th>
-                        <th className="text-left px-5 py-3 font-medium text-muted-foreground">Status</th>
-                        <th className="text-left px-5 py-3 font-medium text-muted-foreground">Results</th>
-                        <th className="px-5 py-3" />
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {items.map((exam) => (
-                        <tr key={exam.id} className="hover:bg-muted/20 transition-colors">
-                          <td className="px-5 py-3 font-medium">{exam.name}</td>
-                          <td className="px-5 py-3 text-muted-foreground">{exam.academicYear?.label ?? "—"}</td>
-                          <td className="px-5 py-3 text-muted-foreground font-jetbrains text-xs">
-                            {exam.startDate ?? "—"} {exam.endDate ? `→ ${exam.endDate}` : ""}
-                          </td>
-                          <td className="px-5 py-3">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[exam.status ?? "scheduled"]}`}>
-                              {exam.status}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
-                              exam.resultStatus === "published"
-                                ? "bg-primary/10 text-primary border-green-500/20"
-                                : "bg-muted text-muted-foreground border-border"
-                            }`}>
-                              {exam.resultStatus === "published" ? "Published" : "Draft"}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3 text-right">
-                            <ExamActions
-                              examId={exam.id}
-                              examName={exam.name}
-                              resultStatus={exam.resultStatus}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Name</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Academic Year</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Dates</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Status</th>
+                  <th className="text-left px-5 py-3 font-medium text-muted-foreground">Tracks Included</th>
+                  <th className="px-5 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {allExaminations.map((exam) => (
+                  <tr key={exam.id} className="hover:bg-muted/20 transition-colors">
+                    <td className="px-5 py-3 font-medium">{exam.name}</td>
+                    <td className="px-5 py-3 text-muted-foreground">{exam.academicYear?.label ?? "—"}</td>
+                    <td className="px-5 py-3 text-muted-foreground font-jetbrains text-xs">
+                      {exam.startDate ?? "—"} {exam.endDate ? `→ ${exam.endDate}` : ""}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[exam.status ?? "scheduled"]}`}>
+                        {exam.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex gap-1 flex-wrap">
+                        {exam.examSessions.map(session => (
+                          <span key={session.id} className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${TRACK_COLORS[session.track]}`}>
+                            {session.track}
+                          </span>
+                        ))}
+                        {exam.examSessions.length === 0 && (
+                          <span className="text-xs text-muted-foreground italic">No tracks</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <Link
+                        href={`/admin/exams/${exam.id}`}
+                        className="px-3 py-1.5 border border-border text-xs font-medium rounded hover:bg-muted transition-colors inline-block"
+                      >
+                        View & Manage
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

@@ -9,6 +9,7 @@ export type UserRole =
   | "admin"
   | "tutor"
   | "school_admin"
+  | "madrasa_admin"
   | "parent"
   | "student";
 
@@ -37,6 +38,10 @@ export async function requireParent() {
 
 export async function requireSchoolAdmin() {
   return requireRole(["school_admin", "super_admin"]);
+}
+
+export async function requireMadrasaAdmin() {
+  return requireRole(["madrasa_admin", "super_admin"]);
 }
 
 export async function requireStudent() {

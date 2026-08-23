@@ -14,6 +14,7 @@ const ALL_ROLES = [
   { value: "admin",        label: "Admin" },
   { value: "tutor",        label: "Tutor" },
   { value: "school_admin", label: "School Admin" },
+  { value: "madrasa_admin", label: "Madrasa Admin" },
   { value: "parent",       label: "Parent" },
   { value: "student",      label: "Student" },
 ] as const;

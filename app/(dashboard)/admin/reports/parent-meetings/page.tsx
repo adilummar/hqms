@@ -6,6 +6,7 @@ import {
   enrollments,
   students,
   classes,
+  academicYears,
 } from "@/lib/db/schema";
 import { eq, and, inArray, desc, asc } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
@@ -14,6 +15,11 @@ import {
   ParentMeetingReportClient,
   MeetingReportRow,
 } from "@/components/meetings/parent-meeting-report-client";
+import {
+  ParentMeetingYearlyReportClient,
+  YearlyMeetingInfo,
+  YearlyStudentRow,
+} from "@/components/meetings/parent-meeting-yearly-client";
 import Link from "next/link";
 import { CalendarDays, CheckCircle2, XCircle, Clock, Users } from "lucide-react";
 import type { Metadata } from "next";
@@ -21,7 +27,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Parent Meeting Report | Admin" };
 
 interface Props {
-  searchParams: Promise<{ meetingId?: string; classId?: string; track?: string }>;
+  searchParams: Promise<{ meetingId?: string; classId?: string }>;
 }
 
 function formatDate(d: string) {
@@ -40,7 +46,7 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
   const today = new Date().toISOString().split("T")[0];
 
   // ── All meetings ──────────────────────────────────────────────────────────────
-  const allMeetings = await db.query.parentMeetings.findMany({
+  let allMeetings = await db.query.parentMeetings.findMany({
     orderBy: [desc(parentMeetings.meetingDate)],
   });
 
@@ -49,17 +55,13 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
   const sortedMeetings = [...upcoming, ...past];
 
   const selectedMeetingId = params.meetingId ?? sortedMeetings[0]?.id;
-  const selectedMeeting = sortedMeetings.find((m) => m.id === selectedMeetingId);
+  const selectedMeeting = selectedMeetingId === "yearly" ? undefined : sortedMeetings.find((m) => m.id === selectedMeetingId);
 
   // ── All active hifz classes ────────────────────────────────────────────────────────
   const allClasses = await db.query.classes.findMany({
     where: and(eq(classes.isActive, true), eq(classes.track, "hifz")),
     orderBy: [asc(classes.name)],
   });
-
-  const trackFilter = params.track ?? "all";
-  const filteredClassesByTrack =
-    trackFilter === "all" ? allClasses : allClasses.filter((c) => c.track === trackFilter);
 
   const selectedClassId = params.classId && params.classId !== "all" ? params.classId : null;
 
@@ -84,11 +86,11 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
 
   let classStats: ClassStat[] = [];
 
-  if (selectedMeeting && filteredClassesByTrack.length > 0) {
+  if (selectedMeeting && allClasses.length > 0) {
     const attMap = new Map(allAttendance.map((a) => [a.studentId, a]));
 
     // Fetch ALL enrollments in one query (avoids per-class Promise.all → ECONNRESET)
-    const allClassIds = filteredClassesByTrack.map((c) => c.id);
+    const allClassIds = allClasses.map((c) => c.id);
     const allEnrollments = await db.query.enrollments.findMany({
       where: and(inArray(enrollments.classId, allClassIds), eq(enrollments.status, "active")),
       columns: { classId: true, studentId: true },
@@ -101,7 +103,7 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
       enrollsByClass.get(enr.classId)!.push(enr.studentId);
     }
 
-    classStats = filteredClassesByTrack
+    classStats = allClasses
       .map((cls) => {
         const studentIds = enrollsByClass.get(cls.id) ?? [];
         const total = studentIds.length;
@@ -119,7 +121,7 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
   if (selectedMeeting) {
     const targetClassIds = selectedClassId
       ? [selectedClassId]
-      : filteredClassesByTrack.map((c) => c.id);
+      : allClasses.map((c) => c.id);
 
     if (targetClassIds.length > 0) {
       const classEnrollments = await db.query.enrollments.findMany({
@@ -173,16 +175,74 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
     }
   }
 
+  // ── Yearly Matrix Data (if selected) ───────────────────────────────────────────
+  let yearlyMeetings: YearlyMeetingInfo[] = [];
+  let yearlyRows: YearlyStudentRow[] = [];
+
+  const currentAcademicYear = await db.query.academicYears.findFirst({
+    where: eq(academicYears.isCurrent, true),
+  });
+
+  if (selectedMeetingId === "yearly") {
+    yearlyMeetings = allMeetings
+      .map(m => ({ id: m.id, title: m.title, meetingDate: m.meetingDate }))
+      .sort((a, b) => a.meetingDate.localeCompare(b.meetingDate));
+    
+    const targetClassIds = selectedClassId ? [selectedClassId] : allClasses.map((c) => c.id);
+    
+    if (targetClassIds.length > 0) {
+      const classEnrollments = await db.query.enrollments.findMany({
+        where: and(inArray(enrollments.classId, targetClassIds), eq(enrollments.status, "active")),
+      });
+      
+      const studentIds = [...new Set(classEnrollments.map((e) => e.studentId))];
+      
+      if (studentIds.length > 0) {
+        const studentClassMap = new Map<string, { className: string; classTrack: string }>();
+        for (const enr of classEnrollments) {
+          if (!studentClassMap.has(enr.studentId)) {
+            const cls = allClasses.find((c) => c.id === enr.classId);
+            if (cls) studentClassMap.set(enr.studentId, { className: cls.name, classTrack: cls.track });
+          }
+        }
+        
+        const studentsData = await db.query.students.findMany({
+          where: and(eq(students.status, "active"), inArray(students.id, studentIds)),
+          columns: { id: true, studentCode: true, firstName: true, lastName: true },
+        });
+        
+        const meetingIds = yearlyMeetings.map(m => m.id);
+        const attendanceData = meetingIds.length > 0 ? await db.query.parentMeetingAttendance.findMany({
+          where: and(
+            inArray(parentMeetingAttendance.meetingId, meetingIds),
+            inArray(parentMeetingAttendance.studentId, studentIds)
+          ),
+        }) : [];
+        
+        yearlyRows = studentsData.map(s => {
+          const cls = studentClassMap.get(s.id);
+          const attendance: Record<string, boolean | null> = {};
+          for (const m of yearlyMeetings) {
+            const att = attendanceData.find(a => a.studentId === s.id && a.meetingId === m.id);
+            attendance[m.id] = att ? att.attended : null;
+          }
+          return {
+            studentId: s.id,
+            studentCode: s.studentCode,
+            firstName: s.firstName,
+            lastName: s.lastName,
+            className: cls?.className ?? "Unknown",
+            classTrack: cls?.classTrack ?? "unknown",
+            attendance,
+          };
+        });
+      }
+    }
+  }
+
   const overallTotal = allAttendance.length;
   const overallAttended = allAttendance.filter((a) => a.attended).length;
   const overallRate = overallTotal > 0 ? Math.round((overallAttended / overallTotal) * 100) : 0;
-
-  const trackOptions = [
-    { value: "all", label: "All Tracks" },
-    { value: "hifz", label: "Hifz" },
-    { value: "madrasa", label: "Madrasa" },
-    { value: "school", label: "School" },
-  ];
 
   return (
     <div className="print:m-0 print:p-0">
@@ -227,65 +287,58 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Filters</p>
 
               <div>
-                <label className="block text-xs text-muted-foreground mb-1.5">Track</label>
+                <label className="block text-xs text-muted-foreground mb-1.5">Class</label>
                 <div className="space-y-0.5">
-                  {trackOptions.map((t) => (
+                  <Link
+                    href={`/admin/reports/parent-meetings?meetingId=${selectedMeetingId ?? ""}&classId=all`}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                      !selectedClassId ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
+                  >
+                    All Classes
+                  </Link>
+                  {allClasses.map((cls) => (
                     <Link
-                      key={t.value}
-                      href={`/admin/reports/parent-meetings?meetingId=${selectedMeetingId ?? ""}&track=${t.value}&classId=all`}
+                      key={cls.id}
+                      href={`/admin/reports/parent-meetings?meetingId=${selectedMeetingId ?? ""}&classId=${cls.id}`}
                       className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
-                        trackFilter === t.value
-                          ? "bg-primary text-primary-foreground"
+                        selectedClassId === cls.id
+                          ? "bg-foreground text-background"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
-                      {t.label}
+                      {cls.name}
                     </Link>
                   ))}
                 </div>
               </div>
-
-              {trackFilter !== "all" && (
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1.5">Class</label>
-                  <div className="space-y-0.5">
-                    <Link
-                      href={`/admin/reports/parent-meetings?meetingId=${selectedMeetingId ?? ""}&track=${trackFilter}&classId=all`}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
-                        !selectedClassId ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      }`}
-                    >
-                      All Classes
-                    </Link>
-                    {filteredClassesByTrack.map((cls) => (
-                      <Link
-                        key={cls.id}
-                        href={`/admin/reports/parent-meetings?meetingId=${selectedMeetingId ?? ""}&track=${trackFilter}&classId=${cls.id}`}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
-                          selectedClassId === cls.id
-                            ? "bg-primary text-primary-foreground"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                        }`}
-                      >
-                        {cls.name}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Meeting selector */}
             <div className="bg-card border border-border rounded-lg p-4">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Select Meeting</p>
               <div className="space-y-1.5">
+                <Link
+                  href={`/admin/reports/parent-meetings?meetingId=yearly&classId=${selectedClassId ?? "all"}`}
+                  className={`block px-3 py-2.5 border rounded-md text-sm transition-all ${
+                    selectedMeetingId === "yearly" ? "border-foreground bg-foreground/5" : "border-border hover:border-foreground/40 text-primary"
+                  }`}
+                >
+                  <p className="font-semibold text-foreground truncate flex items-center gap-1.5">
+                    <CalendarDays size={14} className="text-muted-foreground" /> Yearly Summary
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 ml-5">All meetings matrix</p>
+                </Link>
+                
+                <div className="h-px bg-border my-3" />
+
                 {upcoming.length > 0 && (
                   <p className="text-xs text-amber-600 font-semibold px-1 flex items-center gap-1"><Clock size={10} />Upcoming</p>
                 )}
                 {upcoming.map((m) => (
                   <Link
                     key={m.id}
-                    href={`/admin/reports/parent-meetings?meetingId=${m.id}&track=${trackFilter}&classId=${selectedClassId ?? "all"}`}
+                    href={`/admin/reports/parent-meetings?meetingId=${m.id}&classId=${selectedClassId ?? "all"}`}
                     className={`block px-3 py-2.5 border rounded-md text-sm transition-all ${
                       selectedMeetingId === m.id ? "border-foreground bg-foreground/5" : "border-border hover:border-foreground/40"
                     }`}
@@ -300,7 +353,7 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
                 {past.map((m) => (
                   <Link
                     key={m.id}
-                    href={`/admin/reports/parent-meetings?meetingId=${m.id}&track=${trackFilter}&classId=${selectedClassId ?? "all"}`}
+                    href={`/admin/reports/parent-meetings?meetingId=${m.id}&classId=${selectedClassId ?? "all"}`}
                     className={`block px-3 py-2.5 border rounded-md text-sm transition-all ${
                       selectedMeetingId === m.id ? "border-foreground bg-foreground/5" : "border-border hover:border-foreground/40 opacity-70"
                     }`}
@@ -317,7 +370,14 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
 
           {/* ── Main Content ── */}
           <div className="flex-1 min-w-0">
-            {!selectedMeeting ? (
+            {selectedMeetingId === "yearly" ? (
+              <ParentMeetingYearlyReportClient 
+                meetings={yearlyMeetings}
+                rows={yearlyRows}
+                selectedClassId={selectedClassId}
+                academicYearLabel={currentAcademicYear?.label ?? "All Time"}
+              />
+            ) : !selectedMeeting ? (
               <div className="border border-border rounded-lg p-16 text-center text-muted-foreground text-sm">
                 <CalendarDays size={28} className="mx-auto mb-3 opacity-40" />
                 <p>Select a meeting to view its report</p>

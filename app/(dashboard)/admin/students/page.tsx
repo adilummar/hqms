@@ -245,6 +245,9 @@ export default async function StudentsPage({ searchParams }: Props) {
                   Hifz Class
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">
+                  Madrasa Class
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">
                   School Class
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">
@@ -258,7 +261,7 @@ export default async function StudentsPage({ searchParams }: Props) {
             <tbody className="divide-y divide-border">
               {studentList.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
                     {tab === "active"
                       ? "No active students found"
                       : `No ${subTab} students found`}
@@ -267,6 +270,7 @@ export default async function StudentsPage({ searchParams }: Props) {
               ) : (
                 studentList.map((student) => {
                   const hifzEnrollment   = student.enrollments.find((e) => e.class.track === "hifz");
+                  const madrasaEnrollment = student.enrollments.find((e) => e.class.track === "madrasa");
                   const schoolEnrollment = student.enrollments.find((e) => e.class.track === "school");
 
                   return (
@@ -303,6 +307,9 @@ export default async function StudentsPage({ searchParams }: Props) {
                       </td>
                       <td className="px-4 py-3 text-muted-foreground text-sm">
                         {hifzEnrollment?.class.name ?? "—"}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground text-sm">
+                        {madrasaEnrollment?.class.name ?? "—"}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground text-sm">
                         {schoolEnrollment?.class.name ?? "—"}

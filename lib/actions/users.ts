@@ -13,7 +13,7 @@ const createUserSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters").max(50),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["super_admin", "admin", "tutor", "parent"]),
+  role: z.enum(["super_admin", "admin", "tutor", "parent", "school_admin", "madrasa_admin"]),
 });
 
 export async function createUser(input: z.infer<typeof createUserSchema>) {

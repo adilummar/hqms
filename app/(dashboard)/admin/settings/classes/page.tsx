@@ -5,6 +5,7 @@ import { asc, eq, and } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { AddClassDialog } from "@/components/settings/add-class-dialog";
 import { EditClassDialog } from "@/components/settings/edit-class-dialog";
+import { DeleteClassButton } from "@/components/settings/delete-class-button";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Classes | Settings" };
@@ -79,7 +80,11 @@ export default async function ClassesSettingsPage() {
                     )}
                   </td>
                   <td className="px-5 py-3 text-right">
-                    <EditClassDialog cls={c} tutors={tutors} />
+                    <div className="inline-flex items-center gap-1">
+                      <EditClassDialog cls={c} tutors={tutors} />
+                      <span className="text-border">|</span>
+                      <DeleteClassButton cls={c} />
+                    </div>
                   </td>
                 </tr>
               ))

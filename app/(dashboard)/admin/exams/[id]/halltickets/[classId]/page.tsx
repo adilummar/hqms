@@ -41,8 +41,7 @@ export default async function HallTicketsPrintPage({
   const classEnrollments = await db.query.enrollments.findMany({
     where: and(
       eq(enrollments.classId, classId),
-      eq(enrollments.status, "active"),
-      eq(enrollments.academicYearId, exam.academicYearId)
+      eq(enrollments.status, "active")
     ),
     with: { student: true },
   });

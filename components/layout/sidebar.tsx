@@ -76,6 +76,8 @@ function getNavItems(role: string): NavItem[] {
       return TUTOR_NAV;
     case "school_admin":
       return [{ label: "Exams", href: "/school-admin", icon: FileText }];
+    case "madrasa_admin":
+      return [{ label: "Exams", href: "/madrasa-admin", icon: FileText }];
     case "parent":
       return PARENT_NAV;
     case "student":

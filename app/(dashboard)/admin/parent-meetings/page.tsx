@@ -302,6 +302,7 @@ export default async function AdminParentMeetingsPage({ searchParams }: Props) {
                 )}
 
                 <ParentMeetingRoster
+                  key={`${selectedMeeting.id}-${selectedClassId}`}
                   meetingId={selectedMeeting.id}
                   meetingTitle={selectedMeeting.title}
                   meetingDate={selectedMeeting.meetingDate}

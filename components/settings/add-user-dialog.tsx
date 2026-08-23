@@ -13,7 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-type UserRole = "super_admin" | "admin" | "tutor" | "parent";
+type UserRole = "super_admin" | "admin" | "tutor" | "parent" | "school_admin" | "madrasa_admin";
 
 export function AddUserDialog() {
   const [open, setOpen] = useState(false);
@@ -97,6 +97,8 @@ export function AddUserDialog() {
               className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 bg-background"
             >
               <option value="tutor">Tutor</option>
+              <option value="school_admin">School Admin</option>
+              <option value="madrasa_admin">Madrasa Admin</option>
               <option value="admin">Admin</option>
               <option value="super_admin">Super Admin</option>
             </select>

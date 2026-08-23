@@ -17,11 +17,32 @@ import { academicYears } from "./settings";
 import { students } from "./students";
 import { users } from "./users";
 
-// ─── Exam Sessions ───────────────────────────────────────────────────────────
-// One exam session = one exam period (e.g. "First Term 2025 — Madrasa")
+// ─── Examinations (Parent) ────────────────────────────────────────────────────
+// A parent examination (e.g. "Term 1") that groups multiple tracks together.
+export const examinations = pgTable("examinations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  academicYearId: uuid("academic_year_id")
+    .notNull()
+    .references(() => academicYears.id, { onDelete: "restrict" }),
+  startDate: date("start_date"),
+  endDate: date("end_date"),
+  status: examStatusEnum("status").default("scheduled").notNull(),
+  createdBy: uuid("created_by")
+    .references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ─── Exam Sessions (Track-specific) ───────────────────────────────────────────
+// One exam session = one exam track under a parent Examination
+
 export const examSessions = pgTable("exam_sessions", {
   id: uuid("id").defaultRandom().primaryKey(),
-  name: varchar("name", { length: 200 }).notNull(),       // "First Term 2025"
+  examinationId: uuid("examination_id")
+    .notNull()
+    .references(() => examinations.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 200 }).notNull(),       // e.g. "Madrasa - Term 1"
   track: examTrackEnum("track").notNull(),                 // school | madrasa | hifz
   academicYearId: uuid("academic_year_id")
     .notNull()
@@ -35,7 +56,10 @@ export const examSessions = pgTable("exam_sessions", {
     .references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  // Ensure a track is only added once per parent examination
+  uniqTrack: unique().on(t.examinationId, t.track)
+}));
 
 // ─── Exam Subjects ────────────────────────────────────────────────────────────
 // Subjects per (session, class). Different classes can have different subjects.
@@ -94,7 +118,23 @@ export const examMarks = pgTable(
 );
 
 // ─── Relations ────────────────────────────────────────────────────────────────
+export const examinationsRelations = relations(examinations, ({ one, many }) => ({
+  academicYear: one(academicYears, {
+    fields: [examinations.academicYearId],
+    references: [academicYears.id],
+  }),
+  createdByUser: one(users, {
+    fields: [examinations.createdBy],
+    references: [users.id],
+  }),
+  examSessions: many(examSessions),
+}));
+
 export const examSessionsRelations = relations(examSessions, ({ one, many }) => ({
+  examination: one(examinations, {
+    fields: [examSessions.examinationId],
+    references: [examinations.id],
+  }),
   academicYear: one(academicYears, {
     fields: [examSessions.academicYearId],
     references: [academicYears.id],

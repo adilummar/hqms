@@ -5,6 +5,8 @@ const ROLE_REDIRECT: Record<string, string> = {
   super_admin: "/admin",
   admin: "/admin",
   tutor: "/tutor",
+  school_admin: "/school-admin",
+  madrasa_admin: "/madrasa-admin",
   parent: "/parent",
   student: "/student",
 };
