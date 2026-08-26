@@ -19,7 +19,7 @@ export async function createExamination(data: z.infer<typeof createExaminationSc
   
   const parsed = createExaminationSchema.safeParse(data);
   if (!parsed.success) {
-    return { success: false, error: parsed.error.errors[0].message };
+    return { success: false, error: parsed.error.issues[0].message };
   }
   
   const { name, academicYearId, startDate, endDate, tracks } = parsed.data;

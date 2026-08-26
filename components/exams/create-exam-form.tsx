@@ -39,11 +39,11 @@ export function CreateExamForm({ academicYears }: Props) {
   function onSubmit(data: FormData) {
     startTransition(async () => {
       const result = await createExamination(data);
-      if (result.success && result.id) {
+      if (result.success && "id" in result && result.id) {
         toast.success("Examination created");
         router.push(`/admin/exams/${result.id}`);
       } else {
-        toast.error(result.error ?? "Failed to create examination");
+        toast.error(("error" in result ? result.error : null) ?? "Failed to create examination");
       }
     });
   }

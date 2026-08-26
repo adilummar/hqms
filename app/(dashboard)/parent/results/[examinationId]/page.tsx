@@ -50,7 +50,31 @@ export default async function ParentResultDetailPage({
     );
   }
 
-  const { student: studentData, examination, academicYearLabel, hifzResult, madrasaResult, schoolResult } = res.data;
+  const { examName, tracks } = res.data;
+
+  // Map each track from the action's shape into the shape ProgressReportCard expects
+  const mapTrack = (trackName: "hifz" | "madrasa" | "school") => {
+    const t = tracks.find((t: any) => t.track === trackName);
+    if (!t || t.subjects.length === 0) return undefined;
+    return {
+      className: t.className,
+      tutorName: t.classTeacher,
+      rank: t.rank === "-" ? null : Number(t.rank),
+      status: t.status,
+      subjectResults: t.subjects.map((s: any) => ({
+        subjectName: s.name,
+        totalMarks: s.maxMark,
+        obtainedMarks: typeof s.scored === "number" ? s.scored : 0,
+        passMarks: 0,
+        isPassed: s.scored !== "AB" && typeof s.scored === "number",
+        grade: "",
+      })),
+    };
+  };
+
+  const hifzResult = mapTrack("hifz");
+  const madrasaResult = mapTrack("madrasa");
+  const schoolResult = mapTrack("school");
 
   return (
     <div className="space-y-6">
@@ -67,9 +91,9 @@ export default async function ParentResultDetailPage({
       </div>
 
       <ProgressReportCard
-        student={studentData}
-        examSessionName={examination.name}
-        academicYearLabel={academicYearLabel}
+        student={student}
+        examSessionName={examName}
+        academicYearLabel=""
         hifzResult={hifzResult}
         madrasaResult={madrasaResult}
         schoolResult={schoolResult}

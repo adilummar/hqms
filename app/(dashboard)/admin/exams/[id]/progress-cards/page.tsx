@@ -53,7 +53,7 @@ export default async function ProgressCardsPage({ params, searchParams }: Props)
           action={
             cardData && (
               <button 
-                onClick="window.print()" 
+                onClick={() => window.print()}
                 className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90"
               >
                 <Printer size={16} />

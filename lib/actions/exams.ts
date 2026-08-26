@@ -14,6 +14,7 @@ const createExamSchema = z.object({
   name: z.string().min(1, "Name required"),
   track: z.enum(["school", "madrasa", "hifz"]),
   academicYearId: z.string().uuid("Academic year required"),
+  examinationId: z.string().uuid("Examination required"),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
 });

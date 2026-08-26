@@ -115,7 +115,6 @@ export default async function HifzEntryPage({ params, searchParams }: Props) {
         isHafiz={student.isHafiz}
         completedJuzCount={completedJuzCount}
         canRevert={canRevert}
-        isLeaveActive={!!activeLeave}
       />
 
       <HifzEntryForm

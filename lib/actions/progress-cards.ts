@@ -105,7 +105,7 @@ export async function getProgressCardData(examinationId: string, studentId: stri
     return {
       track: session.track,
       className: enrolledClass?.name ?? "—",
-      classTeacher: enrolledClass?.tutor?.name ?? "—",
+      classTeacher: enrolledClass?.tutor?.username ?? "—",
       rank: "-", // Placeholder
       status,
       subjects: subjectsData,
