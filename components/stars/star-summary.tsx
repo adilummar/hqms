@@ -1,4 +1,4 @@
-import { Star } from "lucide-react";
+import { Star, StarOff } from "lucide-react";
 
 interface Props {
   blue: number;
@@ -25,7 +25,7 @@ export function StarSummary({ blue, black, size = "md" }: Props) {
       <div
         className={`flex items-center gap-1.5 rounded-full border border-gray-400 bg-gray-100 px-2.5 py-1 ${textSize}`}
       >
-        <Star size={iconSize} fill="currentColor" className="text-black" />
+        <StarOff size={iconSize} className="text-black" />
         <span className="font-jetbrains font-semibold text-black">{black}</span>
         {size !== "sm" && <span className="text-gray-600">Black</span>}
       </div>

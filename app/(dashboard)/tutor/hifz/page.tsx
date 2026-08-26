@@ -11,6 +11,7 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, asc, inArray, ne } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
+import { getActiveLeavePeriod } from "@/lib/actions/leave-tracker";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -28,9 +29,7 @@ export default async function TutorHifzPage({ searchParams }: Props) {
   const selectedDate = params.date ?? today;
 
   // ── Check for active leave period — Hifz tracker is paused during leave ──
-  const activeLeave = await db.query.leavePeriods.findFirst({
-    where: eq(leavePeriods.isActive, true),
-  });
+  const activeLeave = await getActiveLeavePeriod();
 
   // Get available Hifz classes
   const hifzClasses = await db.query.classes.findMany({
@@ -309,7 +308,7 @@ export default async function TutorHifzPage({ searchParams }: Props) {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {activeLeave ? (
+                      {activeLeave && !isEntered ? (
                         <span className="text-xs px-3 py-1.5 border border-amber-200 text-amber-600 bg-amber-50 rounded-sm cursor-not-allowed select-none">
                           On Leave
                         </span>
@@ -318,7 +317,7 @@ export default async function TutorHifzPage({ searchParams }: Props) {
                           href={`/tutor/hifz/entry/${s.id}?date=${selectedDate}`}
                           className="text-xs px-3 py-1.5 border border-border rounded-sm hover:bg-muted transition-colors"
                         >
-                          {isEntered ? "Edit" : "Enter"}
+                          {isEntered ? (activeLeave ? "View" : "Edit") : "Enter"}
                         </Link>
                       )}
                     </td>

@@ -1,4 +1,4 @@
-import { Star } from "lucide-react";
+import { Star, StarOff } from "lucide-react";
 
 interface StarEntry {
   id: string;
@@ -64,7 +64,7 @@ export function StarHistoryTable({
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-400 bg-gray-100 px-2 py-0.5 text-xs font-semibold text-black">
-                    <Star size={12} fill="currentColor" /> Black Star
+                    <StarOff size={12} /> Black Star
                   </span>
                 )}
               </td>

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { saveDailyHifzEntry } from "@/lib/actions/hifz";
 import { toast } from "sonner";
 import { Loader2, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
-import type { hifzDailyEntries, juzTracker } from "@/lib/db/schema";
+import type { hifzDailyEntries, juzTracker, leavePeriods } from "@/lib/db/schema";
 
 interface Remark {
   id: string;
@@ -24,6 +24,7 @@ interface Props {
   isHafiz?: boolean;
   /** sabaqToPage from the most recent prior entry — used to suggest today's From Page. */
   lastSabaqToPage?: string;
+  activeLeave?: typeof leavePeriods.$inferSelect | null;
 }
 
 /** One Daura session block — a 30-Juz checkbox grid plus a reason dropdown. */
@@ -50,15 +51,17 @@ function DauraBlock({
           <label className="block text-xs text-muted-foreground mb-2">Select Juz Numbers (Multiple allowed)</label>
           <div className="h-40 overflow-y-auto border border-border rounded-sm p-3 grid grid-cols-5 sm:grid-cols-6 md:grid-cols-5 lg:grid-cols-6 gap-2 bg-background">
             {Array.from({ length: 30 }).map((_, i) => (
-              <label key={i + 1} className="flex flex-col items-center justify-center p-1 rounded hover:bg-muted cursor-pointer">
+              <label key={i + 1} className="flex items-center justify-center cursor-pointer group">
                 <input
                   type="checkbox"
                   name={juzName}
                   value={i + 1}
                   defaultChecked={defaultJuz?.includes(i + 1)}
-                  className="accent-primary w-4 h-4 mb-1"
+                  className="peer sr-only"
                 />
-                <span className="text-xs font-medium">{i + 1}</span>
+                <span className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-xs font-medium text-muted-foreground group-hover:border-primary/50 peer-checked:bg-primary peer-checked:text-primary-foreground peer-checked:border-primary transition-colors">
+                  {i + 1}
+                </span>
               </label>
             ))}
           </div>
@@ -86,7 +89,7 @@ function calculateSabaqPages(fromValue: string, toValue: string) {
     : "";
 }
 
-export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaqRemarks, sabaqJuzRemarks, dauraRemarks, isHafiz = false, lastSabaqToPage }: Props) {
+export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaqRemarks, sabaqJuzRemarks, dauraRemarks, isHafiz = false, lastSabaqToPage, activeLeave }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isNavigating, startNavTransition] = useTransition();
@@ -122,6 +125,7 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
   const [sabaqFromPage, setSabaqFromPage] = useState(existingEntry?.sabaqFromPage?.toString() ?? suggestedFromPage ?? "");
   const [sabaqToPage, setSabaqToPage] = useState(existingEntry?.sabaqToPage?.toString() ?? "");
   const [sabaqPages, setSabaqPages] = useState(existingEntry?.sabaqPages?.toString() ?? "");
+  const [sabaqJuzGiven, setSabaqJuzGiven] = useState<boolean | undefined>(existingEntry?.sabaqJuzGiven ?? undefined);
 
   const hasSabaq = !!sabaqFromPage || !!sabaqToPage || !!sabaqPages;
 
@@ -170,6 +174,20 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {activeLeave && (
+        <div className="bg-amber-50 border border-amber-300 rounded-lg px-5 py-4 flex items-start gap-3">
+          <span className="text-2xl mt-0.5">🌙</span>
+          <div>
+            <p className="font-semibold text-amber-900 text-sm">
+              Hifz Tracker paused — Leave period is active
+            </p>
+            <p className="text-xs text-amber-700 mt-1">
+              <span className="font-medium">{activeLeave.name}</span> ({activeLeave.startDate} → {activeLeave.endDate}) is currently active.
+              Existing entries are locked and new entries are disabled.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Date Navigator ─────────────────────────────────────────── */}
       <div className="bg-card border border-border rounded-lg px-5 py-3 flex items-center justify-between gap-3">
@@ -214,6 +232,8 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
           )}
         </div>
       </div>
+
+      <fieldset disabled={!!activeLeave} className="space-y-6">
       {isHafiz && (
         <div className="bg-card border border-border rounded-lg p-5 border-l-4 border-l-emerald-500">
           <p className="text-sm font-medium">🎓 Hafiz mode — Daura only, two sessions per day. Sabaq &amp; Sabaq Juz are not applicable.</p>
@@ -263,8 +283,8 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
       {/* Sabaq */}
       <div className="bg-card border border-border rounded-lg p-5">
         <h2 className="font-playfair text-lg font-semibold mb-4">Sabaq (New Lesson)</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-          <div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4 items-end">
+          <div className="flex flex-col justify-end">
             <label className="block text-xs text-muted-foreground mb-1">
               From Page
               {suggestedFromPage && (
@@ -280,7 +300,7 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
             }}
               className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50" />
           </div>
-          <div>
+          <div className="flex flex-col justify-end">
             <label className="block text-xs text-muted-foreground mb-1">To Page</label>
             <input name="sabaqToPage" type="number" step="0.5" value={sabaqToPage} onChange={(e) => {
               const nextTo = e.target.value;
@@ -289,12 +309,12 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
             }}
               className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50" />
           </div>
-          <div>
+          <div className="flex flex-col justify-end">
             <label className="block text-xs text-muted-foreground mb-1">Total Pages</label>
             <input name="sabaqPages" type="number" step="0.5" value={sabaqPages} onChange={(e) => setSabaqPages(e.target.value)}
               className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50" />
           </div>
-          <div>
+          <div className="flex flex-col justify-end">
             <label className="block text-xs text-muted-foreground mb-1">Juz</label>
             <input
               name="sabaqJuzNumber"
@@ -330,11 +350,25 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
             <label className="block text-xs text-muted-foreground mb-1">Status</label>
             <div className="flex gap-4 items-center h-9">
               <label className="flex items-center gap-2 cursor-pointer text-sm">
-                <input type="radio" name="sabaqJuzGiven" value="true" defaultChecked={existingEntry?.sabaqJuzGiven === true} className="accent-primary" />
+                <input 
+                  type="radio" 
+                  name="sabaqJuzGiven" 
+                  value="true" 
+                  checked={sabaqJuzGiven === true}
+                  onChange={() => setSabaqJuzGiven(true)}
+                  className="accent-primary" 
+                />
                 Given
               </label>
               <label className="flex items-center gap-2 cursor-pointer text-sm">
-                <input type="radio" name="sabaqJuzGiven" value="false" defaultChecked={existingEntry?.sabaqJuzGiven === false} className="accent-primary" />
+                <input 
+                  type="radio" 
+                  name="sabaqJuzGiven" 
+                  value="false" 
+                  checked={sabaqJuzGiven === false}
+                  onChange={() => setSabaqJuzGiven(false)}
+                  className="accent-primary" 
+                />
                 Not Given
               </label>
             </div>
@@ -342,7 +376,8 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
           <div>
             <label className="block text-xs text-muted-foreground mb-1">Or Select Reason</label>
             <select name="sabaqJuzRemarksId" defaultValue={existingEntry?.sabaqJuzRemarksId ?? ""}
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 bg-background">
+              disabled={sabaqJuzGiven === true}
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 bg-background disabled:opacity-50 disabled:bg-muted">
               <option value="">-- No Reason --</option>
               {sabaqJuzRemarks.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
             </select>
@@ -393,6 +428,7 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
           {existingEntry ? "Update Entry" : "Save Entry"}
         </button>
       </div>
+      </fieldset>
     </form>
   );
 }

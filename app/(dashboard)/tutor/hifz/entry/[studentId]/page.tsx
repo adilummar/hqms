@@ -7,6 +7,7 @@ import { HifzEntryForm } from "@/components/hifz/hifz-entry-form";
 import { HafizModeToggle } from "@/components/hifz/hafiz-mode-toggle";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getActiveLeavePeriod } from "@/lib/actions/leave-tracker";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Daily Hifz Entry Form" };
@@ -31,41 +32,9 @@ export default async function HifzEntryPage({ params, searchParams }: Props) {
   if (!student) return notFound();
 
   // ── Block entry if a leave period is active ───────────────────────────────────
-  const activeLeave = await db.query.leavePeriods.findFirst({
-    where: eq(leavePeriods.isActive, true),
-  });
+  const activeLeave = await getActiveLeavePeriod();
 
-  if (activeLeave) {
-    return (
-      <div className="max-w-2xl mx-auto">
-        <PageHeader
-          title={`Entry for ${student.firstName} ${student.lastName ?? ""}`}
-          description={`Date: ${targetDate} | ID: ${student.studentCode}`}
-          breadcrumbs={[
-            { label: "Tutor" },
-            { label: "Hifz Entry", href: "/tutor/hifz" },
-            { label: "Form" },
-          ]}
-        />
-        <div className="bg-amber-50 border border-amber-300 rounded-xl px-6 py-8 text-center space-y-3">
-          <span className="text-4xl block">🌙</span>
-          <p className="font-playfair text-lg font-semibold text-amber-900">
-            Hifz Tracker is paused
-          </p>
-          <p className="text-sm text-amber-700">
-            <span className="font-medium">{activeLeave.name}</span> ({activeLeave.startDate} → {activeLeave.endDate}) is currently active.
-            New entries cannot be recorded during leave periods.
-          </p>
-          <Link
-            href="/tutor/hifz"
-            className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-amber-800 underline underline-offset-2 hover:text-amber-900"
-          >
-            ← Back to Hifz List
-          </Link>
-        </div>
-      </div>
-    );
-  }
+
 
   const session = await getSession();
   const canRevert =
@@ -146,6 +115,7 @@ export default async function HifzEntryPage({ params, searchParams }: Props) {
         isHafiz={student.isHafiz}
         completedJuzCount={completedJuzCount}
         canRevert={canRevert}
+        isLeaveActive={!!activeLeave}
       />
 
       <HifzEntryForm
@@ -159,6 +129,7 @@ export default async function HifzEntryPage({ params, searchParams }: Props) {
         dauraRemarks={dauraRemarks}
         isHafiz={student.isHafiz}
         lastSabaqToPage={lastEntry?.sabaqToPage ?? undefined}
+        activeLeave={activeLeave}
       />
     </div>
   );

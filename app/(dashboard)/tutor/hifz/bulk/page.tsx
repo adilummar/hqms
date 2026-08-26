@@ -1,3 +1,4 @@
+import { getActiveLeavePeriod } from "@/lib/actions/leave-tracker";
 import { requireTutor } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import {
@@ -38,42 +39,10 @@ export default async function HifzBulkPage({ searchParams }: Props) {
   const today = new Date().toISOString().split("T")[0];
   const selectedDate = params.date ?? today;
 
-  // ── Leave period check ─────────────────────────────────────────────────────
-  const activeLeave = await db.query.leavePeriods.findFirst({
-    where: eq(leavePeriods.isActive, true),
-  });
+  // ── Check for active leave period — Hifz tracker is paused during leave ──
+  const activeLeave = await getActiveLeavePeriod();
 
-  if (activeLeave) {
-    return (
-      <div>
-        <PageHeader
-          title="Bulk Hifz Entry"
-          breadcrumbs={[
-            { label: "Tutor" },
-            { label: "Hifz Entry", href: "/tutor/hifz" },
-            { label: "Bulk" },
-          ]}
-        />
-        <div className="bg-amber-50 border border-amber-300 rounded-xl px-6 py-8 text-center space-y-3">
-          <span className="text-4xl block">🌙</span>
-          <p className="font-playfair text-lg font-semibold text-amber-900">
-            Hifz Tracker is paused
-          </p>
-          <p className="text-sm text-amber-700">
-            <span className="font-medium">{activeLeave.name}</span> (
-            {activeLeave.startDate} → {activeLeave.endDate}) is currently
-            active. Entries are disabled during leave periods.
-          </p>
-          <Link
-            href="/tutor/hifz"
-            className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-amber-800 underline underline-offset-2"
-          >
-            ← Back to Hifz List
-          </Link>
-        </div>
-      </div>
-    );
-  }
+
 
   // ── Classes ────────────────────────────────────────────────────────────────
   const hifzClasses = await db.query.classes.findMany({
@@ -253,6 +222,7 @@ export default async function HifzBulkPage({ searchParams }: Props) {
         sabaqRemarks={sabaqRemarks}
         sabaqJuzRemarks={sabaqJuzRemarks}
         dauraRemarks={dauraRemarks}
+        activeLeave={activeLeave}
       />
     </div>
   );

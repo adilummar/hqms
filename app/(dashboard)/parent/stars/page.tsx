@@ -4,6 +4,7 @@ import { studentStars } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { StarSummary } from "@/components/stars/star-summary";
+import { Star, StarOff } from "lucide-react";
 import { StarHistoryTable } from "@/components/stars/star-history-table";
 import type { Metadata } from "next";
 
@@ -32,7 +33,7 @@ export default async function ParentStarsPage() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-5 flex items-center gap-4">
-          <span className="text-4xl">⭐</span>
+          <Star className="w-10 h-10 text-blue-600 drop-shadow-sm" fill="currentColor" />
           <div>
             <p className="text-3xl font-playfair font-bold text-blue-700">{blueCount}</p>
             <p className="text-sm text-blue-600 font-medium">Blue Stars</p>
@@ -40,7 +41,7 @@ export default async function ParentStarsPage() {
           </div>
         </div>
         <div className="bg-gray-100 border border-gray-300 rounded-lg p-5 flex items-center gap-4">
-          <span className="text-4xl">🌑</span>
+          <StarOff className="w-10 h-10 text-gray-800 drop-shadow-sm" />
           <div>
             <p className="text-3xl font-playfair font-bold text-gray-700">{blackCount}</p>
             <p className="text-sm text-gray-600 font-medium">Black Stars</p>

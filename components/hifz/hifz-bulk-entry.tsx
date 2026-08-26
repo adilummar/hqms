@@ -5,6 +5,7 @@ import { saveBulkHifzEntries } from "@/lib/actions/hifz";
 import { toast } from "sonner";
 import { Save, Loader2, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { leavePeriods } from "@/lib/db/schema";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,7 @@ interface Props {
   sabaqRemarks: Remark[];
   sabaqJuzRemarks: Remark[];
   dauraRemarks: Remark[];
+  activeLeave?: typeof leavePeriods.$inferSelect | null;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -86,6 +88,7 @@ export function HifzBulkEntry({
   sabaqRemarks,
   sabaqJuzRemarks,
   dauraRemarks,
+  activeLeave,
 }: Props) {
   // Initialise row state from existing entries (or defaults)
   const [rows, setRows] = useState<RowState[]>(() =>
@@ -190,6 +193,21 @@ export function HifzBulkEntry({
 
   return (
     <div className="space-y-3 pb-28">
+      {activeLeave && (
+        <div className="bg-amber-50 border border-amber-300 rounded-lg px-5 py-4 flex items-start gap-3 mb-6">
+          <span className="text-2xl mt-0.5">🌙</span>
+          <div>
+            <p className="font-semibold text-amber-900 text-sm">
+              Hifz Tracker paused — Leave period is active
+            </p>
+            <p className="text-xs text-amber-700 mt-1">
+              <span className="font-medium">{activeLeave.name}</span> ({activeLeave.startDate} → {activeLeave.endDate}) is currently active.
+              Existing entries are locked and new entries are disabled.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Summary bar */}
       <div className="flex items-center justify-between px-1">
         <p className="text-xs text-muted-foreground">
@@ -210,6 +228,7 @@ export function HifzBulkEntry({
         Sabaq Juz is checked ✓ by default — uncheck if not given
       </p>
 
+      <fieldset disabled={!!activeLeave} className="space-y-3">
       {/* Student cards */}
       {students.map((student, i) => {
         const row = rows[i];
@@ -382,6 +401,7 @@ export function HifzBulkEntry({
           </div>
         );
       })}
+      </fieldset>
 
       {/* ── Fixed Save All button ──────────────────────────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 md:left-16 lg:left-64 z-40 pointer-events-none">
@@ -403,6 +423,8 @@ export function HifzBulkEntry({
             )}
             {saving
               ? "Saving…"
+              : !!activeLeave
+              ? "Inputs Locked"
               : readyCount > 0
               ? `Save All — ${readyCount} student${readyCount !== 1 ? "s" : ""}`
               : "Enter data above to save"}

@@ -20,6 +20,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Trophy,
 } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,7 @@ const PARENT_NAV: NavItem[] = [
   { label: "Progress",      href: "/parent/progress",     icon: BookOpen },
   { label: "Attendance",    href: "/parent/attendance",   icon: CalendarCheck },
   { label: "Leave Tracker", href: "/parent/leave-tracker",icon: CalendarCheck2 },
+  { label: "Exam Results",  href: "/parent/results",      icon: Trophy },
   { label: "Stars",         href: "/parent/stars",        icon: Star },
 ];
 

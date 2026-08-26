@@ -118,20 +118,37 @@ export async function deleteLeavePeriod(periodId: string) {
 }
 
 export async function getLeavePeriods() {
-  return db.query.leavePeriods.findMany({
+  const periods = await db.query.leavePeriods.findMany({
     orderBy: desc(leavePeriods.createdAt),
     with: {
       days: {
         orderBy: asc(leavePeriodDays.dayNumber),
-        // Must include suspensions so the settings UI can display/toggle them correctly
         with: { suspensions: true },
       },
     },
   });
+
+  // Lazy deactivation of expired active periods
+  const today = new Date().toISOString().split("T")[0];
+  let needsRevalidate = false;
+  
+  for (const period of periods) {
+    if (period.isActive && period.endDate < today) {
+      await db.update(leavePeriods).set({ isActive: false }).where(eq(leavePeriods.id, period.id));
+      period.isActive = false;
+      needsRevalidate = true;
+    }
+  }
+
+  if (needsRevalidate) {
+    // We do not revalidate here to avoid loops, the database is now correct for future loads
+  }
+
+  return periods;
 }
 
 export async function getActiveLeavePeriod() {
-  return db.query.leavePeriods.findFirst({
+  const active = await db.query.leavePeriods.findFirst({
     where: eq(leavePeriods.isActive, true),
     with: {
       days: {
@@ -140,6 +157,16 @@ export async function getActiveLeavePeriod() {
       },
     },
   });
+
+  if (active) {
+    const today = new Date().toISOString().split("T")[0];
+    if (active.endDate < today) {
+      // Auto-deactivate
+      await db.update(leavePeriods).set({ isActive: false }).where(eq(leavePeriods.id, active.id));
+      return undefined;
+    }
+  }
+  return active;
 }
 
 // ── Leave Period Day Label ────────────────────────────────────────────────────

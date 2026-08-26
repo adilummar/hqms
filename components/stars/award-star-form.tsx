@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { awardStar, removeStar } from "@/lib/actions/stars";
 import { toast } from "sonner";
-import { Loader2, Star, X } from "lucide-react";
+import { Loader2, Star, StarOff, X } from "lucide-react";
 
 interface StarEntry {
   id: string;
@@ -99,7 +99,7 @@ export function AwardStarForm({
               <Star size={12} fill="currentColor" /> {blueCount}
             </span>
             <span className="flex items-center gap-1 rounded-full border border-gray-400 bg-gray-100 px-2 py-0.5 font-semibold text-black">
-              <Star size={12} fill="currentColor" /> {blackCount}
+              <StarOff size={12} /> {blackCount}
             </span>
           </div>
           <button
@@ -141,7 +141,7 @@ export function AwardStarForm({
                   : "border-border bg-background text-muted-foreground hover:border-gray-500"
               }`}
             >
-              <Star size={16} fill="currentColor" />
+              <StarOff size={16} />
               Black Star
               <span className="text-xs font-normal opacity-75">(Warning)</span>
             </button>
@@ -200,15 +200,11 @@ export function AwardStarForm({
               }`}
             >
               <div className="flex min-w-0 flex-1 items-start gap-2">
-                <Star
-                  size={16}
-                  fill="currentColor"
-                  className={
-                    star.type === "blue"
-                      ? "shrink-0 text-blue-600"
-                      : "shrink-0 text-black"
-                  }
-                />
+                {star.type === "blue" ? (
+                  <Star size={16} fill="currentColor" className="shrink-0 text-blue-600" />
+                ) : (
+                  <StarOff size={16} className="shrink-0 text-black" />
+                )}
                 <div>
                   <p className="leading-relaxed text-muted-foreground">
                     {star.reason}
