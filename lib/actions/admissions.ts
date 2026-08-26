@@ -198,13 +198,14 @@ export async function admitApplicationFromForm(formData: FormData) {
   const session = await requireRole(["admin", "super_admin"]);
 
   const applicationId = String(formData.get("applicationId") ?? "");
+  const academicYearId = String(formData.get("academicYearId") ?? "");
   const hifzClassId = String(formData.get("hifzClassId") ?? "");
   const madrasaClassId = String(formData.get("madrasaClassId") ?? "");
   const schoolClassId = String(formData.get("schoolClassId") ?? "");
   const yearOfStudy = String(formData.get("yearOfStudy") ?? "1st");
   const admissionDate = String(formData.get("admissionDate") ?? new Date().toISOString().split("T")[0]);
 
-  if (!applicationId || !hifzClassId || !madrasaClassId || !schoolClassId) {
+  if (!applicationId || !academicYearId || !hifzClassId || !madrasaClassId || !schoolClassId) {
     redirect(`/admin/admissions/applications/${applicationId}?error=missing-classes`);
   }
 
@@ -276,7 +277,7 @@ export async function admitApplicationFromForm(formData: FormData) {
         address: application.address,
         photoUrl: application.photoUrl,
         admissionDate,
-        admissionYearId: application.academicYearId,
+        admissionYearId: academicYearId,
         status: "active",
       })
       .returning();
@@ -297,7 +298,7 @@ export async function admitApplicationFromForm(formData: FormData) {
       await tx.insert(enrollments).values({
         studentId: student.id,
         classId,
-        academicYearId: application.academicYearId,
+        academicYearId: academicYearId,
         yearOfStudy,
         status: "active",
       });

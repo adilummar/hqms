@@ -1,39 +1,65 @@
 "use server";
 
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import { randomUUID } from "crypto";
-import { existsSync } from "fs";
+import { v2 as cloudinary } from "cloudinary";
 
-export async function uploadFile(formData: FormData): Promise<{ success: boolean; url?: string; error?: string }> {
+// Configure Cloudinary with env variables
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+export async function uploadFile(
+  formData: FormData
+): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
+    // Validate Cloudinary config
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      return { success: false, error: "Cloudinary is not configured. Please add credentials to .env.local." };
+    }
+
     const file = formData.get("file") as File;
     if (!file) {
       return { success: false, error: "No file provided" };
     }
 
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      return { success: false, error: "Only image files are allowed" };
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      return { success: false, error: "File too large. Maximum size is 10MB." };
+    }
+
+    // Convert File to Buffer for Cloudinary upload
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Create unique filename
-    const ext = file.name.split('.').pop() || 'png';
-    const filename = `${randomUUID()}.${ext}`;
+    // Upload to Cloudinary using upload_stream
+    const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: "hqms",          // All uploads go into "hqms" folder in your Cloudinary
+          resource_type: "image",
+          transformation: [
+            { quality: "auto" },   // Auto-optimize quality
+            { fetch_format: "auto" }, // Auto best format (WebP etc.)
+          ],
+        },
+        (error, result) => {
+          if (error || !result) reject(error || new Error("Upload failed"));
+          else resolve(result as { secure_url: string });
+        }
+      );
+      uploadStream.end(buffer);
+    });
 
-    // Ensure uploads directory exists
-    const uploadsDir = join(process.cwd(), "public", "uploads");
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
-    }
-
-    const filepath = join(uploadsDir, filename);
-    await writeFile(filepath, buffer);
-
-    // Return the public URL
-    const fileUrl = `/uploads/${filename}`;
-    
-    return { success: true, url: fileUrl };
+    return { success: true, url: result.secure_url };
   } catch (error) {
-    console.error("Upload error:", error);
-    return { success: false, error: "Failed to upload file" };
+    console.error("Cloudinary upload error:", error);
+    return { success: false, error: "Upload failed. Please try again." };
   }
 }
+

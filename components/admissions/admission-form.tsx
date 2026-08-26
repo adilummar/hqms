@@ -64,7 +64,7 @@ export function AdmissionForm({
     }
   }
 
-  const inputClass = "w-full h-10 px-3 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50/20";
+  const inputClass = "w-full h-10 px-3 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20";
   const labelClass = "text-sm font-medium text-muted-foreground";
 
   return (
@@ -259,7 +259,7 @@ export function AdmissionForm({
         <Button
           type="submit"
           disabled={isPending || allBatches.length === 0}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 min-w-[160px]"
+          className="bg-foreground text-background hover:bg-foreground/90 min-w-[160px]"
         >
           {isPending ? "Submitting..." : "Submit Admission"}
         </Button>

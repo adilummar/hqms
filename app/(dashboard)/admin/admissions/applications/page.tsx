@@ -45,7 +45,7 @@ export default async function ApplicationsPage({ searchParams }: Props) {
   const statusColors: Record<string, string> = {
     pending: "bg-yellow-50 text-yellow-800 border border-yellow-200",
     shortlisted: "bg-blue-50 text-blue-800 border border-blue-200",
-    selected: "bg-primary/5 text-green-800 border border-primary/20",
+    selected: "bg-green-50 text-green-800 border border-green-200",
     rejected: "bg-red-50 text-red-800 border border-red-200",
   };
 

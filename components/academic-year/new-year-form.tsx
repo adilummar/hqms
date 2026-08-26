@@ -65,7 +65,7 @@ export function NewAcademicYearForm({ nextBatchNumber }: Props) {
     return (
       <button
         onClick={() => setStep("form")}
-        className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors"
+        className="flex items-center gap-2 px-4 py-2 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors"
       >
         <Plus size={16} />
         Start New Academic Year
@@ -76,11 +76,11 @@ export function NewAcademicYearForm({ nextBatchNumber }: Props) {
   // ── Done overlay ──────────────────────────────────────────────
   if (step === "done") {
     return (
-      <div className="border border-primary/20 bg-primary/5 rounded-lg p-6 flex items-center gap-3">
-        <CheckCircle className="text-primary shrink-0" size={24} />
+      <div className="border border-green-200 bg-green-50 rounded-lg p-6 flex items-center gap-3">
+        <CheckCircle className="text-green-500 shrink-0" size={24} />
         <div>
           <p className="font-semibold text-green-800 text-sm">All done!</p>
-          <p className="text-xs text-primary">Academic year and batch created.</p>
+          <p className="text-xs text-green-600">Academic year and batch created.</p>
         </div>
       </div>
     );
@@ -116,7 +116,7 @@ export function NewAcademicYearForm({ nextBatchNumber }: Props) {
               <input
                 name="label"
                 type="text"
-                placeholder="e.g. 2024-25"
+                placeholder="e.g. 2025-26"
                 className="w-full h-9 px-3 border border-amber-300 rounded-sm text-sm bg-white focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
             </div>

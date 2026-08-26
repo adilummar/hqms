@@ -70,12 +70,12 @@ export function PromoteStudentsClient({ pendingStudents, newAcademicYearId, year
 
   if (remaining.length === 0) {
     return (
-      <div className="border border-primary/20 bg-primary/5 rounded-lg p-10 text-center">
-        <CheckCircle className="mx-auto text-primary mb-3" size={40} />
+      <div className="border border-green-200 bg-green-50 rounded-lg p-10 text-center">
+        <CheckCircle className="mx-auto text-green-500 mb-3" size={40} />
         <p className="font-playfair text-lg font-semibold text-green-800">
           All students promoted to {yearLabel}!
         </p>
-        <p className="text-sm text-primary mt-1">
+        <p className="text-sm text-green-600 mt-1">
           Every active student now has an enrollment in the new academic year.
         </p>
       </div>
@@ -108,7 +108,7 @@ export function PromoteStudentsClient({ pendingStudents, newAcademicYearId, year
               <button
                 onClick={() => handleBulkClass(classId)}
                 disabled={isBulkPending}
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-primary text-primary-foreground rounded-sm hover:bg-primary/80 transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-foreground text-background rounded-sm hover:bg-foreground/80 transition-colors disabled:opacity-50"
               >
                 {isBulkPending ? <Loader2 size={12} className="animate-spin" /> : null}
                 Promote All in Class
@@ -135,7 +135,7 @@ export function PromoteStudentsClient({ pendingStudents, newAcademicYearId, year
                   const isLoading = promoting.has(s.studentId);
                   const isDone = promoted.has(s.studentId);
                   return (
-                    <tr key={s.studentId} className={isDone ? "bg-primary/5/50" : "hover:bg-muted/20"}>
+                    <tr key={s.studentId} className={isDone ? "bg-green-50/50" : "hover:bg-muted/20"}>
                       <td className="px-4 py-3">
                         <p className="font-medium text-foreground text-sm">{s.name}</p>
                         <p className="text-xs text-muted-foreground font-jetbrains">{s.studentCode}</p>
@@ -151,7 +151,7 @@ export function PromoteStudentsClient({ pendingStudents, newAcademicYearId, year
                       </td>
                       <td className="px-4 py-3 text-right">
                         {isDone ? (
-                          <span className="text-xs text-primary font-medium flex items-center justify-end gap-1">
+                          <span className="text-xs text-green-600 font-medium flex items-center justify-end gap-1">
                             <CheckCircle size={13} /> Promoted
                           </span>
                         ) : (

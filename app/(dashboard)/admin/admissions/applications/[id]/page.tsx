@@ -7,6 +7,7 @@ import {
   admitApplicationFromForm,
   updateApplicationStatusFromForm,
 } from "@/lib/actions/admissions";
+import { AdmissionDecisionForm } from "@/components/admissions/admission-decision-form";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -22,7 +23,7 @@ interface Props {
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-50 text-yellow-800 border border-yellow-200",
   shortlisted: "bg-blue-50 text-blue-800 border border-blue-200",
-  selected: "bg-primary/5 text-green-800 border border-primary/20",
+  selected: "bg-green-50 text-green-800 border border-green-200",
   rejected: "bg-red-50 text-red-800 border border-red-200",
 };
 
@@ -39,41 +40,14 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
-function ClassSelect({
-  label,
-  name,
-  options,
-}: {
-  label: string;
-  name: string;
-  options: { id: string; name: string }[];
-}) {
-  return (
-    <div>
-      <label className="block text-xs text-muted-foreground mb-1">{label}</label>
-      <select
-        required
-        name={name}
-        defaultValue={options[0]?.id ?? ""}
-        className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
-      >
-        <option value="">Select {label}</option>
-        {options.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.name}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
+
 
 export default async function ApplicationDetailsPage({ params, searchParams }: Props) {
   await requireAdmin();
   const { id } = await params;
   const { error } = await searchParams;
 
-  const [application, activeClasses, admittedStudent] = await Promise.all([
+  const [application, activeClasses, admittedStudent, allAcademicYears] = await Promise.all([
     db.query.admissionApplications.findFirst({
       where: eq(admissionApplications.id, id),
       with: {
@@ -88,19 +62,14 @@ export default async function ApplicationDetailsPage({ params, searchParams }: P
     db.query.students.findFirst({
       where: eq(students.applicationId, id),
     }),
+    db.query.academicYears.findMany({
+      orderBy: (ay, { desc }) => [desc(ay.startDate)],
+    }),
   ]);
 
   if (!application) notFound();
 
-  const hifzClasses = activeClasses.filter((item) => item.track === "hifz");
-  const madrasaClasses = activeClasses.filter((item) => item.track === "madrasa");
-  const schoolClasses = activeClasses.filter((item) => item.track === "school");
-  const canAdmit =
-    application.status !== "selected" &&
-    application.status !== "rejected" &&
-    hifzClasses.length > 0 &&
-    madrasaClasses.length > 0 &&
-    schoolClasses.length > 0;
+  if (!application) notFound();
 
   return (
     <div>
@@ -231,36 +200,12 @@ export default async function ApplicationDetailsPage({ params, searchParams }: P
                 </form>
               )}
 
-              {canAdmit ? (
-                <form action={admitApplicationFromForm} className="space-y-3 border border-primary/20 bg-primary/5/60 rounded-sm p-3">
-                  <input type="hidden" name="applicationId" value={application.id} />
-                  <ClassSelect label="Hifz Class" name="hifzClassId" options={hifzClasses} />
-                  <ClassSelect label="Madrasa Class" name="madrasaClassId" options={madrasaClasses} />
-                  <ClassSelect label="School Class" name="schoolClassId" options={schoolClasses} />
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs text-muted-foreground mb-1">Year</label>
-                      <select name="yearOfStudy" defaultValue="1st" className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background">
-                        <option value="1st">1st</option>
-                        <option value="2nd">2nd</option>
-                        <option value="3rd">3rd</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-muted-foreground mb-1">Admission Date</label>
-                      <input
-                        required
-                        name="admissionDate"
-                        type="date"
-                        defaultValue={new Date().toISOString().split("T")[0]}
-                        className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background"
-                      />
-                    </div>
-                  </div>
-                  <button className="w-full h-9 bg-green-700 text-white text-sm font-medium rounded-sm hover:bg-green-800 transition-colors">
-                    Give Admission
-                  </button>
-                </form>
+              {application.status !== "selected" && application.status !== "rejected" ? (
+                <AdmissionDecisionForm
+                  applicationId={application.id}
+                  academicYears={allAcademicYears}
+                  classes={activeClasses}
+                />
               ) : (
                 !admittedStudent && application.status !== "rejected" && (
                   <p className="text-sm text-muted-foreground border border-border rounded-sm p-3">

@@ -2,8 +2,11 @@ import { z } from "zod";
 
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-  NEXTAUTH_SECRET: z.string().min(1, "NEXTAUTH_SECRET is required"),
-  NEXTAUTH_URL: z.string().url().default("http://localhost:3000"),
+  // Auth.js v5 uses AUTH_SECRET (previously NEXTAUTH_SECRET)
+  AUTH_SECRET: z.string().min(1, "AUTH_SECRET is required"),
+  // AUTH_URL is the v5 name; NEXTAUTH_URL is also accepted as a fallback
+  AUTH_URL: z.string().url().optional(),
+  NEXTAUTH_URL: z.string().url().optional(),
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),

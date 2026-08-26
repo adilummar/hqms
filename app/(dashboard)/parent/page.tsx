@@ -9,7 +9,6 @@ import { StarSummary } from "@/components/stars/star-summary";
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
-import { Trophy, FileText } from "lucide-react";
 import { format } from "date-fns";
 
 export const metadata: Metadata = { title: "My Child's Progress" };
@@ -28,18 +27,33 @@ export default async function ParentDashboard() {
   const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0];
   const today = now.toISOString().split("T")[0];
 
-  // Find classes the student is enrolled in
-  const studentEnrollments = await db.query.enrollments.findMany({
-    where: eq(enrollments.studentId, studentId),
+  const studentData = await db.query.students.findFirst({
+    where: eq(students.id, studentId),
+    with: { enrollments: { with: { class: true } } },
   });
-  const enrolledClassIds = studentEnrollments.map((e) => e.classId);
 
-  const [student, juzData, recentEntries, monthlyTarget, juzCompletions, starCounts] =
+  const enrollment = studentData?.enrollments[0];
+  const relevantSubjects = enrollment ? await db.query.examSubjects.findMany({
+    where: eq(examSubjects.classId, enrollment.classId)
+  }) : [];
+
+  const examSessionIds = [...new Set(relevantSubjects.map((s) => s.examSessionId))];
+
+  let relevantPublishedSessions: any[] = [];
+  if (examSessionIds.length > 0) {
+    relevantPublishedSessions = await db.query.examSessions.findMany({
+      where: and(
+        inArray(examSessions.id, examSessionIds),
+        eq(examSessions.resultStatus, "published")
+      ),
+      columns: { examinationId: true }
+    });
+  }
+  const publishedExaminationIds = [...new Set(relevantPublishedSessions.map(s => s.examinationId))];
+
+  const [student, juzData, recentEntries, monthlyTarget, juzCompletions, starCounts, exams] =
     await Promise.all([
-      db.query.students.findFirst({
-        where: eq(students.id, studentId),
-        with: { enrollments: { with: { class: true } } },
-      }),
+      Promise.resolve(studentData),
       db.query.juzTracker.findMany({
         where: eq(juzTracker.studentId, studentId),
         orderBy: [asc(juzTracker.juzNumber)],
@@ -69,6 +83,12 @@ export default async function ParentDashboard() {
         where: eq(studentStars.studentId, studentId),
         columns: { type: true },
       }),
+      publishedExaminationIds.length > 0
+        ? db.query.examinations.findMany({
+            where: inArray(examinations.id, publishedExaminationIds),
+            orderBy: [desc(examinations.createdAt)],
+          })
+        : Promise.resolve([]),
     ]);
 
   if (!student) {
@@ -215,4 +235,3 @@ export default async function ParentDashboard() {
     </div>
   );
 }
-

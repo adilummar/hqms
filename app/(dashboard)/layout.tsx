@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { MobileNav } from "@/components/layout/mobile-nav";
 
-export default async function DashboardLayout({
+export default async function DashboardRootLayout({
   children,
 }: {
   children: React.ReactNode;

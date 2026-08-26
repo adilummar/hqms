@@ -19,7 +19,7 @@ export const settings = pgTable("settings", {
 
 // Keys:
 // "student_login_enabled" → "true" | "false"
-// "current_academic_year" → "2024-25"
+// "current_academic_year" → "2025-26"
 // "hifz_year1_monthly_target" → "1"
 // "hifz_year2_monthly_target" → "2"
 // "hifz_year3_monthly_target" → "2.5"
@@ -35,9 +35,12 @@ export const academicYears = pgTable("academic_years", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Placeholder relations — enrollments and classes import academicYears so
-// we define a minimal self-referencing relation to allow `with` queries.
+// NOTE: examinations and other tables reference academicYears via foreign key.
+// We keep this minimal but non-empty so Drizzle's relational query engine can
+// resolve `with: { academicYear: true }` joins using the correct UUID id field
+// rather than accidentally falling back to batchNumber (an integer).
 export const academicYearsRelations = relations(academicYears, () => ({}));
+
 
 // ── Batches ───────────────────────────────────────────────────────────────────
 // A batch is a student cohort (Batch 1, Batch 2 …).

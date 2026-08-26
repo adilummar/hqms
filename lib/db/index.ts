@@ -10,15 +10,18 @@ const pool =
   globalForDb.pool ??
   new Pool({
     connectionString: process.env.DATABASE_URL,
-    // Supabase Session Pooler (PgBouncer) aggressively drops idle connections.
-    // Keep the client-side pool small and always use keepAlive so dead
-    // sockets are detected before a query hits them (prevents ECONNRESET).
-    max: 3,
-    idleTimeoutMillis: 10_000,   // drop idle connections after 10 s
-    connectionTimeoutMillis: 10_000,
+    // Increased to 10 to handle parallel Promise.all queries in Next.js
+    max: 10,
+    // Increased timeouts to prevent premature crashes on slow network
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 30000,
     keepAlive: true,
-    keepAliveInitialDelayMillis: 5_000,
   });
+
+// Prevent unhandled pool errors from crashing the process
+pool.on("error", (err) => {
+  console.error("[db] Pool error (connection dropped):", err.message);
+});
 
 if (process.env.NODE_ENV !== "production") {
   globalForDb.pool = pool;
@@ -26,3 +29,4 @@ if (process.env.NODE_ENV !== "production") {
 
 export const db = drizzle(pool, { schema });
 export type DB = typeof db;
+

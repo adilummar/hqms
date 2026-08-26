@@ -20,7 +20,7 @@ export default async function UnauthorizedPage() {
         </p>
         <Link
           href="/login"
-          className="inline-block px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors"
+          className="inline-block px-4 py-2 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors"
         >
           Return to Login
         </Link>

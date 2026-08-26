@@ -13,7 +13,7 @@ import {
 import { requireRole, getParentStudentId } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
 import { z } from "zod";
-import { eq, and, asc, desc, inArray } from "drizzle-orm";
+import { eq, and, asc, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 
@@ -205,38 +205,6 @@ export async function toggleActivitySuspension(
         )
       );
   }
-
-  revalidatePath("/admin/leave-tracker/settings");
-  revalidatePath("/parent/leave-tracker");
-  return { success: true };
-}
-export async function savePeriodSuspensions(
-  periodId: string,
-  suspensions: { dayId: string; activityId: string }[]
-) {
-  const session = await requireRole(["admin", "super_admin"]);
-
-  const days = await db.query.leavePeriodDays.findMany({
-    where: eq(leavePeriodDays.leavePeriodId, periodId),
-  });
-  const dayIds = days.map((d) => d.id);
-
-  await db.transaction(async (tx) => {
-    if (dayIds.length > 0) {
-      await tx
-        .delete(leaveDayActivitySuspensions)
-        .where(inArray(leaveDayActivitySuspensions.leavePeriodDayId, dayIds));
-    }
-
-    if (suspensions.length > 0) {
-      await tx.insert(leaveDayActivitySuspensions).values(
-        suspensions.map((s) => ({
-          leavePeriodDayId: s.dayId,
-          activityId: s.activityId,
-        }))
-      );
-    }
-  });
 
   revalidatePath("/admin/leave-tracker/settings");
   revalidatePath("/parent/leave-tracker");

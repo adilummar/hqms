@@ -161,7 +161,7 @@ export function ParentMeetingReportClient({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search student or class…"
-            className="w-full h-9 pl-9 pr-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="w-full h-9 pl-9 pr-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
           />
         </div>
 
@@ -170,7 +170,7 @@ export function ParentMeetingReportClient({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            className="h-9 pl-3 pr-8 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 appearance-none"
+            className="h-9 pl-3 pr-8 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground appearance-none"
           >
             <option value="all">All Students</option>
             <option value="attended">Parents Attended</option>

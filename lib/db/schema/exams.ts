@@ -54,6 +54,7 @@ export const examSessions = pgTable("exam_sessions", {
   publishedAt: timestamp("published_at"),
   createdBy: uuid("created_by")
     .references(() => users.id, { onDelete: "set null" }),
+  tutorMarkEntryOnly: boolean("tutor_mark_entry_only").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (t) => ({

@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { BackButton } from "@/components/layout/back-button";
 
 interface BreadcrumbItem {
   label: string;
@@ -13,6 +14,8 @@ interface PageHeaderProps {
   breadcrumbs?: BreadcrumbItem[];
   action?: React.ReactNode;
   className?: string;
+  /** Set to false to hide the back button. Defaults to true. */
+  showBack?: boolean;
 }
 
 export function PageHeader({
@@ -21,9 +24,13 @@ export function PageHeader({
   breadcrumbs,
   action,
   className,
+  showBack = true,
 }: PageHeaderProps) {
   return (
     <div className={cn("mb-6 md:mb-8", className)}>
+      {/* Back button — always rendered; BackButton itself hides when no history */}
+      {showBack && <BackButton />}
+
       {/* Breadcrumbs */}
       {breadcrumbs && breadcrumbs.length > 0 && (
         <nav aria-label="Breadcrumb" className="flex items-center mb-3">
@@ -39,12 +46,12 @@ export function PageHeader({
               {crumb.href ? (
                 <Link
                   href={crumb.href}
-                  className="text-[12px] text-muted-foreground hover:text-foreground transition-colors font-dm-sans"
+                  className="text-[12px] text-slate-400 hover:text-slate-700 transition-colors font-dm-sans"
                 >
                   {crumb.label}
                 </Link>
               ) : (
-                <span className="text-[12px] text-muted-foreground font-dm-sans">
+                <span className="text-[12px] text-slate-400 font-dm-sans">
                   {crumb.label}
                 </span>
               )}
@@ -68,8 +75,11 @@ export function PageHeader({
         {action && <div className="flex-shrink-0">{action}</div>}
       </div>
 
-      {/* Subtle bottom border without accent */}
-      <div className="mt-4 border-b border-border" />
+      {/* Subtle accent underline */}
+      <div className="mt-4 flex items-center gap-2">
+        <div className="w-8 h-0.5 bg-teal rounded-full" />
+        <div className="flex-1 h-px bg-border" />
+      </div>
     </div>
   );
 }

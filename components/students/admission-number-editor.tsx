@@ -41,7 +41,7 @@ export function AdmissionNumberEditor({ studentId, currentAdmissionNumber }: Pro
   if (!editing) {
     return (
       <div className="flex items-center gap-2 group">
-        <span className="font-jetbrains text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded">
+        <span className="font-jetbrains text-xs bg-foreground text-background px-2 py-0.5 rounded">
           {currentAdmissionNumber ? `AD No. ${currentAdmissionNumber}` : "No AD Number"}
         </span>
         <button
@@ -68,12 +68,12 @@ export function AdmissionNumberEditor({ studentId, currentAdmissionNumber }: Pro
             if (e.key === "Escape") cancel();
           }}
           placeholder="e.g. 150"
-          className="w-24 px-2 py-0.5 text-xs border border-border rounded bg-card outline-none focus:ring-1 focus:ring-primary/50/30 font-jetbrains"
+          className="w-24 px-2 py-0.5 text-xs border border-border rounded bg-card outline-none focus:ring-1 focus:ring-foreground/30 font-jetbrains"
         />
         <button
           onClick={save}
           disabled={isPending}
-          className="p-1 rounded bg-primary text-primary-foreground hover:bg-primary/80 transition-colors disabled:opacity-50"
+          className="p-1 rounded bg-foreground text-background hover:bg-foreground/80 transition-colors disabled:opacity-50"
           title="Save"
         >
           {isPending ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}

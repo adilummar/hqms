@@ -77,6 +77,7 @@ export async function awardStar(input: unknown) {
 
   revalidatePath("/tutor/stars");
   revalidatePath("/admin/students");
+  revalidatePath("/admin/stars");
   revalidatePath("/parent/stars");
   revalidatePath("/student/stars");
   return { success: true, data: star };
@@ -114,6 +115,7 @@ export async function removeStar(starId: string) {
 
   revalidatePath("/tutor/stars");
   revalidatePath("/admin/students");
+  revalidatePath("/admin/stars");
   revalidatePath("/parent/stars");
   revalidatePath("/student/stars");
   return { success: true };

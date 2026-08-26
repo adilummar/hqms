@@ -41,7 +41,7 @@ export function ToppersList({ toppers, month }: Props) {
             <div key={topper.id} className="px-5 py-3 flex items-center gap-3">
               {/* Rank */}
               <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-medium font-jetbrains
-                bg-primary text-primary-foreground"
+                bg-foreground text-background"
               >
                 {idx + 1}
               </div>

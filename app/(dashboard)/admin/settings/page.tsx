@@ -86,7 +86,7 @@ export default async function SettingsPage() {
             <p className="text-muted-foreground text-xs mb-1">Student Login</p>
             <span className={`text-xs px-2 py-0.5 rounded-sm font-medium ${
               settingsMap.get("student_login_enabled") === "true"
-                ? "bg-primary/5 text-primary border border-primary/20"
+                ? "bg-green-50 text-green-700 border border-green-200"
                 : "bg-muted text-muted-foreground border border-border"
             }`}>
               {settingsMap.get("student_login_enabled") === "true" ? "Enabled" : "Disabled"}

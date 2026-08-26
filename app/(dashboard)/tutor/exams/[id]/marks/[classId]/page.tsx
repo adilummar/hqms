@@ -37,6 +37,10 @@ export default async function TutorMarkEntryPage({
 
   if (!exam) notFound();
 
+  if (exam.track === "hifz" && exam.resultStatus !== "published") {
+    redirect("/tutor/exams");
+  }
+
   // Fetch subjects for this class in this exam
   const subjects = await db.query.examSubjects.findMany({
     where: and(
@@ -46,12 +50,11 @@ export default async function TutorMarkEntryPage({
     orderBy: [asc(examSubjects.displayOrder)],
   });
 
-  // Fetch enrolled students
+  // Fetch enrolled students — classId + active is sufficient (matches attendance page pattern)
   const classEnrollments = await db.query.enrollments.findMany({
     where: and(
       eq(enrollments.classId, classId),
-      eq(enrollments.status, "active"),
-      eq(enrollments.academicYearId, exam.academicYearId)
+      eq(enrollments.status, "active")
     ),
     with: {
       student: true,

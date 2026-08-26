@@ -37,9 +37,9 @@ async function seedDummyData() {
   if (!currentYear) {
     console.log("⚠️ No active academic year found, creating one...");
     const [year] = await db.insert(schema.academicYears).values({
-      label: "2024-25",
-      startDate: new Date("2024-06-01"),
-      endDate: new Date("2025-05-31"),
+      label: "2025-26",
+      startDate: new Date("2025-06-01"),
+      endDate: new Date("2026-05-31"),
       isCurrent: true,
     }).returning();
     currentYear = year;

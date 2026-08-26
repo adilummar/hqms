@@ -5,7 +5,7 @@ import { examSessions, examSubjects, examGradeRules, examMarks } from "@/lib/db/
 import { requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
 import { z } from "zod";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -14,9 +14,10 @@ const createExamSchema = z.object({
   name: z.string().min(1, "Name required"),
   track: z.enum(["school", "madrasa", "hifz"]),
   academicYearId: z.string().uuid("Academic year required"),
-  examinationId: z.string().uuid("Examination required"),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
+  examinationId: z.string().uuid("Examination ID required"),
+  startDate: z.string().transform(v => v === "" ? null : v).nullable().optional(),
+  endDate: z.string().transform(v => v === "" ? null : v).nullable().optional(),
+  tutorMarkEntryOnly: z.boolean().default(false),
 });
 
 const subjectSchema = z.object({
@@ -32,6 +33,7 @@ const saveSubjectsSchema = z.object({
   examSessionId: z.string().uuid(),
   classId: z.string().uuid(),
   subjects: z.array(subjectSchema),
+  applyToAllClassIds: z.array(z.string().uuid()).optional(),
 });
 
 const gradeRuleSchema = z.object({
@@ -150,18 +152,20 @@ export async function saveExamSubjects(input: unknown) {
   const parsed = saveSubjectsSchema.safeParse(input);
   if (!parsed.success) return { success: false, error: parsed.error.flatten().fieldErrors };
 
-  const { examSessionId, classId, subjects } = parsed.data;
+  const { examSessionId, classId, subjects, applyToAllClassIds } = parsed.data;
+
+  const targetClassIds = applyToAllClassIds?.length ? applyToAllClassIds : [classId];
 
   // Delete existing subjects for this session+class and re-insert
   await db
     .delete(examSubjects)
-    .where(and(eq(examSubjects.examSessionId, examSessionId), eq(examSubjects.classId, classId)));
+    .where(and(eq(examSubjects.examSessionId, examSessionId), inArray(examSubjects.classId, targetClassIds)));
 
   if (subjects.length > 0) {
-    await db.insert(examSubjects).values(
+    const insertData = targetClassIds.flatMap((targetId) => 
       subjects.map((s, i) => ({
         examSessionId,
-        classId,
+        classId: targetId,
         name: s.name,
         totalMarks: s.totalMarks,
         passMarks: s.passMarks,
@@ -169,6 +173,7 @@ export async function saveExamSubjects(input: unknown) {
         examDate: s.examDate ?? null,
       }))
     );
+    await db.insert(examSubjects).values(insertData);
   }
 
   await logActivity(session.user.id, "exam.subjects_updated", "exam_session", examSessionId);

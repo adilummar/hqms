@@ -10,7 +10,7 @@ import {
 } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
-import { eq, and, ne, sql, desc } from "drizzle-orm";
+import { eq, and, ne, sql, desc, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -20,7 +20,7 @@ import { z } from "zod";
 const createAcademicYearSchema = z.object({
   startDate: z.string().optional(),
   endDate:   z.string().optional(),
-  label:     z.string().optional(), // e.g. "2024-25"
+  label:     z.string().optional(), // e.g. "2025-26"
 });
 
 const createBatchSchema = z.object({
@@ -145,6 +145,102 @@ export async function createBatch(input: unknown) {
   revalidatePath("/admin/settings/academic-year");
 
   return { success: true, data: newBatch };
+}
+
+// =============================================
+// SET AN EXISTING YEAR AS THE CURRENT YEAR
+// Flips isCurrent: deactivates old, activates chosen.
+// =============================================
+export async function setCurrentAcademicYear(yearId: string) {
+  const session = await requireRole(["super_admin", "admin"]);
+
+  const parsed = z.string().uuid().safeParse(yearId);
+  if (!parsed.success) return { success: false, error: "Invalid year ID." };
+
+  const targetYear = await db.query.academicYears.findFirst({
+    where: eq(academicYears.id, parsed.data),
+  });
+  if (!targetYear) return { success: false, error: "Academic year not found." };
+  if (targetYear.isCurrent) return { success: false, error: "This year is already current." };
+
+  // Unmark all current years
+  await db
+    .update(academicYears)
+    .set({ isCurrent: false })
+    .where(eq(academicYears.isCurrent, true));
+
+  // Mark selected as current
+  await db
+    .update(academicYears)
+    .set({ isCurrent: true })
+    .where(eq(academicYears.id, parsed.data));
+
+  await logActivity(session.user.id, "academic_year.set_current", "academic_years", parsed.data);
+  revalidatePath("/admin/settings/academic-year");
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin");
+
+  return { success: true };
+}
+
+// =============================================
+// DELETE AN ACADEMIC YEAR
+// Blocked if: year is current OR has any classes/enrollments.
+// =============================================
+export async function deleteAcademicYear(yearId: string) {
+  const session = await requireRole(["super_admin", "admin"]);
+
+  const parsed = z.string().uuid().safeParse(yearId);
+  if (!parsed.success) return { success: false, error: "Invalid year ID." };
+
+  const year = await db.query.academicYears.findFirst({
+    where: eq(academicYears.id, parsed.data),
+  });
+  if (!year) return { success: false, error: "Academic year not found." };
+  if (year.isCurrent) {
+    return {
+      success: false,
+      error: "Cannot delete the current academic year. Set another year as current first.",
+    };
+  }
+
+  // Block if classes exist for this year
+  const [classCount] = await db
+    .select({ count: count() })
+    .from(classes)
+    .where(eq(classes.academicYearId, parsed.data));
+  if ((classCount?.count ?? 0) > 0) {
+    return {
+      success: false,
+      error: `Cannot delete — ${classCount.count} class(es) are linked to this year. Remove them first.`,
+    };
+  }
+
+  // Block if enrollments exist for this year
+  const [enrollmentCount] = await db
+    .select({ count: count() })
+    .from(enrollments)
+    .where(eq(enrollments.academicYearId, parsed.data));
+  if ((enrollmentCount?.count ?? 0) > 0) {
+    return {
+      success: false,
+      error: `Cannot delete — ${enrollmentCount.count} enrollment(s) are linked to this year. Remove them first.`,
+    };
+  }
+
+  await db.delete(academicYears).where(eq(academicYears.id, parsed.data));
+
+  await logActivity(
+    session.user.id,
+    "academic_year.delete",
+    "academic_years",
+    parsed.data,
+    { label: year.label }
+  );
+  revalidatePath("/admin/settings/academic-year");
+  revalidatePath("/admin/settings");
+
+  return { success: true };
 }
 
 // =============================================

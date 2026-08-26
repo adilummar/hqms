@@ -22,6 +22,8 @@ export function SubjectManager({ examSessionId, classes, initialSubjects }: {
   const [selectedClass, setSelectedClass] = useState(classes[0]?.id ?? "");
   const [isPending, startTransition] = useTransition();
   const [copying, setCopying] = useState(false);
+  const isHifzTrack = classes[0]?.track === "hifz";
+  const [applyToAllHifzClasses, setApplyToAllHifzClasses] = useState(isHifzTrack);
 
   const [subjectsByClass, setSubjectsByClass] = useState<Record<string, Subject[]>>(() => {
     const map: Record<string, Subject[]> = {};
@@ -54,9 +56,16 @@ export function SubjectManager({ examSessionId, classes, initialSubjects }: {
 
   function save() {
     startTransition(async () => {
-      const result = await saveExamSubjects({ examSessionId, classId: selectedClass, subjects });
-      if (result.success) toast.success("Subjects saved");
-      else toast.error("Failed to save");
+      const applyToAllClassIds = applyToAllHifzClasses ? classes.map(c => c.id) : undefined;
+      const result = await saveExamSubjects({ examSessionId, classId: selectedClass, subjects, applyToAllClassIds });
+      if (result.success) {
+        toast.success("Subjects saved");
+        if (applyToAllHifzClasses) {
+          window.location.reload(); // Reload to reflect changes across all classes in UI
+        }
+      } else {
+        toast.error("Failed to save");
+      }
     });
   }
 
@@ -83,6 +92,17 @@ export function SubjectManager({ examSessionId, classes, initialSubjects }: {
         <button onClick={copy} disabled={copying} className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded hover:bg-muted transition-colors disabled:opacity-50">
           {copying ? <Loader2 size={12} className="animate-spin" /> : <Copy size={12} />} Copy from last exam
         </button>
+        {isHifzTrack && (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground ml-auto">
+            <input 
+              type="checkbox" 
+              checked={applyToAllHifzClasses} 
+              onChange={e => setApplyToAllHifzClasses(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            Apply to all Hifz classes
+          </label>
+        )}
       </div>
 
       {/* Subject table */}
@@ -228,7 +248,7 @@ export function PublishControls({ examSessionId, resultStatus, isSuperAdmin }: {
 
   if (!isSuperAdmin) {
     return (
-      <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm ${isPublished ? "border-green-500/20 bg-primary/5 text-primary" : "border-border bg-muted text-muted-foreground"}`}>
+      <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm ${isPublished ? "border-green-500/20 bg-green-500/5 text-green-600" : "border-border bg-muted text-muted-foreground"}`}>
         {isPublished ? <><Globe size={14} />Results published</> : <><EyeOff size={14} />Results not yet published</>}
       </div>
     );
@@ -238,7 +258,7 @@ export function PublishControls({ examSessionId, resultStatus, isSuperAdmin }: {
     <button onClick={toggle} disabled={isPending} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 ${
       isPublished
         ? "bg-red-500/10 text-red-600 hover:bg-red-500/20 border border-red-500/20"
-        : "bg-primary/10 text-primary hover:bg-primary/20 border border-green-500/20"
+        : "bg-green-500/10 text-green-600 hover:bg-green-500/20 border border-green-500/20"
     }`}>
       {isPending ? <Loader2 size={14} className="animate-spin" /> : isPublished ? <EyeOff size={14} /> : <Globe size={14} />}
       {isPublished ? "Unpublish Results" : "Publish Results to Students"}

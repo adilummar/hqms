@@ -12,6 +12,7 @@ const createExaminationSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   tracks: z.array(z.enum(["school", "madrasa", "hifz"])).min(1, "Select at least one track"),
+  tutorMarkEntryOnly: z.boolean().optional(),
 });
 
 export async function createExamination(data: z.infer<typeof createExaminationSchema>) {

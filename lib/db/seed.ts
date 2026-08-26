@@ -11,13 +11,13 @@ async function seed() {
   console.log("🌱 Seeding HQMS database...");
 
   // 1. Create academic year
-  console.log("📅 Creating academic year 2024-25...");
+  console.log("📅 Creating academic year 2025-26...");
   const [academicYear] = await db
     .insert(schema.academicYears)
     .values({
-      label: "2024-25",
-      startDate: new Date("2024-06-01"),
-      endDate: new Date("2025-05-31"),
+      label: "2025-26",
+      startDate: new Date("2025-06-01"),
+      endDate: new Date("2026-05-31"),
       isCurrent: true,
     })
     .onConflictDoNothing()
@@ -25,7 +25,7 @@ async function seed() {
 
   const yearId = academicYear?.id ?? (
     await db.query.academicYears.findFirst({
-      where: eq(schema.academicYears.label, "2024-25"),
+      where: eq(schema.academicYears.label, "2025-26"),
     })
   )!.id;
 
@@ -95,7 +95,7 @@ async function seed() {
   console.log("⚙️ Creating default settings...");
   const defaultSettings = [
     { key: "student_login_enabled", value: "false", description: "Allow students to log in" },
-    { key: "current_academic_year", value: "2024-25", description: "Current academic year label" },
+    { key: "current_academic_year", value: "2025-26", description: "Current academic year label" },
     { key: "hifz_year1_monthly_target", value: "1", description: "Default monthly Juz target for 1st year" },
     { key: "hifz_year2_monthly_target", value: "2", description: "Default monthly Juz target for 2nd year" },
     { key: "hifz_year3_monthly_target", value: "2.5", description: "Default monthly Juz target for 3rd year" },

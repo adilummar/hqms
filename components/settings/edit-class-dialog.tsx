@@ -76,7 +76,7 @@ export function EditClassDialog({ cls, tutors }: Props) {
               required 
               maxLength={20}
               defaultValue={cls.name}
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50" 
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground" 
             />
           </div>
 
@@ -86,7 +86,7 @@ export function EditClassDialog({ cls, tutors }: Props) {
               name="track" 
               required
               defaultValue={cls.track}
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 bg-background"
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground bg-background"
             >
               <option value="hifz">Hifz</option>
               <option value="madrasa">Madrasa</option>
@@ -102,7 +102,7 @@ export function EditClassDialog({ cls, tutors }: Props) {
               min={1}
               defaultValue={cls.capacity || 30}
               required
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50" 
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground" 
             />
           </div>
 
@@ -111,7 +111,7 @@ export function EditClassDialog({ cls, tutors }: Props) {
             <select 
               name="tutorId" 
               defaultValue={cls.tutorId || ""}
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 bg-background"
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground bg-background"
             >
               <option value="">-- Unassigned --</option>
               {tutors.map((t) => (
@@ -126,7 +126,7 @@ export function EditClassDialog({ cls, tutors }: Props) {
               name="isActive" 
               required
               defaultValue={cls.isActive ? "true" : "false"}
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 bg-background"
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground bg-background"
             >
               <option value="true">Active</option>
               <option value="false">Inactive</option>
@@ -144,7 +144,7 @@ export function EditClassDialog({ cls, tutors }: Props) {
             <button 
               type="submit" 
               disabled={isPending}
-              className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {isPending && <Loader2 size={14} className="animate-spin" />}
               Save Changes

@@ -6,8 +6,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { updateStudentProfile, type UpdateProfileInput } from "@/lib/actions/student-profile";
 import { updateJuzProgress } from "@/lib/actions/hifz";
+import { uploadFile } from "@/lib/actions/upload";
 import { toast } from "sonner";
-import { Loader2, User, MapPin, GraduationCap, Phone, ArrowLeft, BookOpen } from "lucide-react";
+import { Loader2, User, MapPin, GraduationCap, Phone, ArrowLeft, BookOpen, Camera, X } from "lucide-react";
 import Link from "next/link";
 
 const schema = z.object({
@@ -79,6 +80,8 @@ function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string })
 export function StudentProfileEditForm({ studentId, defaultValues, studentName, juzRows: initialJuzRows = [] }: Props) {
   const [isPending, startTransition] = useTransition();
   const [isJuzPending, startJuzTransition] = useTransition();
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(defaultValues.photoUrl ?? null);
 
   // Build a full 30-juz state (fill missing juz with not_started)
   const [juzState, setJuzState] = useState<JuzRow[]>(() => {
@@ -89,10 +92,37 @@ export function StudentProfileEditForm({ studentId, defaultValues, studentName, 
     });
   });
 
-  const { register, handleSubmit, formState: { errors, isDirty } } = useForm<FormData>({
+  const { register, handleSubmit, setValue, formState: { errors, isDirty } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { studentId, ...defaultValues },
   });
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await uploadFile(fd);
+      if (res.success && res.url) {
+        setPhotoPreview(res.url);
+        setValue("photoUrl", res.url, { shouldDirty: true });
+        toast.success("Photo uploaded successfully");
+      } else {
+        toast.error(res.error || "Upload failed");
+      }
+    } catch {
+      toast.error("Upload error. Please try again.");
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
+  function removePhoto() {
+    setPhotoPreview(null);
+    setValue("photoUrl", "", { shouldDirty: true });
+  }
 
   function onSubmit(data: FormData) {
     startTransition(async () => {
@@ -142,11 +172,76 @@ export function StudentProfileEditForm({ studentId, defaultValues, studentName, 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <input type="hidden" {...register("studentId")} />
+      <input type="hidden" {...register("photoUrl")} />
 
       {/* Personal Details */}
       <div className="bg-card border border-border rounded-lg p-6">
         <SectionTitle icon={<User size={16} />} title="Personal Details" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {/* Photo Upload */}
+          <div className="md:col-span-2">
+            <label className={lbl}>Student Photo <span className="text-xs text-muted-foreground">(appears on hall ticket)</span></label>
+            <div className="flex items-start gap-5">
+              {/* Preview box */}
+              <div className="relative w-28 h-36 rounded-md border-2 border-dashed border-border bg-muted/40 flex items-center justify-center overflow-hidden flex-shrink-0 group">
+                {photoPreview ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photoPreview} alt="Student photo" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={removePhoto}
+                      className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                      title="Remove photo"
+                    >
+                      <X size={10} />
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                    <User size={28} strokeWidth={1.5} />
+                    <span className="text-[10px]">No photo</span>
+                  </div>
+                )}
+                {photoUploading && (
+                  <div className="absolute inset-0 bg-background/70 flex items-center justify-center">
+                    <Loader2 size={20} className="animate-spin text-primary" />
+                  </div>
+                )}
+              </div>
+
+              {/* Upload controls */}
+              <div className="flex flex-col gap-2 pt-1">
+                <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-xs font-medium rounded-md hover:bg-primary/90 transition-colors shadow-sm">
+                  <Camera size={13} />
+                  {photoPreview ? "Change Photo" : "Upload Photo"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoUpload}
+                    disabled={photoUploading}
+                  />
+                </label>
+                {photoPreview && (
+                  <button
+                    type="button"
+                    onClick={removePhoto}
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-border text-xs font-medium rounded-md hover:bg-muted transition-colors"
+                  >
+                    <X size={13} /> Remove Photo
+                  </button>
+                )}
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Passport size photo.<br />
+                  JPG or PNG, max 10MB.<br />
+                  This photo will appear on the hall ticket.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className={lbl}>First Name *</label>
             <input {...register("firstName")} className={inp} placeholder="First name" />

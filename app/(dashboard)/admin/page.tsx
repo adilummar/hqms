@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { students, admissionApplications, juzTracker, activityLogs } from "@/lib/db/schema";
-import { eq, count, and, between, desc, sql } from "drizzle-orm";
+import { eq, count, and, between, desc } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Users, ClipboardList, BookOpen, CalendarCheck, ArrowRight } from "lucide-react";
@@ -20,8 +20,8 @@ export default async function AdminDashboard() {
 
   const [totalStudents, pendingApps, juzCompletions, recentActivity] =
     await Promise.all([
-      db.select({ count: count() }).from(students).where(eq(sql`${students.status}::text`, "active")),
-      db.select({ count: count() }).from(admissionApplications).where(eq(sql`${admissionApplications.status}::text`, "pending")),
+      db.select({ count: count() }).from(students).where(eq(students.status, "active")),
+      db.select({ count: count() }).from(admissionApplications).where(eq(admissionApplications.status, "pending")),
       db.select({ count: count() }).from(juzTracker).where(
         and(
           between(juzTracker.completionDate!, monthStart, monthEnd)
@@ -51,7 +51,6 @@ export default async function AdminDashboard() {
           description="Currently enrolled"
           icon={Users}
           accentColor="teal"
-          variant="solid"
         />
         <StatCard
           label="Pending Applications"

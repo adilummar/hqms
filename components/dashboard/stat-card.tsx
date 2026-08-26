@@ -9,7 +9,6 @@ interface StatCardProps {
   trendValue?: string;
   icon?: React.ElementType;
   accentColor?: "teal" | "blue" | "violet" | "amber" | "emerald" | "rose";
-  variant?: "default" | "solid";
 }
 
 const ACCENT_STYLES = {
@@ -29,7 +28,6 @@ export function StatCard({
   trendValue,
   icon: Icon,
   accentColor = "teal",
-  variant = "default",
 }: StatCardProps) {
   const accent = ACCENT_STYLES[accentColor];
 
@@ -45,25 +43,19 @@ export function StatCard({
 
   return (
     <div className={cn(
-      "rounded-xl border p-5 shadow-sm",
+      "bg-white rounded-xl border border-border p-5 shadow-sm",
       "transition-all duration-200 hover:shadow-md hover:-translate-y-0.5",
-      "group cursor-default",
-      variant === "solid"
-        ? "bg-primary border-primary text-primary-foreground"
-        : "bg-card border-border text-foreground"
+      "group cursor-default"
     )}>
       {/* Top row: label + icon */}
       <div className="flex items-start justify-between mb-3">
-        <p className={cn(
-          "text-[13px] font-medium font-dm-sans leading-none",
-          variant === "solid" ? "text-primary-foreground/80" : "text-muted-foreground"
-        )}>
+        <p className="text-[13px] font-medium text-muted-foreground font-dm-sans leading-none">
           {label}
         </p>
         {Icon && (
           <div className={cn(
             "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
-            variant === "solid" ? "bg-white/20 text-white" : accent.icon,
+            accent.icon,
             "transition-transform duration-200 group-hover:scale-110"
           )}>
             <Icon size={15} />
@@ -73,10 +65,7 @@ export function StatCard({
 
       {/* Value */}
       <div className="flex items-end justify-between gap-2">
-        <p className={cn(
-          "font-inter text-3xl font-bold leading-none tracking-tight",
-          variant === "solid" ? "text-white" : "text-foreground"
-        )}>
+        <p className="font-inter text-3xl font-bold text-foreground leading-none tracking-tight">
           {value}
         </p>
 
@@ -94,10 +83,7 @@ export function StatCard({
 
       {/* Description */}
       {description && (
-        <p className={cn(
-          "text-[12px] mt-2.5 font-dm-sans leading-snug",
-          variant === "solid" ? "text-primary-foreground/80" : "text-muted-foreground"
-        )}>
+        <p className="text-[12px] text-muted-foreground mt-2.5 font-dm-sans leading-snug">
           {description}
         </p>
       )}

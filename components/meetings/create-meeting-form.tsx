@@ -35,7 +35,7 @@ export function CreateMeetingForm() {
       <button
         id="create-meeting-btn"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors"
+        className="flex items-center gap-2 px-4 py-2 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors"
       >
         <Plus size={16} />
         Schedule New Meeting
@@ -59,7 +59,7 @@ export function CreateMeetingForm() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Term 1 Parent-Teacher Meeting"
               required
-              className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
+              className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
             />
           </div>
           <div>
@@ -73,7 +73,7 @@ export function CreateMeetingForm() {
               onChange={(e) => setMeetingDate(e.target.value)}
               min={today}
               required
-              className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
+              className="w-full h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
             />
           </div>
         </div>
@@ -88,7 +88,7 @@ export function CreateMeetingForm() {
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Any additional details about the meeting..."
             rows={2}
-            className="w-full px-3 py-2 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"
+            className="w-full px-3 py-2 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground resize-none"
           />
         </div>
 
@@ -104,7 +104,7 @@ export function CreateMeetingForm() {
             id="submit-meeting-btn"
             type="submit"
             disabled={isPending || !title || !meetingDate}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isPending && <Loader2 size={14} className="animate-spin" />}
             {isPending ? "Scheduling..." : "Schedule Meeting"}

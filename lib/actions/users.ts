@@ -181,3 +181,47 @@ export async function deleteUser(targetUserId: string) {
   return { success: true };
 }
 
+// ── Edit Role ──────────────────────────────────────────────────────────────────
+
+const updateRoleSchema = z.object({
+  targetUserId: z.string().uuid(),
+  newRole: z.enum(["super_admin", "admin", "tutor", "school_admin", "parent", "student"]),
+});
+
+export async function updateUserRole(input: unknown) {
+  const session = await requireRole(["super_admin", "admin"]);
+  const parsed = updateRoleSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: "Invalid input" };
+
+  const { targetUserId, newRole } = parsed.data;
+
+  if (session.user.id === targetUserId) {
+    return { success: false, error: "You cannot change your own role." };
+  }
+
+  const targetUser = await db.query.users.findFirst({ where: eq(users.id, targetUserId) });
+  if (!targetUser) return { success: false, error: "User not found." };
+
+  // Permission checks
+  if (targetUser.role === "super_admin" && session.user.role !== "super_admin") {
+    return { success: false, error: "Only super admins can modify super admin accounts." };
+  }
+  if (newRole === "super_admin" && session.user.role !== "super_admin") {
+    return { success: false, error: "Only super admins can promote a user to super admin." };
+  }
+
+  await db
+    .update(users)
+    .set({ role: newRole as any, updatedAt: new Date() })
+    .where(eq(users.id, targetUserId));
+
+  await logActivity(
+    session.user.id as string,
+    "user.edit_role",
+    "users",
+    targetUserId
+  );
+
+  revalidatePath("/admin/settings/users");
+  return { success: true };
+}

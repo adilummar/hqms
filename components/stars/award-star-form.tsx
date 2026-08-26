@@ -105,7 +105,7 @@ export function AwardStarForm({
           <button
             type="button"
             onClick={() => setOpen((current) => !current)}
-            className="flex items-center gap-1.5 rounded-sm bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-primary/90"
+            className="flex items-center gap-1.5 rounded-sm bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-colors hover:bg-foreground/90"
           >
             <Star size={12} />
             {open ? "Cancel" : "Award Star"}
@@ -162,7 +162,7 @@ export function AwardStarForm({
               rows={2}
               required
               maxLength={500}
-              className="w-full resize-none rounded-sm border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+              className="w-full resize-none rounded-sm border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-foreground"
             />
           </div>
 

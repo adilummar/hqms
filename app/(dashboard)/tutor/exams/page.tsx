@@ -107,12 +107,16 @@ export default async function TutorExamsDashboard() {
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Link
-                            href={`/tutor/exams/${exam.id}/marks/${cls.id}`}
-                            className="text-xs font-medium text-primary hover:underline"
-                          >
-                            {isPublished ? "View Marks" : "Enter Marks →"}
-                          </Link>
+                          {exam.track === "hifz" && !isPublished ? (
+                            <span className="text-xs font-medium text-muted-foreground">Admin Entry</span>
+                          ) : (
+                            <Link
+                              href={`/tutor/exams/${exam.id}/marks/${cls.id}`}
+                              className="text-xs font-medium text-primary hover:underline"
+                            >
+                              {isPublished ? "View Marks" : "Enter Marks →"}
+                            </Link>
+                          )}
                           {isPublished && (
                             <>
                               <span className="text-muted-foreground">·</span>

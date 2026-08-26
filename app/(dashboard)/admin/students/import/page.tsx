@@ -218,7 +218,7 @@ export default function BulkImportPage() {
   // ── Status badge ─────────────────────────────────────────────────────────────
   function StatusBadge({ status }: { status: BulkImportRowResult["status"] }) {
     const map = {
-      inserted: "bg-green-100 text-green-800 border-primary/20",
+      inserted: "bg-green-100 text-green-800 border-green-200",
       updated:  "bg-blue-100 text-blue-800 border-blue-200",
       conflict: "bg-amber-100 text-amber-800 border-amber-200",
       error:    "bg-red-100 text-red-800 border-red-200",
@@ -253,9 +253,9 @@ export default function BulkImportPage() {
           <div key={s} className="flex items-center gap-2">
             <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${
               step === s
-                ? "bg-primary text-primary-foreground border-foreground"
+                ? "bg-foreground text-background border-foreground"
                 : ["done", "importing"].includes(step) && i < ["upload","preview","importing","done"].indexOf(step)
-                  ? "bg-primary text-white border-green-500"
+                  ? "bg-green-500 text-white border-green-500"
                   : "border-border text-muted-foreground"
             }`}>
               {i + 1}
@@ -303,7 +303,7 @@ export default function BulkImportPage() {
             </button>
             <button
               onClick={() => fileRef.current?.click()}
-              className="px-5 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors"
+              className="px-5 py-2 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors"
             >
               📂 Choose Excel or CSV File
             </button>
@@ -340,7 +340,7 @@ export default function BulkImportPage() {
               </button>
               <button
                 onClick={runImport}
-                className="px-5 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors"
+                className="px-5 py-2 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors"
               >
                 ✓ Confirm Import ({rows.length} rows)
               </button>
@@ -413,7 +413,7 @@ export default function BulkImportPage() {
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: "Inserted", value: result.inserted, color: "text-primary", bg: "bg-primary/5 border-primary/20" },
+              { label: "Inserted", value: result.inserted, color: "text-green-600", bg: "bg-green-50 border-green-200" },
               { label: "Updated", value: result.updated, color: "text-blue-600", bg: "bg-blue-50 border-blue-200" },
               { label: "Conflicts", value: result.conflicts.length, color: "text-amber-600", bg: "bg-amber-50 border-amber-200" },
               { label: "Errors", value: result.errors.length, color: "text-red-600", bg: "bg-red-50 border-red-200" },
@@ -427,11 +427,11 @@ export default function BulkImportPage() {
 
           {/* Auto-created batches notice */}
           {result.autoBatches.length > 0 && (
-            <div className="border border-primary/20 bg-primary/5 rounded-lg p-4">
+            <div className="border border-green-200 bg-green-50 rounded-lg p-4">
               <p className="font-semibold text-green-900 text-sm">
                 ✅ {result.autoBatches.length} new batch{result.autoBatches.length > 1 ? "es" : ""} auto-created: {result.autoBatches.map(n => `Batch ${n}`).join(", ")}
               </p>
-              <p className="text-xs text-primary mt-0.5">
+              <p className="text-xs text-green-700 mt-0.5">
                 These batches have no dates set. You can add dates in <strong>Settings → Batch Management</strong>.
               </p>
             </div>
@@ -490,7 +490,7 @@ export default function BulkImportPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/admin/students")}
-              className="px-5 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors"
+              className="px-5 py-2 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors"
             >
               View Students →
             </button>
@@ -555,7 +555,7 @@ export default function BulkImportPage() {
                         value={newAdNo}
                         onChange={(e) => setNewAdNo(e.target.value)}
                         placeholder="New AD NO"
-                        className="h-8 px-2 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 font-mono w-32"
+                        className="h-8 px-2 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground font-mono w-32"
                       />
                       <button
                         onClick={async () => {
@@ -568,7 +568,7 @@ export default function BulkImportPage() {
                             toast.error(res.error ?? "Update failed");
                           }
                         }}
-                        className="h-8 px-3 text-sm bg-primary text-primary-foreground rounded-sm hover:bg-primary/90 transition-colors"
+                        className="h-8 px-3 text-sm bg-foreground text-background rounded-sm hover:bg-foreground/90 transition-colors"
                       >
                         Save
                       </button>
@@ -587,7 +587,7 @@ export default function BulkImportPage() {
             <div className="px-6 py-4 border-t border-border flex justify-end">
               <button
                 onClick={() => setShowConflictModal(false)}
-                className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors"
+                className="px-4 py-2 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors"
               >
                 Done
               </button>

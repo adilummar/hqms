@@ -44,7 +44,7 @@ const STATUS_LABELS: Record<AttendanceStatus, string> = {
 };
 
 const STATUS_STYLES: Record<AttendanceStatus, string> = {
-  present: "bg-primary text-primary-foreground border-foreground",
+  present: "bg-foreground text-background border-foreground",
   absent: "bg-red-50 text-red-700 border-red-300",
   leave: "bg-muted text-muted-foreground border-border",
 };
@@ -109,7 +109,7 @@ export function AttendanceRoster({ students, classId, track, date, existingEntri
       {/* Summary bar */}
       <div className="flex items-center gap-4 text-sm">
         <span className="flex items-center gap-1.5">
-          <span className="w-5 h-5 rounded-sm bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium">P</span>
+          <span className="w-5 h-5 rounded-sm bg-foreground text-background text-xs flex items-center justify-center font-medium">P</span>
           <span className="text-muted-foreground">{presentCount} Present</span>
         </span>
         <span className="flex items-center gap-1.5">
@@ -189,7 +189,7 @@ export function AttendanceRoster({ students, classId, track, date, existingEntri
                         onChange={(e) =>
                           setRemarks((prev) => ({ ...prev, [student.id]: e.target.value }))
                         }
-                        className="h-9 w-full min-w-[160px] px-2 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
+                        className="h-9 w-full min-w-[160px] px-2 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
                       >
                         <option value="">— Select reason —</option>
                         {remarkOptions.map((opt) => (
@@ -220,7 +220,7 @@ export function AttendanceRoster({ students, classId, track, date, existingEntri
         <button
           onClick={handleSave}
           disabled={isPending || students.length === 0}
-          className="px-6 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-6 py-2.5 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {isPending && <Loader2 size={14} className="animate-spin" />}
           {isPending ? "Saving..." : "Save Attendance"}

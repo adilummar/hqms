@@ -68,7 +68,7 @@ export default function ApplyPage() {
   if (submittedApp) return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-card border border-border rounded-xl p-8 text-center shadow-lg">
-        <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-5"><CheckCircle size={32} /></div>
+        <div className="w-16 h-16 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mx-auto mb-5"><CheckCircle size={32} /></div>
         <h1 className="font-playfair text-2xl font-semibold mb-2">Application Submitted!</h1>
         <p className="text-muted-foreground mb-6 text-sm">Jazakallah Khair. We have received your application.</p>
         <div className="bg-muted border border-border rounded-lg p-5 mb-6">
@@ -161,12 +161,12 @@ export default function ApplyPage() {
                     <div className="md:col-span-2"><label className={lbl}>Identification Mark * <span className="text-xs text-muted-foreground">തിരിച്ചറിയൽ അടയാളം</span></label><input {...register("identificationMark")} className={inp} placeholder="e.g. Mole on right cheek" />{errors.identificationMark && <p className={err}>{errors.identificationMark.message}</p>}</div>
                     <div className="md:col-span-2">
                       <label className={lbl}>Photo of Student * <span className="text-xs text-muted-foreground">ഫോട്ടോ</span></label>
-                      <div className={"border-2 border-dashed rounded-lg p-6 text-center transition-colors " + (photoUrl ? "border-green-500 bg-primary/5" : "border-input hover:border-primary/50")}>
+                      <div className={"border-2 border-dashed rounded-lg p-6 text-center transition-colors " + (photoUrl ? "border-green-500 bg-green-500/5" : "border-input hover:border-primary/50")}>
                         {photoUrl ? (
                           <div className="flex flex-col items-center">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={photoUrl} alt="Student" className="w-24 h-32 object-cover rounded shadow mb-2" />
-                            <span className="flex items-center gap-1 text-sm text-primary font-medium"><CheckCircle size={14} />Photo uploaded</span>
+                            <span className="flex items-center gap-1 text-sm text-green-600 font-medium"><CheckCircle size={14} />Photo uploaded</span>
                             <label className="mt-3 text-xs text-primary hover:underline cursor-pointer">Change photo<input type="file" accept="image/*" className="hidden" onChange={e => handleFileUpload(e, "photoUrl")} /></label>
                           </div>
                         ) : (
@@ -252,12 +252,12 @@ export default function ApplyPage() {
                   </div>
                   <div>
                     <label className={lbl}>Screenshot of Payment * <span className="text-xs text-muted-foreground">പൈസ അടച്ചതിന്റെ സ്ക്രീൻഷോട്ട്</span></label>
-                    <div className={"border-2 border-dashed rounded-lg p-6 text-center transition-colors " + (paymentScreenshotUrl ? "border-green-500 bg-primary/5" : "border-input hover:border-primary/50")}>
+                    <div className={"border-2 border-dashed rounded-lg p-6 text-center transition-colors " + (paymentScreenshotUrl ? "border-green-500 bg-green-500/5" : "border-input hover:border-primary/50")}>
                       {paymentScreenshotUrl ? (
                         <div className="flex flex-col items-center">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={paymentScreenshotUrl} alt="Payment" className="h-32 object-contain rounded shadow mb-2" />
-                          <span className="flex items-center gap-1 text-sm text-primary font-medium"><CheckCircle size={14} />Screenshot uploaded</span>
+                          <span className="flex items-center gap-1 text-sm text-green-600 font-medium"><CheckCircle size={14} />Screenshot uploaded</span>
                           <label className="mt-3 text-xs text-primary hover:underline cursor-pointer">Change<input type="file" accept="image/*" className="hidden" onChange={e => handleFileUpload(e, "paymentScreenshotUrl")} /></label>
                         </div>
                       ) : (

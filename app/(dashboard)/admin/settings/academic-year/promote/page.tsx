@@ -99,7 +99,7 @@ export default async function PromoteStudentsPage({ searchParams }: Props) {
         </div>
         <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-primary" />
+            <span className="w-2 h-2 rounded-full bg-green-500" />
             {promotedCount} Promoted
           </span>
           <span className="flex items-center gap-1.5">

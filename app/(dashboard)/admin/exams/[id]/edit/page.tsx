@@ -44,6 +44,7 @@ export default async function EditExamPage({ params }: Props) {
             startDate: exam.startDate ?? "",
             endDate: exam.endDate ?? "",
             status: exam.status,
+            tutorMarkEntryOnly: exam.tutorMarkEntryOnly,
           }}
           academicYears={years.map(y => ({ id: y.id, label: y.label, isCurrent: y.isCurrent }))}
         />

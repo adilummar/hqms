@@ -115,7 +115,7 @@ export async function MonthlyTargetsView({
             <select
               name="month"
               defaultValue={month}
-              className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
+              className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
             >
               {monthOptions.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -127,7 +127,7 @@ export async function MonthlyTargetsView({
             <select
               name="year"
               defaultValue={year}
-              className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
+              className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
             >
               {[2023, 2024, 2025, 2026].map((option) => (
                 <option key={option} value={option}>{option}</option>
@@ -139,7 +139,7 @@ export async function MonthlyTargetsView({
             <select
               name="classId"
               defaultValue={activeClassId}
-              className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
+              className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
             >
               {hifzClasses.map((item) => (
                 <option key={item.id} value={item.id}>{item.name}</option>
@@ -148,7 +148,7 @@ export async function MonthlyTargetsView({
           </div>
           <button
             type="submit"
-            className="h-9 px-4 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors"
+            className="h-9 px-4 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors"
           >
             View
           </button>

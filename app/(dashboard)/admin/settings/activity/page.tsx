@@ -34,7 +34,7 @@ export default async function ActivityLogPage({ searchParams }: Props) {
 
   const actionColor = (action: string) => {
     if (action.includes("delete") || action.includes("reject")) return "text-red-600";
-    if (action.includes("create") || action.includes("complete")) return "text-primary";
+    if (action.includes("create") || action.includes("complete")) return "text-green-600";
     if (action.includes("update") || action.includes("status")) return "text-blue-600";
     return "text-muted-foreground";
   };

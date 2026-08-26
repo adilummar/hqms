@@ -73,7 +73,7 @@ export default async function HifzBulkPage({ searchParams }: Props) {
       sabaqToPage: string | null;
       sabaqPages: string | null;
       sabaqRemarksId: string | null;
-      sabaqJuzGiven: boolean | null;
+      sabaqJuzGiven: boolean;
       sabaqJuzRemarksId: string | null;
       dauraJuzNumbers: number[] | null;
       dauraRemarksId: string | null;
@@ -150,7 +150,7 @@ export default async function HifzBulkPage({ searchParams }: Props) {
                 sabaqToPage: entry.sabaqToPage,
                 sabaqPages: entry.sabaqPages,
                 sabaqRemarksId: entry.sabaqRemarksId,
-                sabaqJuzGiven: entry.sabaqJuzGiven,
+                sabaqJuzGiven: entry.sabaqJuzGiven ?? false,
                 sabaqJuzRemarksId: entry.sabaqJuzRemarksId,
                 dauraJuzNumbers: entry.dauraJuzNumbers,
                 dauraRemarksId: entry.dauraRemarksId,
@@ -184,7 +184,7 @@ export default async function HifzBulkPage({ searchParams }: Props) {
             name="date"
             defaultValue={selectedDate}
             max={today}
-            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
           />
         </div>
         <div>
@@ -192,7 +192,7 @@ export default async function HifzBulkPage({ searchParams }: Props) {
           <select
             name="classId"
             defaultValue={selectedClassId}
-            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
           >
             {hifzClasses.map((cls) => (
               <option key={cls.id} value={cls.id}>
@@ -203,7 +203,7 @@ export default async function HifzBulkPage({ searchParams }: Props) {
         </div>
         <button
           type="submit"
-          className="h-9 px-4 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors"
+          className="h-9 px-4 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors"
         >
           Load
         </button>

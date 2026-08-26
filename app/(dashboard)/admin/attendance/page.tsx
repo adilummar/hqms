@@ -117,7 +117,7 @@ export default async function AdminAttendancePage({ searchParams }: Props) {
         <div>
           <label className="block text-xs text-muted-foreground mb-1">Track</label>
           <select name="track" defaultValue={track}
-            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50">
+            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground">
             <option value="hifz">Hifz</option>
             <option value="madrasa">Madrasa</option>
             <option value="school">School</option>
@@ -126,14 +126,14 @@ export default async function AdminAttendancePage({ searchParams }: Props) {
         <div>
           <label className="block text-xs text-muted-foreground mb-1">Class</label>
           <select name="classId" defaultValue={selectedClassId}
-            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50">
+            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground">
             {allClasses.map((cls) => <option key={cls.id} value={cls.id}>{cls.name}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-xs text-muted-foreground mb-1">Month</label>
           <select name="month" defaultValue={month}
-            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50">
+            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground">
             {Array.from({ length: 12 }, (_, i) => (
               <option key={i + 1} value={i + 1}>
                 {new Date(2024, i).toLocaleDateString("en-IN", { month: "long" })}
@@ -144,11 +144,11 @@ export default async function AdminAttendancePage({ searchParams }: Props) {
         <div>
           <label className="block text-xs text-muted-foreground mb-1">Year</label>
           <select name="year" defaultValue={year}
-            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50">
+            className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground">
             {[2023, 2024, 2025, 2026].map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
-        <button type="submit" className="h-9 px-4 bg-primary text-primary-foreground text-sm font-medium rounded-sm hover:bg-primary/90 transition-colors">
+        <button type="submit" className="h-9 px-4 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors">
           View
         </button>
       </form>

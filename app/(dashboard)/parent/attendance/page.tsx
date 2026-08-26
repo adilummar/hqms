@@ -91,59 +91,65 @@ export default async function ParentAttendancePage() {
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-lg p-6 flex flex-col lg:flex-row gap-8">
-        <div>
-          <h3 className="font-playfair text-lg font-semibold mb-4">Calendar View</h3>
-          <div className="p-2 border border-border rounded-xl bg-muted/10 w-fit">
-            <AttendanceCalendar
-              presentDates={presentDates}
-              absentDates={absentDates}
-              leaveDates={leaveDates}
-            />
-          </div>
+      {/* ── Big Calendar ─────────────────────────────────────────── */}
+      <div className="bg-card border border-border rounded-xl p-6">
+        <AttendanceCalendar
+          presentDates={presentDates}
+          absentDates={absentDates}
+          leaveDates={leaveDates}
+        />
+      </div>
+
+      {/* ── Recent History ───────────────────────────────────────── */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
+          <h3 className="font-inter text-[15px] font-semibold text-foreground tracking-tight">Recent History</h3>
+          <p className="text-[12px] text-muted-foreground font-dm-sans mt-0.5">Last {Math.min(attendance.length, 15)} attendance records</p>
         </div>
-        
-        <div className="flex-1">
-          <h3 className="font-playfair text-lg font-semibold mb-4">Recent History</h3>
-          <div className="border border-border rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-muted/50 border-b border-border">
-                  <th className="text-left font-medium text-muted-foreground px-4 py-3">Date</th>
-                  <th className="text-left font-medium text-muted-foreground px-4 py-3">Status</th>
-                  <th className="text-left font-medium text-muted-foreground px-4 py-3">Remarks</th>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted/40 border-b border-border">
+                <th className="text-left font-medium text-muted-foreground px-5 py-3 text-[12px] uppercase tracking-wide">Date</th>
+                <th className="text-left font-medium text-muted-foreground px-5 py-3 text-[12px] uppercase tracking-wide">Status</th>
+                <th className="text-left font-medium text-muted-foreground px-5 py-3 text-[12px] uppercase tracking-wide">Remarks</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {attendance.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-5 py-10 text-center text-[13px] text-muted-foreground font-dm-sans">
+                    No attendance records yet
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {attendance.slice(0, 10).map((record) => (
-                  <tr key={record.id}>
-                    <td className="px-4 py-3 font-jetbrains text-muted-foreground">
-                      {new Date(record.date).toLocaleDateString("en-IN", {
+              ) : (
+                attendance.slice(0, 15).map((record) => (
+                  <tr key={record.id} className="hover:bg-muted/30 transition-colors duration-100">
+                    <td className="px-5 py-3.5 font-jetbrains text-[13px] text-muted-foreground">
+                      {new Date(record.date + "T00:00:00").toLocaleDateString("en-IN", {
                         weekday: "short",
                         day: "numeric",
                         month: "short",
-                        year: "numeric"
+                        year: "numeric",
                       })}
                     </td>
-                    <td className="px-4 py-3 capitalize">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ${
                         record.status === "present" ? "bg-emerald-100 text-emerald-800" :
-                        record.status === "absent" ? "bg-red-100 text-red-800" :
-                        "bg-yellow-100 text-yellow-800"
+                        record.status === "absent"  ? "bg-red-100 text-red-800" :
+                                                      "bg-amber-100 text-amber-800"
                       }`}>
                         {record.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="px-5 py-3.5 text-[13px] text-muted-foreground font-dm-sans">
                       {record.remarks || "—"}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          </div>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 

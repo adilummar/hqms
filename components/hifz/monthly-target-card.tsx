@@ -123,11 +123,11 @@ export function MonthlyTargetCard({ student, year, month, studentHref }: Props) 
             max="30"
             defaultValue={hasTarget ? target : ""}
             placeholder="Target Juz"
-            className="flex-1 h-8 px-2 text-xs border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="flex-1 h-8 px-2 text-xs border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
           />
           <button
             type="submit"
-            className="h-8 px-3 text-xs bg-primary text-primary-foreground rounded-sm hover:bg-primary/90 transition-colors"
+            className="h-8 px-3 text-xs bg-foreground text-background rounded-sm hover:bg-foreground/90 transition-colors"
           >
             Save
           </button>
@@ -140,7 +140,7 @@ export function MonthlyTargetCard({ student, year, month, studentHref }: Props) 
             min="0.5"
             max="30"
             placeholder="Add Juz"
-            className="flex-1 h-8 px-2 text-xs border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="flex-1 h-8 px-2 text-xs border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground"
           />
           <button
             type="submit"

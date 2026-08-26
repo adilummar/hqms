@@ -26,16 +26,16 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "MIC Hifz Portal — Markaz Islamic College",
-    template: "%s | MIC Hifz Portal",
+    default: "MIC — Malabar Islamic Complex",
+    template: "%s | MIC",
   },
   description:
-    "Comprehensive Hifz management portal for Markaz Islamic College — track Hifz progress, attendance, and admissions.",
+    "Comprehensive management system for MIC Thahfeezul Qur'an College.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "MIC Hifz Portal",
+    title: "MIC HQMS",
   },
 };
 

@@ -17,7 +17,7 @@ type ExistingEntry = {
   sabaqToPage: string | null;
   sabaqPages: string | null;
   sabaqRemarksId: string | null;
-  sabaqJuzGiven: boolean | null;
+  sabaqJuzGiven: boolean;
   sabaqJuzRemarksId: string | null;
   dauraJuzNumbers: number[] | null;
   dauraRemarksId: string | null;
@@ -40,7 +40,7 @@ type RowState = {
   sabaqRemarksId: string;
   sabaqJuzGiven: boolean;
   sabaqJuzRemarksId: string;
-  dauraJuz: string; // space or comma-separated numbers e.g. "2 15"
+  dauraJuz: string;
   dauraRemarksId: string;
 };
 
@@ -59,8 +59,7 @@ function calcPages(from: string, to: string): string {
   const f = parseFloat(from);
   const t = parseFloat(to);
   if (isNaN(f) || isNaN(t) || t < f) return "";
-  const diff = Math.round((t - f) * 10) / 10;
-  return diff.toString();
+  return (Math.round((t - f) * 10) / 10).toString();
 }
 
 function parseJuzNumbers(text: string): number[] {
@@ -80,6 +79,14 @@ function hasData(row: RowState): boolean {
   );
 }
 
+// ── Shared input / select class strings ───────────────────────────────────────
+const inputCls =
+  "h-8 px-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-foreground disabled:opacity-50 disabled:cursor-not-allowed";
+const selectCls =
+  "h-8 px-2 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-foreground text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed";
+const labelCls =
+  "text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none pt-2 shrink-0";
+
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export function HifzBulkEntry({
@@ -90,7 +97,6 @@ export function HifzBulkEntry({
   dauraRemarks,
   activeLeave,
 }: Props) {
-  // Initialise row state from existing entries (or defaults)
   const [rows, setRows] = useState<RowState[]>(() =>
     students.map((s) => ({
       studentId: s.id,
@@ -98,8 +104,7 @@ export function HifzBulkEntry({
       sabaqToPage: s.existingEntry?.sabaqToPage ?? "",
       sabaqPages: s.existingEntry?.sabaqPages ?? "",
       sabaqRemarksId: s.existingEntry?.sabaqRemarksId ?? "",
-      // Default sabaqJuzGiven = true for new entries, use existing value otherwise
-      sabaqJuzGiven: s.existingEntry ? (s.existingEntry.sabaqJuzGiven ?? true) : true,
+      sabaqJuzGiven: s.existingEntry ? s.existingEntry.sabaqJuzGiven : true,
       sabaqJuzRemarksId: s.existingEntry?.sabaqJuzRemarksId ?? "",
       dauraJuz: (s.existingEntry?.dauraJuzNumbers ?? []).join(" "),
       dauraRemarksId: s.existingEntry?.dauraRemarksId ?? "",
@@ -107,27 +112,23 @@ export function HifzBulkEntry({
   );
 
   const [saving, setSaving] = useState(false);
-  // Track which students already have a saved entry
   const [savedIds, setSavedIds] = useState<Set<string>>(
     () => new Set(students.filter((s) => s.existingEntry).map((s) => s.id))
   );
 
   // ── Row update ──────────────────────────────────────────────────────────────
-
   const updateRow = useCallback(
     (studentId: string, updates: Partial<RowState>) => {
       setRows((prev) =>
         prev.map((r) => {
           if (r.studentId !== studentId) return r;
           const next = { ...r, ...updates };
-          // Auto-recalculate pages whenever from/to change
           if ("sabaqFromPage" in updates || "sabaqToPage" in updates) {
             next.sabaqPages = calcPages(next.sabaqFromPage, next.sabaqToPage);
           }
           return next;
         })
       );
-      // Mark row as unsaved when edited
       setSavedIds((prev) => {
         const next = new Set(prev);
         next.delete(studentId);
@@ -138,14 +139,12 @@ export function HifzBulkEntry({
   );
 
   // ── Save All ────────────────────────────────────────────────────────────────
-
   const handleSaveAll = async () => {
     const toSave = rows.filter((r) => hasData(r));
     if (toSave.length === 0) {
       toast.info("No data entered for any student.");
       return;
     }
-
     setSaving(true);
     try {
       const entries = toSave.map((r) => ({
@@ -163,9 +162,7 @@ export function HifzBulkEntry({
       const result = await saveBulkHifzEntries({ date, entries });
 
       if (result.success) {
-        toast.success(
-          `Saved ${result.saved} student${result.saved !== 1 ? "s" : ""}`
-        );
+        toast.success(`Saved ${result.saved} student${result.saved !== 1 ? "s" : ""}`);
         setSavedIds(new Set(toSave.map((r) => r.studentId)));
       } else {
         toast.error("Failed to save. Please try again.");
@@ -178,10 +175,9 @@ export function HifzBulkEntry({
   };
 
   // ── Empty state ─────────────────────────────────────────────────────────────
-
   if (students.length === 0) {
     return (
-      <div className="border border-border rounded-lg p-12 text-center text-muted-foreground">
+      <div className="border border-border rounded-xl p-12 text-center text-muted-foreground text-sm">
         No students enrolled in this class, or select a class above.
       </div>
     );
@@ -190,230 +186,249 @@ export function HifzBulkEntry({
   const readyCount = rows.filter((r) => hasData(r)).length;
 
   // ── Render ──────────────────────────────────────────────────────────────────
-
   return (
-    <div className="space-y-3 pb-28">
+    <div className="pb-28">
+
+      {/* ── Active leave warning ──────────────────────────────────────────── */}
       {activeLeave && (
-        <div className="bg-amber-50 border border-amber-300 rounded-lg px-5 py-4 flex items-start gap-3 mb-6">
+        <div className="mb-5 bg-amber-50 border border-amber-300 rounded-xl px-5 py-4 flex items-start gap-3">
           <span className="text-2xl mt-0.5">🌙</span>
           <div>
             <p className="font-semibold text-amber-900 text-sm">
               Hifz Tracker paused — Leave period is active
             </p>
             <p className="text-xs text-amber-700 mt-1">
-              <span className="font-medium">{activeLeave.name}</span> ({activeLeave.startDate} → {activeLeave.endDate}) is currently active.
+              <span className="font-medium">{activeLeave.name}</span>{" "}
+              ({activeLeave.startDate} → {activeLeave.endDate}) is currently active.
               Existing entries are locked and new entries are disabled.
             </p>
           </div>
         </div>
       )}
 
-      {/* Summary bar */}
-      <div className="flex items-center justify-between px-1">
+      {/* ── Summary bar ──────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between mb-4 px-1">
         <p className="text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">{savedIds.size}</span>/{students.length} saved
+          <span className="font-semibold text-foreground">{savedIds.size}</span>
+          /{students.length} saved
           {readyCount > savedIds.size && (
-            <span className="ml-2 text-amber-600 font-medium">
+            <span className="ml-2 text-amber-600 font-semibold">
               · {readyCount - savedIds.size} unsaved
             </span>
           )}
         </p>
         <p className="text-xs text-muted-foreground hidden sm:block">
-          Sabaq Juz <span className="font-medium text-foreground">✓</span> = checked by default — uncheck per student if not given
+          Sabaq Juz <span className="font-semibold text-foreground">✓</span> checked by default — uncheck if not given
         </p>
       </div>
 
-      {/* Column hint for small screens */}
-      <p className="text-xs text-muted-foreground sm:hidden px-1">
-        Sabaq Juz is checked ✓ by default — uncheck if not given
-      </p>
-
+      {/* ── Student cards ─────────────────────────────────────────────────── */}
       <fieldset disabled={!!activeLeave} className="space-y-3">
-      {/* Student cards */}
-      {students.map((student, i) => {
-        const row = rows[i];
-        const isSaved = savedIds.has(student.id);
-        const touched = hasData(row);
+        {students.map((student, i) => {
+          const row = rows[i];
+          const isSaved = savedIds.has(student.id);
+          const touched = hasData(row);
 
-        return (
-          <div
-            key={student.id}
-            className={cn(
-              "bg-card border rounded-xl p-4 transition-all duration-200",
-              isSaved
-                ? "border-primary/20 bg-primary/5"
-                : touched
-                ? "border-foreground/25 shadow-sm"
-                : "border-border"
-            )}
-          >
-            {/* ── Student header ─────────────────────────────────────── */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-foreground/[0.06] border border-border flex items-center justify-center text-xs font-bold text-foreground flex-shrink-0">
-                  {student.firstName.charAt(0)}
+          return (
+            <div
+              key={student.id}
+              className={cn(
+                "bg-card border rounded-xl transition-all duration-200 overflow-hidden",
+                isSaved
+                  ? "border-emerald-200 bg-emerald-50/20"
+                  : touched
+                  ? "border-foreground/20 shadow-sm"
+                  : "border-border"
+              )}
+            >
+              {/* ── Student header ────────────────────────────────────────── */}
+              <div className={cn(
+                "flex items-center justify-between px-4 py-3 border-b",
+                isSaved ? "border-emerald-100 bg-emerald-50/40" : "border-border bg-muted/20"
+              )}>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-foreground/[0.07] border border-border flex items-center justify-center text-xs font-bold text-foreground flex-shrink-0">
+                    {student.firstName.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm leading-tight truncate">
+                      {student.firstName} {student.lastName ?? ""}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground font-jetbrains mt-0.5">
+                      {student.studentCode}
+                      {student.currentJuzNumber != null &&
+                        ` · Juz ${student.currentJuzNumber}`}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-sm leading-tight">
-                    {student.firstName} {student.lastName ?? ""}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground font-jetbrains mt-0.5">
-                    {student.studentCode}
-                    {student.currentJuzNumber != null &&
-                      ` · Juz ${student.currentJuzNumber}`}
-                  </p>
-                </div>
+
+                {isSaved ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full shrink-0">
+                    <CheckCircle2 size={10} /> Saved
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-full shrink-0">
+                    Pending
+                  </span>
+                )}
               </div>
 
-              {isSaved ? (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                  <CheckCircle2 size={10} /> Saved
-                </span>
-              ) : (
-                <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                  Pending
-                </span>
-              )}
-            </div>
+              {/* ── Entry fields ──────────────────────────────────────────── */}
+              <div className="px-4 py-3 space-y-2.5">
 
-            {/* ── Sabaq row ──────────────────────────────────────────── */}
-            <div className="flex flex-wrap gap-2 items-center mb-2.5">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest w-14 shrink-0">
-                Sabaq
-              </span>
-              <input
-                type="number"
-                step="0.5"
-                min="0"
-                placeholder="From pg"
-                value={row.sabaqFromPage}
-                onChange={(e) =>
-                  updateRow(student.id, { sabaqFromPage: e.target.value })
-                }
-                className="w-[74px] h-8 px-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
-              />
-              <span className="text-muted-foreground text-xs">→</span>
-              <input
-                type="number"
-                step="0.5"
-                min="0"
-                placeholder="To pg"
-                value={row.sabaqToPage}
-                onChange={(e) =>
-                  updateRow(student.id, { sabaqToPage: e.target.value })
-                }
-                className="w-[74px] h-8 px-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
-              />
-              {row.sabaqPages && (
-                <span className="text-xs font-medium text-foreground bg-muted px-2 py-1 rounded-lg tabular-nums">
-                  {row.sabaqPages} pg
-                </span>
-              )}
-              {sabaqRemarks.length > 0 && (
-                <select
-                  value={row.sabaqRemarksId}
-                  onChange={(e) =>
-                    updateRow(student.id, { sabaqRemarksId: e.target.value })
-                  }
-                  className="h-8 px-2 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 text-muted-foreground"
-                >
-                  <option value="">Remark…</option>
-                  {sabaqRemarks.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
+                {/* Sabaq row */}
+                <div className="grid grid-cols-[3rem_1fr] gap-x-3 items-start">
+                  <span className={labelCls}>Sabaq</span>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      placeholder="From pg"
+                      value={row.sabaqFromPage}
+                      onChange={(e) =>
+                        updateRow(student.id, { sabaqFromPage: e.target.value })
+                      }
+                      className={cn(inputCls, "w-[78px]")}
+                    />
+                    <span className="text-muted-foreground text-xs font-medium">→</span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      placeholder="To pg"
+                      value={row.sabaqToPage}
+                      onChange={(e) =>
+                        updateRow(student.id, { sabaqToPage: e.target.value })
+                      }
+                      className={cn(inputCls, "w-[78px]")}
+                    />
+                    {row.sabaqPages && (
+                      <span className="text-xs font-semibold text-foreground bg-muted border border-border px-2 py-1 rounded-lg tabular-nums">
+                        {row.sabaqPages} pg
+                      </span>
+                    )}
+                    {sabaqRemarks.length > 0 && (
+                      <select
+                        value={row.sabaqRemarksId}
+                        onChange={(e) =>
+                          updateRow(student.id, { sabaqRemarksId: e.target.value })
+                        }
+                        className={cn(selectCls, "min-w-[110px]")}
+                      >
+                        <option value="">Remark…</option>
+                        {sabaqRemarks.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </div>
 
-            {/* ── Sabaq Juz + Daura row ──────────────────────────────── */}
-            <div className="flex flex-wrap gap-3 items-center">
-              {/* Sabaq Juz */}
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest w-14 shrink-0">
-                SJ
-              </span>
-              <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={row.sabaqJuzGiven}
-                  onChange={(e) =>
-                    updateRow(student.id, { sabaqJuzGiven: e.target.checked })
-                  }
-                  className="accent-primary w-4 h-4 rounded"
-                />
-                <span
-                  className={cn(
-                    "text-sm font-medium",
-                    row.sabaqJuzGiven ? "text-foreground" : "text-muted-foreground"
-                  )}
-                >
-                  Given
-                </span>
-              </label>
-              {sabaqJuzRemarks.length > 0 && (
-                <select
-                  value={row.sabaqJuzRemarksId}
-                  onChange={(e) =>
-                    updateRow(student.id, { sabaqJuzRemarksId: e.target.value })
-                  }
-                  className="h-8 px-2 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 text-muted-foreground"
-                >
-                  <option value="">Remark…</option>
-                  {sabaqJuzRemarks.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
-              )}
+                {/* Divider */}
+                <div className="border-t border-border/50" />
 
-              {/* Daura */}
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest ml-1 shrink-0">
-                Daura
-              </span>
-              <input
-                type="text"
-                placeholder="Juz e.g. 2 15"
-                value={row.dauraJuz}
-                onChange={(e) =>
-                  updateRow(student.id, { dauraJuz: e.target.value })
-                }
-                className="w-28 h-8 px-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
-              />
-              {dauraRemarks.length > 0 && (
-                <select
-                  value={row.dauraRemarksId}
-                  onChange={(e) =>
-                    updateRow(student.id, { dauraRemarksId: e.target.value })
-                  }
-                  className="h-8 px-2 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/50 text-muted-foreground"
-                >
-                  <option value="">Remark…</option>
-                  {dauraRemarks.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
-              )}
+                {/* Sabaq Juz row */}
+                <div className="grid grid-cols-[3rem_1fr] gap-x-3 items-start">
+                  <span className={labelCls}>SJ</span>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={row.sabaqJuzGiven}
+                        onChange={(e) =>
+                          updateRow(student.id, { sabaqJuzGiven: e.target.checked })
+                        }
+                        className="accent-foreground w-4 h-4 rounded"
+                      />
+                      <span
+                        className={cn(
+                          "text-sm font-medium",
+                          row.sabaqJuzGiven ? "text-foreground" : "text-muted-foreground"
+                        )}
+                      >
+                        Given
+                      </span>
+                    </label>
+                    {sabaqJuzRemarks.length > 0 && (
+                      <select
+                        value={row.sabaqJuzRemarksId}
+                        onChange={(e) =>
+                          updateRow(student.id, { sabaqJuzRemarksId: e.target.value })
+                        }
+                        className={cn(selectCls, "min-w-[110px]")}
+                      >
+                        <option value="">Remark…</option>
+                        {sabaqJuzRemarks.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-border/50" />
+
+                {/* Daura row */}
+                <div className="grid grid-cols-[3rem_1fr] gap-x-3 items-start">
+                  <span className={labelCls}>Daura</span>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <input
+                      type="text"
+                      placeholder="Juz e.g. 2 15"
+                      value={row.dauraJuz}
+                      onChange={(e) =>
+                        updateRow(student.id, { dauraJuz: e.target.value })
+                      }
+                      className={cn(inputCls, "w-32")}
+                    />
+                    {dauraRemarks.length > 0 && (
+                      <select
+                        value={row.dauraRemarksId}
+                        onChange={(e) =>
+                          updateRow(student.id, { dauraRemarksId: e.target.value })
+                        }
+                        className={cn(selectCls, "min-w-[110px]")}
+                      >
+                        <option value="">Remark…</option>
+                        {dauraRemarks.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </div>
+
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
       </fieldset>
 
-      {/* ── Fixed Save All button ──────────────────────────────────────── */}
+      {/* ── Fixed Save All button ─────────────────────────────────────────── */}
+      {/*
+        Sidebar widths:
+          mobile  (<md)  : 0      — full width
+          tablet  (md)   : 4rem   — icon-only sidebar (w-16)
+          desktop (lg+)  : 16rem  — full sidebar (w-64)
+      */}
       <div className="fixed bottom-0 left-0 right-0 md:left-16 lg:left-64 z-40 pointer-events-none">
-        <div className="px-4 pb-5 pt-8 bg-gradient-to-t from-white via-white/95 to-transparent pointer-events-auto">
+        <div className="px-4 pb-5 pt-10 bg-gradient-to-t from-background via-background/95 to-transparent pointer-events-auto">
           <button
             onClick={handleSaveAll}
             disabled={saving || readyCount === 0}
             className={cn(
-              "w-full max-w-2xl mx-auto flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all shadow-md",
+              "w-full max-w-3xl mx-auto flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all shadow-lg",
               saving || readyCount === 0
                 ? "bg-foreground/40 text-background cursor-not-allowed"
-                : "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]"
+                : "bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98]"
             )}
           >
             {saving ? (
@@ -424,7 +439,7 @@ export function HifzBulkEntry({
             {saving
               ? "Saving…"
               : !!activeLeave
-              ? "Inputs Locked"
+              ? "Inputs Locked — Leave Active"
               : readyCount > 0
               ? `Save All — ${readyCount} student${readyCount !== 1 ? "s" : ""}`
               : "Enter data above to save"}

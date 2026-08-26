@@ -113,7 +113,7 @@ export function LeaveToppers({ period, students, activities, responses }: Props)
             className={cn(
               "px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
               classFilter === cls
-                ? "bg-primary text-primary-foreground border-foreground"
+                ? "bg-foreground text-background border-foreground"
                 : "bg-card text-muted-foreground border-border hover:border-foreground/30"
             )}
           >

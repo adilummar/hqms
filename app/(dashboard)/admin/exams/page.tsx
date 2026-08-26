@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
-import { examinations } from "@/lib/db/schema";
-import { desc } from "drizzle-orm";
+import { examinations, examSessions, academicYears } from "@/lib/db/schema";
+import { desc, eq } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import Link from "next/link";
 import { ExamActions } from "@/components/exams/exam-actions";
@@ -18,20 +18,50 @@ const TRACK_COLORS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-muted text-muted-foreground",
   ongoing:   "bg-yellow-500/10 text-yellow-600",
-  completed: "bg-primary/10 text-primary",
+  completed: "bg-green-500/10 text-green-600",
   cancelled: "bg-red-500/10 text-red-600",
 };
 
 export default async function ExamsPage() {
   await requireAdmin();
 
-  const allExaminations = await db.query.examinations.findMany({
-    with: { 
-      academicYear: true,
-      examSessions: true,
-    },
-    orderBy: [desc(examinations.createdAt)],
-  });
+  // Fetch examinations with academic year label and their sessions separately
+  const [rawExams, allSessions] = await Promise.all([
+    db
+      .select({
+        id:             examinations.id,
+        name:           examinations.name,
+        startDate:      examinations.startDate,
+        endDate:        examinations.endDate,
+        status:         examinations.status,
+        createdAt:      examinations.createdAt,
+        academicYearId: examinations.academicYearId,
+        yearLabel:      academicYears.label,
+      })
+      .from(examinations)
+      .leftJoin(academicYears, eq(examinations.academicYearId, academicYears.id))
+      .orderBy(desc(examinations.createdAt)),
+    db
+      .select({
+        id:            examSessions.id,
+        examinationId: examSessions.examinationId,
+        track:         examSessions.track,
+      })
+      .from(examSessions),
+  ]);
+
+  // Group sessions by examination id
+  const sessionsByExam = new Map<string, typeof allSessions>();
+  for (const session of allSessions) {
+    const list = sessionsByExam.get(session.examinationId) ?? [];
+    list.push(session);
+    sessionsByExam.set(session.examinationId, list);
+  }
+
+  const allExaminations = rawExams.map((exam) => ({
+    ...exam,
+    examSessions: sessionsByExam.get(exam.id) ?? [],
+  }));
 
   return (
     <div>
@@ -74,7 +104,7 @@ export default async function ExamsPage() {
                 {allExaminations.map((exam) => (
                   <tr key={exam.id} className="hover:bg-muted/20 transition-colors">
                     <td className="px-5 py-3 font-medium">{exam.name}</td>
-                    <td className="px-5 py-3 text-muted-foreground">{exam.academicYear?.label ?? "—"}</td>
+                    <td className="px-5 py-3 text-muted-foreground">{exam.yearLabel ?? "—"}</td>
                     <td className="px-5 py-3 text-muted-foreground font-jetbrains text-xs">
                       {exam.startDate ?? "—"} {exam.endDate ? `→ ${exam.endDate}` : ""}
                     </td>

@@ -16,6 +16,7 @@ const schema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   status: z.enum(["scheduled", "ongoing", "completed", "cancelled"]).optional(),
+  tutorMarkEntryOnly: z.boolean(),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -31,6 +32,7 @@ interface ExamData {
   startDate: string;
   endDate: string;
   status: string;
+  tutorMarkEntryOnly?: boolean;
 }
 
 interface Props {
@@ -51,6 +53,7 @@ export function EditExamForm({ exam, academicYears }: Props) {
       startDate: exam.startDate,
       endDate: exam.endDate,
       status: exam.status as FormData["status"],
+      tutorMarkEntryOnly: exam.tutorMarkEntryOnly ?? false,
     },
   });
 
@@ -116,6 +119,18 @@ export function EditExamForm({ exam, academicYears }: Props) {
           <option value="completed">Completed</option>
           <option value="cancelled">Cancelled</option>
         </select>
+      </div>
+
+      <div className="flex items-center space-x-2 pt-2">
+        <input 
+          type="checkbox" 
+          id="tutorMarkEntryOnly" 
+          {...register("tutorMarkEntryOnly")} 
+          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" 
+        />
+        <label htmlFor="tutorMarkEntryOnly" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+          Restrict mark entry to assigned class tutors only
+        </label>
       </div>
 
       <div className="flex gap-3 pt-2">

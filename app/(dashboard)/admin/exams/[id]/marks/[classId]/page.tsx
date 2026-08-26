@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth/helpers";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { examSessions, classes, examSubjects, examMarks, enrollments } from "@/lib/db/schema";
 import { eq, and, inArray, asc } from "drizzle-orm";
@@ -15,6 +16,7 @@ export default async function AdminMarkEntryPage({
   params: Promise<{ id: string; classId: string }>;
 }) {
   await requireAdmin();
+  const session = await auth();
   const { id, classId } = await params;
 
   // Fetch exam session
@@ -23,6 +25,29 @@ export default async function AdminMarkEntryPage({
   });
 
   if (!exam) notFound();
+
+  if (exam.tutorMarkEntryOnly && session?.user?.role !== "tutor") {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Link href={`/admin/exams/${exam.id}`} className={buttonVariants({ variant: "outline", size: "icon" })}>
+            <ChevronLeft className="h-4 w-4" />
+          </Link>
+          <PageHeader
+            title="Access Denied"
+            description={`${exam.name} • ${exam.track} track`}
+          />
+        </div>
+        <div className="rounded-md border bg-amber-50 text-amber-800 px-4 py-6 text-center border-amber-200">
+          <h5 className="font-semibold text-lg mb-2">Restricted Mark Entry</h5>
+          <p>
+            This exam is configured to <strong>only allow assigned class tutors</strong> to enter marks.
+            As an administrator, your mark entry access is currently blocked for this session.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Fetch class details
   const cls = await db.query.classes.findFirst({
@@ -40,12 +65,11 @@ export default async function AdminMarkEntryPage({
     orderBy: [asc(examSubjects.displayOrder)],
   });
 
-  // Fetch enrolled students
+  // Fetch enrolled students — classId + active is sufficient (matches attendance page pattern)
   const classEnrollments = await db.query.enrollments.findMany({
     where: and(
       eq(enrollments.classId, classId),
-      eq(enrollments.status, "active"),
-      eq(enrollments.academicYearId, exam.academicYearId)
+      eq(enrollments.status, "active")
     ),
     with: {
       student: true,

@@ -230,7 +230,7 @@ export function RemarksManager({ initialRemarks }: Props) {
                 className="w-full h-10 px-3 rounded-md border border-border bg-background" 
               />
             </div>
-            <Button type="submit" disabled={isPending} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button type="submit" disabled={isPending} className="w-full bg-foreground text-background hover:bg-foreground/90">
               {isPending ? "Adding..." : "Add Option"}
             </Button>
           </form>

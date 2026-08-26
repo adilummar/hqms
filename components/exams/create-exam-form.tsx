@@ -15,6 +15,7 @@ const schema = z.object({
   academicYearId: z.string().min(1, "Required"),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  tutorMarkEntryOnly: z.boolean(),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -31,19 +32,19 @@ export function CreateExamForm({ academicYears }: Props) {
   const [isPending, startTransition] = useTransition();
   const currentYear = academicYears.find(y => y.isCurrent);
 
-  const { register, handleSubmit, formState: { errors }, watch } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { tracks: ["school", "madrasa", "hifz"], academicYearId: currentYear?.id ?? "" },
+    defaultValues: { tracks: ["school", "madrasa", "hifz"], academicYearId: currentYear?.id ?? "", tutorMarkEntryOnly: false },
   });
 
   function onSubmit(data: FormData) {
     startTransition(async () => {
       const result = await createExamination(data);
-      if (result.success && "id" in result && result.id) {
+      if (result.success && "id" in result) {
         toast.success("Examination created");
         router.push(`/admin/exams/${result.id}`);
       } else {
-        toast.error(("error" in result ? result.error : null) ?? "Failed to create examination");
+        toast.error("error" in result ? result.error : "Failed to create examination");
       }
     });
   }
@@ -91,6 +92,18 @@ export function CreateExamForm({ academicYears }: Props) {
           <label className={lbl}>End Date</label>
           <input type="date" {...register("endDate")} className={inp} />
         </div>
+      </div>
+
+      <div className="flex items-center space-x-2 pt-2">
+        <input 
+          type="checkbox" 
+          id="tutorMarkEntryOnly" 
+          {...register("tutorMarkEntryOnly")} 
+          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" 
+        />
+        <label htmlFor="tutorMarkEntryOnly" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+          Restrict mark entry to assigned class tutors only
+        </label>
       </div>
 
       <div className="flex gap-3 pt-2">
