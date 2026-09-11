@@ -64,7 +64,7 @@ export default async function AdminParentMeetingsPage({ searchParams }: Props) {
 
   // Fetch students + existing attendance for selected meeting + class
   let studentList: { id: string; studentCode: string; firstName: string; lastName: string | null }[] = [];
-  let existingAttendance: { studentId: string; attended: boolean; remarks: string | null }[] = [];
+  let existingAttendance: { studentId: string; attended: boolean | null; status: string | null; remarks: string | null }[] = [];
 
   if (selectedMeeting && selectedClassId) {
     const classEnrollments = await db.query.enrollments.findMany({
@@ -94,6 +94,7 @@ export default async function AdminParentMeetingsPage({ searchParams }: Props) {
       existingAttendance = attendance.map((a) => ({
         studentId: a.studentId,
         attended: a.attended,
+        status: a.status,
         remarks: a.remarks,
       }));
     }
@@ -106,14 +107,14 @@ export default async function AdminParentMeetingsPage({ searchParams }: Props) {
         const allAtt = await db.query.parentMeetingAttendance.findMany({
           where: eq(parentMeetingAttendance.meetingId, selectedMeetingId!),
         });
-        const attended = allAtt.filter((a) => a.attended).length;
+        const attended = allAtt.filter((a) => a.status === "ON_TIME" || a.status === "LATE" || (a.status === null && a.attended)).length;
         return { total: allAtt.length, attended, absent: allAtt.length - attended };
       })()
     : null;
 
   const isAlreadyMarked = existingAttendance.length > 0;
-  const attendedInClass = existingAttendance.filter((a) => a.attended).length;
-  const absentInClass = existingAttendance.filter((a) => !a.attended).length;
+  const attendedInClass = existingAttendance.filter((a) => a.status === "ON_TIME" || a.status === "LATE" || (a.status === null && a.attended)).length;
+  const absentInClass = existingAttendance.filter((a) => a.status === "ABSENT_WITH_REASON" || a.status === "ABSENT_WITHOUT_VALID_REASON" || (a.status === null && a.attended === false)).length;
   const unmarkedInClass = studentList.length - existingAttendance.length;
 
   return (

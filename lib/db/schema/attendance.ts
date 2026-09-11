@@ -8,10 +8,11 @@ import {
   timestamp,
   unique,
 } from "drizzle-orm/pg-core";
-import { attendanceStatusEnum, leaveTypeEnum, classTrackEnum } from "./enums";
+import { attendanceStatusEnum, leaveTypeEnum, classTrackEnum, attendanceSessionEnum, parentMeetingStatusEnum } from "./enums";
 import { students } from "./students";
 import { classes } from "./classes";
 import { users } from "./users";
+import { remarksOptions } from "./remarks";
 import { relations } from "drizzle-orm";
 
 export const attendanceRecords = pgTable(
@@ -26,17 +27,21 @@ export const attendanceRecords = pgTable(
       .references(() => classes.id, { onDelete: "restrict" }),
     track: classTrackEnum("track").notNull(),
     date: date("date").notNull(),
+    session: attendanceSessionEnum("session"),
     status: attendanceStatusEnum("status").notNull(),
     leaveType: leaveTypeEnum("leave_type"),
+    absenceReasonId: uuid("absence_reason_id").references(() => remarksOptions.id, { onDelete: "restrict" }),
     remarks: text("remarks"),
     recordedBy: uuid("recorded_by")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
+    deletedBy: uuid("deleted_by").references(() => users.id, { onDelete: "set null" }),
   },
   (table) => ({
-    uniq: unique().on(table.studentId, table.classId, table.date),
+    uniq: unique().on(table.studentId, table.classId, table.date, table.session),
   })
 );
 
@@ -103,8 +108,9 @@ export const parentMeetingAttendance = pgTable(
     studentId: uuid("student_id")
       .notNull()
       .references(() => students.id, { onDelete: "cascade" }),
-    attended: boolean("attended").notNull(),
-    remarks: text("remarks"), // only meaningful when attended = false
+    attended: boolean("attended"),
+    status: parentMeetingStatusEnum("status"),
+    remarks: text("remarks"),
     recordedBy: uuid("recorded_by")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),

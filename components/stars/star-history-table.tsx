@@ -3,6 +3,7 @@ import { Star, StarOff } from "lucide-react";
 interface StarEntry {
   id: string;
   type: "blue" | "black";
+  value: number;
   reason: string;
   awardedAt: Date | string;
   awardedByUser?: { username: string } | null;
@@ -12,12 +13,16 @@ interface Props {
   stars: StarEntry[];
   showRemove?: boolean;
   onRemove?: (id: string) => void;
+  showEdit?: boolean;
+  onEdit?: (star: StarEntry) => void;
 }
 
 export function StarHistoryTable({
   stars,
   showRemove = false,
+  showEdit = false,
   onRemove,
+  onEdit,
 }: Props) {
   if (stars.length === 0) {
     return (
@@ -36,6 +41,9 @@ export function StarHistoryTable({
               Star
             </th>
             <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+              Value
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
               Reason
             </th>
             <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
@@ -44,7 +52,7 @@ export function StarHistoryTable({
             <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
               Date
             </th>
-            {showRemove && <th className="px-4 py-3" />}
+            {(showRemove || showEdit) && <th className="px-4 py-3" />}
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -68,6 +76,9 @@ export function StarHistoryTable({
                   </span>
                 )}
               </td>
+              <td className="px-4 py-3 font-jetbrains text-xs text-foreground">
+                {star.value || 1}
+              </td>
               <td className="max-w-xs px-4 py-3 text-foreground">
                 {star.reason}
               </td>
@@ -81,15 +92,26 @@ export function StarHistoryTable({
                   year: "numeric",
                 })}
               </td>
-              {showRemove && (
-                <td className="px-4 py-3">
-                  <button
-                    type="button"
-                    onClick={() => onRemove?.(star.id)}
-                    className="text-xs text-red-500 transition-colors hover:text-red-700"
-                  >
-                    Remove
-                  </button>
+              {(showRemove || showEdit) && (
+                <td className="px-4 py-3 flex gap-2">
+                  {showEdit && (
+                    <button
+                      type="button"
+                      onClick={() => onEdit?.(star)}
+                      className="text-xs text-blue-500 transition-colors hover:text-blue-700"
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {showRemove && (
+                    <button
+                      type="button"
+                      onClick={() => onRemove?.(star.id)}
+                      className="text-xs text-red-500 transition-colors hover:text-red-700"
+                    >
+                      Remove
+                    </button>
+                  )}
                 </td>
               )}
             </tr>

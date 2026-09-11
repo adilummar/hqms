@@ -4,8 +4,10 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Props {
-  presentDates: string[];
-  absentDates: string[];
+  fullPresentDates: string[];
+  halfPresentDates: string[];
+  fullAbsentDates: string[];
+  partialDates: string[];
   leaveDates: string[];
 }
 
@@ -19,14 +21,16 @@ function toKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-export function AttendanceCalendar({ presentDates, absentDates, leaveDates }: Props) {
+export function AttendanceCalendar({ fullPresentDates, halfPresentDates, fullAbsentDates, partialDates, leaveDates }: Props) {
   const today = new Date();
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [hovered, setHovered] = useState<string | null>(null);
 
-  const presentSet = new Set(presentDates);
-  const absentSet  = new Set(absentDates);
-  const leaveSet   = new Set(leaveDates);
+  const fullPresentSet = new Set(fullPresentDates);
+  const halfPresentSet = new Set(halfPresentDates);
+  const fullAbsentSet  = new Set(fullAbsentDates);
+  const partialSet     = new Set(partialDates);
+  const leaveSet       = new Set(leaveDates);
 
   const year  = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -62,9 +66,11 @@ export function AttendanceCalendar({ presentDates, absentDates, leaveDates }: Pr
 
   function getStatus(key: string | null) {
     if (!key) return null;
-    if (presentSet.has(key)) return "present";
-    if (absentSet.has(key))  return "absent";
-    if (leaveSet.has(key))   return "leave";
+    if (fullPresentSet.has(key)) return "full_present";
+    if (halfPresentSet.has(key)) return "half_present";
+    if (fullAbsentSet.has(key))  return "full_absent";
+    if (partialSet.has(key))     return "partial";
+    if (leaveSet.has(key))       return "leave";
     return null;
   }
 
@@ -78,44 +84,64 @@ export function AttendanceCalendar({ presentDates, absentDates, leaveDates }: Pr
     let ring  = "";
     let font  = "font-normal";
 
-    if (status === "present") {
+    if (status === "full_present") {
       bg   = "bg-emerald-500/15";
       text = isCurrentMonth ? "text-emerald-700" : "text-emerald-400/50";
       font = "font-semibold";
-    } else if (status === "absent") {
+    } else if (status === "half_present") {
+      bg   = "bg-amber-400/15";
+      text = isCurrentMonth ? "text-amber-700" : "text-amber-400/50";
+      font = "font-semibold";
+    } else if (status === "full_absent") {
       bg   = "bg-red-500/15";
       text = isCurrentMonth ? "text-red-700" : "text-red-400/50";
       font = "font-semibold";
+    } else if (status === "partial") {
+      bg   = "bg-blue-400/15";
+      text = isCurrentMonth ? "text-blue-700" : "text-blue-400/50";
+      font = "font-semibold";
     } else if (status === "leave") {
-      bg   = "bg-amber-400/15";
-      text = isCurrentMonth ? "text-amber-700" : "text-amber-400/50";
+      bg   = "bg-gray-400/15";
+      text = isCurrentMonth ? "text-gray-700" : "text-gray-400/50";
       font = "font-semibold";
     }
 
     if (isToday) ring = "ring-2 ring-teal ring-offset-1";
-    if (isHov && status)  bg = status === "present" ? "bg-emerald-500/25" : status === "absent" ? "bg-red-500/25" : "bg-amber-400/25";
+    if (isHov && status)  {
+      if (status === "full_present") bg = "bg-emerald-500/25";
+      else if (status === "half_present") bg = "bg-amber-400/25";
+      else if (status === "full_absent") bg = "bg-red-500/25";
+      else if (status === "partial") bg = "bg-blue-400/25";
+      else bg = "bg-gray-400/25";
+    }
 
     return `${bg} ${text} ${ring} ${font}`;
   }
 
   const statusLabel: Record<string, string> = {
-    present: "Present",
-    absent:  "Absent",
-    leave:   "Leave",
+    full_present: "Full Day Present",
+    half_present: "Half Day Present",
+    full_absent:  "Full Day Absent",
+    partial:      "Partial Record",
+    leave:        "Leave",
   };
 
   const statusColor: Record<string, string> = {
-    present: "bg-emerald-500 text-white",
-    absent:  "bg-red-500 text-white",
-    leave:   "bg-amber-500 text-white",
+    full_present: "bg-emerald-500 text-white",
+    half_present: "bg-amber-500 text-white",
+    full_absent:  "bg-red-500 text-white",
+    partial:      "bg-blue-500 text-white",
+    leave:        "bg-gray-500 text-white",
   };
 
   // Count for this displayed month
-  let mPresent = 0, mAbsent = 0, mLeave = 0;
+  let mFP = 0, mHP = 0, mFA = 0, mPartial = 0, mLeave = 0;
   for (let d = 1; d <= daysInMonth; d++) {
     const k = toKey(new Date(year, month, d));
-    if (presentSet.has(k)) mPresent++;
-    else if (absentSet.has(k)) mAbsent++;
+    if (fullPresentSet.has(k)) mFP++;
+    else if (halfPresentSet.has(k)) mHP++;
+    else if (fullAbsentSet.has(k)) mFA++;
+    else if (partialSet.has(k)) mPartial++;
     else if (leaveSet.has(k)) mLeave++;
   }
 
@@ -128,7 +154,7 @@ export function AttendanceCalendar({ presentDates, absentDates, leaveDates }: Pr
             {MONTHS[month]} {year}
           </h3>
           <p className="text-xs text-muted-foreground font-dm-sans mt-0.5">
-            {mPresent} present · {mAbsent} absent · {mLeave} leave
+            {mFP + mHP} present · {mFA} absent · {mLeave} leave
           </p>
         </div>
         <div className="flex items-center gap-1">
@@ -201,9 +227,11 @@ export function AttendanceCalendar({ presentDates, absentDates, leaveDates }: Pr
                 {status && cell.isCurrentMonth && (
                   <span className={`
                     mt-1 w-1.5 h-1.5 rounded-full
-                    ${status === "present" ? "bg-emerald-500" :
-                      status === "absent"  ? "bg-red-500" :
-                                             "bg-amber-500"}
+                    ${status === "full_present" ? "bg-emerald-500" :
+                      status === "half_present" ? "bg-amber-500" :
+                      status === "full_absent"  ? "bg-red-500" :
+                      status === "partial"      ? "bg-blue-500" :
+                                                  "bg-gray-500"}
                   `} />
                 )}
 
@@ -219,9 +247,11 @@ export function AttendanceCalendar({ presentDates, absentDates, leaveDates }: Pr
                     <div className={`
                       absolute -bottom-1 left-1/2 -translate-x-1/2
                       w-2 h-2 rotate-45
-                      ${status === "present" ? "bg-emerald-500" :
-                        status === "absent"  ? "bg-red-500" :
-                                               "bg-amber-500"}
+                      ${status === "full_present" ? "bg-emerald-500" :
+                        status === "half_present" ? "bg-amber-500" :
+                        status === "full_absent"  ? "bg-red-500" :
+                        status === "partial"      ? "bg-blue-500" :
+                                                    "bg-gray-500"}
                     `} />
                   </div>
                 )}
@@ -234,10 +264,12 @@ export function AttendanceCalendar({ presentDates, absentDates, leaveDates }: Pr
       {/* Legend */}
       <div className="flex items-center gap-5 mt-5 pt-4 border-t border-border justify-center flex-wrap">
         {[
-          { label: "Present", color: "bg-emerald-500", light: "bg-emerald-500/15 text-emerald-700" },
-          { label: "Absent",  color: "bg-red-500",     light: "bg-red-500/15 text-red-700" },
-          { label: "Leave",   color: "bg-amber-500",   light: "bg-amber-400/15 text-amber-700" },
-          { label: "Today",   color: "bg-teal",        light: "" },
+          { label: "Full Present", color: "bg-emerald-500" },
+          { label: "Half Present", color: "bg-amber-500" },
+          { label: "Full Absent",  color: "bg-red-500" },
+          { label: "Partial",      color: "bg-blue-500" },
+          { label: "Leave",        color: "bg-gray-500" },
+          { label: "Today",        color: "bg-teal" },
         ].map((item) => (
           <div key={item.label} className="flex items-center gap-1.5">
             <span className={`w-2.5 h-2.5 rounded-full ${item.color}`} />

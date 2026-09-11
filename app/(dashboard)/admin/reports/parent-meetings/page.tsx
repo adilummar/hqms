@@ -73,14 +73,16 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
     : [];
 
   // ── Per-class stats (for the class breakdown view) ────────────────────────────
-  // For each class, get enrolled students and cross-reference with attendance
   type ClassStat = {
     classId: string;
     className: string;
     track: string;
     total: number;
-    attended: number;
-    absent: number;
+    onTime: number;
+    late: number;
+    absentReason: number;
+    absentNoReason: number;
+    legacy: number;
     notRecorded: number;
   };
 
@@ -107,10 +109,15 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
       .map((cls) => {
         const studentIds = enrollsByClass.get(cls.id) ?? [];
         const total = studentIds.length;
-        const attended = studentIds.filter((sid) => attMap.get(sid)?.attended === true).length;
-        const absent = studentIds.filter((sid) => attMap.get(sid)?.attended === false).length;
-        const notRecorded = total - attended - absent;
-        return { classId: cls.id, className: cls.name, track: cls.track, total, attended, absent, notRecorded };
+        const onTime = studentIds.filter((sid) => attMap.get(sid)?.status === "ON_TIME").length;
+        const late = studentIds.filter((sid) => attMap.get(sid)?.status === "LATE").length;
+        const absentReason = studentIds.filter((sid) => attMap.get(sid)?.status === "ABSENT_WITH_REASON").length;
+        const absentNoReason = studentIds.filter((sid) => attMap.get(sid)?.status === "ABSENT_WITHOUT_VALID_REASON").length;
+        const legacy = studentIds.filter((sid) => attMap.get(sid)?.status === null && attMap.get(sid)?.attended !== null).length;
+        
+        const recorded = onTime + late + absentReason + absentNoReason + legacy;
+        const notRecorded = total - recorded;
+        return { classId: cls.id, className: cls.name, track: cls.track, total, onTime, late, absentReason, absentNoReason, legacy, notRecorded };
       })
       .filter((s) => s.total > 0);
   }
@@ -167,7 +174,8 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
               lastName: s.lastName,
               className: cls?.className ?? "Unknown",
               classTrack: cls?.classTrack ?? "unknown",
-              attended: att?.attended ?? false,
+              attended: att?.attended ?? null,
+              status: att?.status ?? null,
               remarks: att?.remarks ?? (att ? null : "Not recorded"),
             };
           });
@@ -221,10 +229,10 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
         
         yearlyRows = studentsData.map(s => {
           const cls = studentClassMap.get(s.id);
-          const attendance: Record<string, boolean | null> = {};
+          const attendance: Record<string, string | null> = {};
           for (const m of yearlyMeetings) {
             const att = attendanceData.find(a => a.studentId === s.id && a.meetingId === m.id);
-            attendance[m.id] = att ? att.attended : null;
+            attendance[m.id] = att ? (att.status || (att.attended !== null ? (att.attended ? "LEGACY_YES" : "LEGACY_NO") : null)) : null;
           }
           return {
             studentId: s.id,
@@ -241,7 +249,7 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
   }
 
   const overallTotal = allAttendance.length;
-  const overallAttended = allAttendance.filter((a) => a.attended).length;
+  const overallAttended = allAttendance.filter((a) => a.status === "ON_TIME" || a.status === "LATE" || (a.status === null && a.attended)).length;
   const overallRate = overallTotal > 0 ? Math.round((overallAttended / overallTotal) * 100) : 0;
 
   return (
@@ -428,11 +436,11 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
                     </div>
                     <div className="divide-y divide-border">
                       {classStats.map((stat) => {
+                        const totalRecorded = stat.onTime + stat.late + stat.absentReason + stat.absentNoReason + stat.legacy;
+                        const legacy = stat.legacy;
+                        
                         const recordedRate = stat.total > 0
-                          ? Math.round(((stat.attended + stat.absent) / stat.total) * 100)
-                          : 0;
-                        const attendRate = (stat.attended + stat.absent) > 0
-                          ? Math.round((stat.attended / (stat.attended + stat.absent)) * 100)
+                          ? Math.round((totalRecorded / stat.total) * 100)
                           : 0;
 
                         return (
@@ -447,44 +455,28 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
                                 }`}>{stat.track}</span>
                               </div>
                               <div className="flex items-center gap-3 text-xs">
-                                <span className="flex items-center gap-1 text-emerald-700 font-semibold">
-                                  <CheckCircle2 size={12} /> {stat.attended} came
-                                </span>
-                                <span className="flex items-center gap-1 text-red-600 font-semibold">
-                                  <XCircle size={12} /> {stat.absent} absent
-                                </span>
-                                {stat.notRecorded > 0 && (
-                                  <span className="text-amber-600 font-semibold">{stat.notRecorded} not recorded</span>
-                                )}
+                                {stat.onTime > 0 && <span className="flex items-center gap-1 text-emerald-700 font-semibold"><CheckCircle2 size={12} /> {stat.onTime} on time</span>}
+                                {stat.late > 0 && <span className="flex items-center gap-1 text-blue-600 font-semibold"><Clock size={12} /> {stat.late} late</span>}
+                                {stat.absentReason > 0 && <span className="flex items-center gap-1 text-amber-600 font-semibold"><XCircle size={12} /> {stat.absentReason} absent (reason)</span>}
+                                {stat.absentNoReason > 0 && <span className="flex items-center gap-1 text-red-600 font-semibold"><XCircle size={12} /> {stat.absentNoReason} absent (no valid)</span>}
+                                {legacy > 0 && <span className="flex items-center gap-1 text-gray-500 font-semibold"><Clock size={12} /> {legacy} legacy</span>}
+                                {stat.notRecorded > 0 && <span className="text-muted-foreground font-semibold">{stat.notRecorded} not recorded</span>}
                               </div>
                             </div>
 
                             {/* Stacked bar */}
                             <div className="h-3 bg-muted rounded-full overflow-hidden flex">
-                              <div
-                                className="h-full bg-emerald-500 transition-all"
-                                style={{ width: `${stat.total > 0 ? (stat.attended / stat.total) * 100 : 0}%` }}
-                                title={`${stat.attended} attended`}
-                              />
-                              <div
-                                className="h-full bg-red-400 transition-all"
-                                style={{ width: `${stat.total > 0 ? (stat.absent / stat.total) * 100 : 0}%` }}
-                                title={`${stat.absent} absent`}
-                              />
-                              <div
-                                className="h-full bg-amber-300 transition-all"
-                                style={{ width: `${stat.total > 0 ? (stat.notRecorded / stat.total) * 100 : 0}%` }}
-                                title={`${stat.notRecorded} not recorded`}
-                              />
+                              <div className="h-full bg-emerald-500 transition-all" style={{ width: `${stat.total > 0 ? (stat.onTime / stat.total) * 100 : 0}%` }} title={`${stat.onTime} on time`} />
+                              <div className="h-full bg-blue-500 transition-all" style={{ width: `${stat.total > 0 ? (stat.late / stat.total) * 100 : 0}%` }} title={`${stat.late} late`} />
+                              <div className="h-full bg-amber-400 transition-all" style={{ width: `${stat.total > 0 ? (stat.absentReason / stat.total) * 100 : 0}%` }} title={`${stat.absentReason} absent (reason)`} />
+                              <div className="h-full bg-red-500 transition-all" style={{ width: `${stat.total > 0 ? (stat.absentNoReason / stat.total) * 100 : 0}%` }} title={`${stat.absentNoReason} absent (no valid)`} />
+                              <div className="h-full bg-gray-400 transition-all" style={{ width: `${stat.total > 0 ? (legacy / stat.total) * 100 : 0}%` }} title={`${legacy} legacy records`} />
+                              <div className="h-full bg-gray-200 transition-all" style={{ width: `${stat.total > 0 ? (stat.notRecorded / stat.total) * 100 : 0}%` }} title={`${stat.notRecorded} not recorded`} />
                             </div>
 
                             <div className="flex justify-between mt-1">
                               <p className="text-xs text-muted-foreground">{stat.total} students total</p>
-                              {(stat.attended + stat.absent) > 0 && (
-                                <p className="text-xs text-muted-foreground">
-                                  {attendRate}% of recorded parents attended
-                                </p>
-                              )}
+                              {totalRecorded > 0 && <p className="text-xs text-muted-foreground">{recordedRate}% recorded</p>}
                             </div>
                           </div>
                         );
@@ -492,9 +484,10 @@ export default async function ParentMeetingReportPage({ searchParams }: Props) {
                     </div>
                     {/* Legend */}
                     <div className="px-5 py-3 border-t border-border bg-muted/20 flex items-center gap-4 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Attended</span>
-                      <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-400 inline-block" />Absent</span>
-                      <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-amber-300 inline-block" />Not Recorded</span>
+                      <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />On Time</span>
+                      <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-blue-500 inline-block" />Late</span>
+                      <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-amber-400 inline-block" />Absent (Reason)</span>
+                      <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block" />Absent (No Reason)</span>
                     </div>
                   </div>
                 )}

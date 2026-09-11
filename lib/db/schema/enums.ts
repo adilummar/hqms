@@ -29,6 +29,8 @@ export const classTrackEnum = pgEnum("class_track", [
   "school",
 ]);
 
+export const attendanceSessionEnum = pgEnum("attendance_session", ["FN", "AN"]);
+
 export const attendanceStatusEnum = pgEnum("attendance_status", [
   "present",
   "absent",
@@ -60,9 +62,15 @@ export const remarksCategory = pgEnum("remarks_category", [
   "attendance",
 ]);
 
+export const parentMeetingStatusEnum = pgEnum("parent_meeting_status", [
+  "ON_TIME",
+  "LATE",
+  "ABSENT_WITH_REASON",
+  "ABSENT_WITHOUT_VALID_REASON",
+]);
+
 export const targetPeriodEnum = pgEnum("target_period", ["monthly", "yearly"]);
 
-// Future enums (Phase 2+)
 export const feeStatusEnum = pgEnum("fee_status", [
   "pending",
   "paid",
@@ -93,6 +101,17 @@ export const notificationChannelEnum = pgEnum("notification_channel", [
   "whatsapp",
   "email",
   "in_app",
+]);
+
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "exam_results_published",
+  "parent_meeting_announced",
+  "parent_meeting_reminder",
+  "parent_meeting_attendance_recorded",
+  "hifz_entry_created",
+  "juz_completed",
+  "hafiz_milestone",
+  "leave_period_activated",
 ]);
 
 export const starTypeEnum = pgEnum("star_type", ["blue", "black"]);

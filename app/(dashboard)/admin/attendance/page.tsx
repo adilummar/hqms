@@ -38,7 +38,7 @@ export default async function AdminAttendancePage({ searchParams }: Props) {
     firstName: string;
     lastName: string | null;
     studentCode: string;
-    attendanceMap: Record<number, AttStatus>;
+    attendanceMap: Record<number, string>;
     presentCount: number;
     percentage: number;
   }[] = [];
@@ -64,32 +64,60 @@ export default async function AdminAttendancePage({ searchParams }: Props) {
         }),
       ]);
 
-      // Group attendance by studentId -> day -> status
-      const attByStudent = new Map<string, Map<number, AttStatus>>();
+      // Group attendance by studentId -> day -> session -> status
+      const attByStudent = new Map<string, Map<number, { FN?: string; AN?: string; Legacy?: string }>>();
       for (const rec of allAttendance) {
+        if (rec.deletedAt) continue;
         const day = parseInt(rec.date.split("-")[2], 10);
-        if (!attByStudent.has(rec.studentId)) {
-          attByStudent.set(rec.studentId, new Map());
-        }
-        attByStudent.get(rec.studentId)!.set(day, rec.status as AttStatus);
+        if (!attByStudent.has(rec.studentId)) attByStudent.set(rec.studentId, new Map());
+        const dayMap = attByStudent.get(rec.studentId)!;
+        if (!dayMap.has(day)) dayMap.set(day, {});
+        
+        if (rec.session === "FN") dayMap.get(day)!.FN = rec.status;
+        else if (rec.session === "AN") dayMap.get(day)!.AN = rec.status;
+        else dayMap.get(day)!.Legacy = rec.status;
       }
 
       studentRows = studentsData
         .filter((s) => studentIds.includes(s.id))
         .map((s) => {
           const dayMap = attByStudent.get(s.id) ?? new Map();
-          const attendanceMap: Record<number, AttStatus> = {};
-          let presentCount = 0;
+          const attendanceMap: Record<number, string> = {};
+          
+          let totalRecordedSessions = 0;
+          let presentSessions = 0;
+
           for (const d of days) {
-            const status = dayMap.get(d);
-            if (status) {
-              attendanceMap[d] = status;
-              if (status === "present") presentCount++;
+            const statuses = dayMap.get(d);
+            if (!statuses) continue;
+
+            const { FN, AN, Legacy } = statuses;
+            
+            // Percentage logic for this day
+            if (Legacy) {
+              totalRecordedSessions += 2; // Treat legacy as full day for denominator
+              if (Legacy === "present") presentSessions += 2;
+              attendanceMap[d] = Legacy === "present" ? "full_present" : Legacy === "absent" ? "full_absent" : "leave";
+            } else {
+              if (FN === "present" || FN === "absent") {
+                totalRecordedSessions += 1;
+                if (FN === "present") presentSessions += 1;
+              }
+              if (AN === "present" || AN === "absent") {
+                totalRecordedSessions += 1;
+                if (AN === "present") presentSessions += 1;
+              }
+
+              // Daily Status UI Logic
+              if (FN === "present" && AN === "present") attendanceMap[d] = "full_present";
+              else if (FN === "absent" && AN === "absent") attendanceMap[d] = "full_absent";
+              else if ((FN === "present" && AN === "absent") || (FN === "absent" && AN === "present")) attendanceMap[d] = "half_present";
+              else if (FN || AN) attendanceMap[d] = "partial";
             }
           }
-          const markedDays = dayMap.size;
-          const percentage = markedDays > 0 ? Math.round((presentCount / markedDays) * 100) : 0;
-          return { id: s.id, firstName: s.firstName, lastName: s.lastName, studentCode: s.studentCode, attendanceMap, presentCount, percentage };
+
+          const percentage = totalRecordedSessions > 0 ? Math.round((presentSessions / totalRecordedSessions) * 100) : 0;
+          return { id: s.id, firstName: s.firstName, lastName: s.lastName, studentCode: s.studentCode, attendanceMap, presentCount: presentSessions, percentage };
         })
         .sort((a, b) => a.firstName.localeCompare(b.firstName));
     }
@@ -98,9 +126,11 @@ export default async function AdminAttendancePage({ searchParams }: Props) {
   const monthName = new Date(year, month - 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
   const threshold = 75;
 
-  const CELL: Record<AttStatus, string> = {
-    present: "bg-foreground",
-    absent: "bg-red-200 border border-red-300",
+  const CELL: Record<string, string> = {
+    full_present: "bg-foreground",
+    half_present: "bg-amber-400 border border-amber-500",
+    full_absent: "bg-red-200 border border-red-300",
+    partial: "bg-blue-200 border border-blue-300",
     leave: "bg-gray-100 border border-gray-200",
   };
 
@@ -154,9 +184,11 @@ export default async function AdminAttendancePage({ searchParams }: Props) {
       </form>
 
       {/* Legend */}
-      <div className="flex gap-4 mb-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5"><span className="w-4 h-4 bg-foreground rounded-xs inline-block" /> Present</span>
-        <span className="flex items-center gap-1.5"><span className="w-4 h-4 bg-red-200 border border-red-300 rounded-xs inline-block" /> Absent</span>
+      <div className="flex flex-wrap gap-4 mb-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5"><span className="w-4 h-4 bg-foreground rounded-xs inline-block" /> Full Present</span>
+        <span className="flex items-center gap-1.5"><span className="w-4 h-4 bg-amber-400 border border-amber-500 rounded-xs inline-block" /> Half Present</span>
+        <span className="flex items-center gap-1.5"><span className="w-4 h-4 bg-red-200 border border-red-300 rounded-xs inline-block" /> Full Absent</span>
+        <span className="flex items-center gap-1.5"><span className="w-4 h-4 bg-blue-200 border border-blue-300 rounded-xs inline-block" /> Partial Record</span>
         <span className="flex items-center gap-1.5"><span className="w-4 h-4 bg-gray-100 border border-gray-200 rounded-xs inline-block" /> Leave</span>
         <span className="flex items-center gap-1.5"><span className="w-4 h-4 bg-muted border border-border rounded-xs inline-block" /> Not marked</span>
       </div>

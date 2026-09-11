@@ -13,6 +13,13 @@ const createExaminationSchema = z.object({
   endDate: z.string().optional(),
   tracks: z.array(z.enum(["school", "madrasa", "hifz"])).min(1, "Select at least one track"),
   tutorMarkEntryOnly: z.boolean().optional(),
+  sessionDates: z.record(
+    z.string(),
+    z.object({
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    })
+  ).optional(),
 });
 
 export async function createExamination(data: z.infer<typeof createExaminationSchema>) {
@@ -23,7 +30,7 @@ export async function createExamination(data: z.infer<typeof createExaminationSc
     return { success: false, error: parsed.error.issues[0].message };
   }
   
-  const { name, academicYearId, startDate, endDate, tracks } = parsed.data;
+  const { name, academicYearId, startDate, endDate, tracks, tutorMarkEntryOnly, sessionDates } = parsed.data;
 
   try {
     return await db.transaction(async (tx) => {
@@ -39,15 +46,19 @@ export async function createExamination(data: z.infer<typeof createExaminationSc
       // 2. Create the selected tracks as exam_sessions
       if (tracks.length > 0) {
         await tx.insert(examSessions).values(
-          tracks.map(track => ({
-            examinationId: exam.id,
-            name: `${name} - ${track.charAt(0).toUpperCase() + track.slice(1)}`,
-            track,
-            academicYearId,
-            startDate: startDate || null,
-            endDate: endDate || null,
-            createdBy: session.user.id,
-          }))
+          tracks.map(track => {
+            const trackDates = sessionDates?.[track];
+            return {
+              examinationId: exam.id,
+              name: `${name} - ${track.charAt(0).toUpperCase() + track.slice(1)}`,
+              track,
+              academicYearId,
+              startDate: trackDates?.startDate || null,
+              endDate: trackDates?.endDate || null,
+              createdBy: session.user.id,
+              tutorMarkEntryOnly: tutorMarkEntryOnly ?? false,
+            };
+          })
         );
       }
 

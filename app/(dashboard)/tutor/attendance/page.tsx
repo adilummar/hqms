@@ -1,7 +1,7 @@
 import { requireTutor } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { classes, enrollments, students, attendanceRecords, remarksOptions } from "@/lib/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, isNull } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { AttendanceRoster } from "@/components/attendance/attendance-roster";
 import type { Metadata } from "next";
@@ -34,7 +34,7 @@ export default async function TutorAttendancePage({ searchParams }: Props) {
   const selectedClassId = params.classId ?? allClasses[0]?.id;
 
   let studentList: { id: string; studentCode: string; firstName: string; lastName: string | null }[] = [];
-  let existingEntries: { studentId: string; status: "present" | "absent" | "leave"; leaveType?: "sick_leave" | "casual_leave" | "approved_leave" | null; remarks?: string | null }[] = [];
+  let existingEntries: { studentId: string; session: "FN" | "AN" | null; status: "present" | "absent" | "leave"; absenceReasonId?: string | null }[] = [];
 
   if (selectedClassId) {
     const classEnrollments = await db.query.enrollments.findMany({
@@ -52,7 +52,8 @@ export default async function TutorAttendancePage({ searchParams }: Props) {
           where: and(
             inArray(attendanceRecords.studentId, studentIds),
             eq(attendanceRecords.classId, selectedClassId),
-            eq(attendanceRecords.date, selectedDate)
+            eq(attendanceRecords.date, selectedDate),
+            isNull(attendanceRecords.deletedAt)
           ),
         }),
       ]);
@@ -64,9 +65,9 @@ export default async function TutorAttendancePage({ searchParams }: Props) {
 
       existingEntries = attendance.map((a) => ({
         studentId: a.studentId,
+        session: a.session as "FN" | "AN" | null,
         status: a.status as "present" | "absent" | "leave",
-        leaveType: a.leaveType as "sick_leave" | "casual_leave" | "approved_leave" | null | undefined,
-        remarks: a.remarks,
+        absenceReasonId: a.absenceReasonId,
       }));
     }
   }

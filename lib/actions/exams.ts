@@ -128,6 +128,31 @@ export async function publishExamResults(examSessionId: string) {
     .set({ resultStatus: "published", publishedAt: new Date(), updatedAt: new Date() })
     .where(eq(examSessions.id, examSessionId));
 
+  // Notification integration
+  try {
+    const { notificationService } = await import("@/lib/services/notifications");
+    const sessionData = await db.query.examSessions.findFirst({
+      where: eq(examSessions.id, examSessionId),
+      with: { examination: true }
+    });
+    
+    if (sessionData) {
+      const recipients = await notificationService.resolveExamResultsRecipients(examSessionId);
+      await notificationService.createNotification({
+        type: "exam_results_published",
+        title: "Your exam results are ready",
+        body: `Results for ${sessionData.examination.name} are now available.`,
+        entityType: "exam_session",
+        entityId: examSessionId,
+        deepLink: `/parent/results/${sessionData.examinationId}`,
+        recipients,
+        idempotencyKey: `exam_results_published:${examSessionId}`,
+      });
+    }
+  } catch (err) {
+    console.error("Failed to send publish notification:", err);
+  }
+
   revalidatePath(`/admin/exams/${examSessionId}`);
   revalidatePath("/admin/exams");
   return { success: true };
@@ -143,6 +168,34 @@ export async function unpublishExamResults(examSessionId: string) {
 
   revalidatePath(`/admin/exams/${examSessionId}`);
   return { success: true };
+}
+
+export async function updateSessionDates(sessionId: string, startDate: string | null, endDate: string | null) {
+  const session = await requireRole(["super_admin", "admin"]);
+  
+  if (startDate && endDate && startDate > endDate) {
+    return { success: false, error: "End date cannot be before start date" };
+  }
+
+  try {
+    const [updated] = await db
+      .update(examSessions)
+      .set({ 
+        startDate: startDate || null, 
+        endDate: endDate || null, 
+        updatedAt: new Date() 
+      })
+      .where(eq(examSessions.id, sessionId))
+      .returning();
+
+    if (!updated) return { success: false, error: "Session not found" };
+
+    revalidatePath(`/admin/exams/${updated.examinationId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to update session dates:", error);
+    return { success: false, error: "Failed to update schedule" };
+  }
 }
 
 // ─── Subject Actions ──────────────────────────────────────────────────────────

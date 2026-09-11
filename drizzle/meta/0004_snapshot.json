@@ -1,6 +1,6 @@
 {
-  "id": "48d22f63-c2b3-4ca7-bd04-c34e789b0686",
-  "prevId": "28f0df10-7cfd-4b66-ada8-4b767f2ec633",
+  "id": "649da7e2-2cf5-4a02-bc41-04757d48a251",
+  "prevId": "48d22f63-c2b3-4ca7-bd04-c34e789b0686",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -123,12 +123,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": true
-        },
-        "mobile_number": {
-          "name": "mobile_number",
-          "type": "varchar(20)",
-          "primaryKey": false,
-          "notNull": false
         },
         "last_login_at": {
           "name": "last_login_at",
@@ -1163,6 +1157,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "value": {
+          "name": "value",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
         "reason": {
           "name": "reason",
           "type": "text",
@@ -1188,6 +1189,25 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deleted_by": {
+          "name": "deleted_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -1216,6 +1236,19 @@
             "id"
           ],
           "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "student_stars_deleted_by_users_id_fk": {
+          "name": "student_stars_deleted_by_users_id_fk",
+          "tableFrom": "student_stars",
+          "tableTo": "users",
+          "columnsFrom": [
+            "deleted_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -2576,6 +2609,12 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "examination_id": {
+          "name": "examination_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "name": {
           "name": "name",
           "type": "varchar(200)",
@@ -2635,6 +2674,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "tutor_mark_entry_only": {
+          "name": "tutor_mark_entry_only",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -2652,6 +2698,19 @@
       },
       "indexes": {},
       "foreignKeys": {
+        "exam_sessions_examination_id_examinations_id_fk": {
+          "name": "exam_sessions_examination_id_examinations_id_fk",
+          "tableFrom": "exam_sessions",
+          "tableTo": "examinations",
+          "columnsFrom": [
+            "examination_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
         "exam_sessions_academic_year_id_academic_years_id_fk": {
           "name": "exam_sessions_academic_year_id_academic_years_id_fk",
           "tableFrom": "exam_sessions",
@@ -2680,7 +2739,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "exam_sessions_examination_id_track_unique": {
+          "name": "exam_sessions_examination_id_track_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "examination_id",
+            "track"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -2775,6 +2843,105 @@
             "id"
           ],
           "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.examinations": {
+      "name": "examinations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(200)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "academic_year_id": {
+          "name": "academic_year_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "exam_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'scheduled'"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "examinations_academic_year_id_academic_years_id_fk": {
+          "name": "examinations_academic_year_id_academic_years_id_fk",
+          "tableFrom": "examinations",
+          "tableTo": "academic_years",
+          "columnsFrom": [
+            "academic_year_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "examinations_created_by_users_id_fk": {
+          "name": "examinations_created_by_users_id_fk",
+          "tableFrom": "examinations",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },

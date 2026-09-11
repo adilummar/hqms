@@ -9,8 +9,7 @@ import { SubjectManager, GradeRulesManager, PublishControls } from "@/components
 import Link from "next/link";
 import type { Metadata } from "next";
 import { FileText } from "lucide-react";
-
-export const metadata: Metadata = { title: "Exam Detail" };
+import { EditSessionDatesModal } from "@/components/exams/edit-session-dates-modal";
 
 interface Props { 
   params: Promise<{ id: string }>;
@@ -90,12 +89,8 @@ export default async function ExamDetailPage({ params, searchParams }: Props) {
           <p className="font-medium text-sm">{examination.academicYear?.label ?? "—"}</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-xs text-muted-foreground mb-1">Start Date</p>
-          <p className="font-medium text-sm">{examination.startDate ?? "—"}</p>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-xs text-muted-foreground mb-1">End Date</p>
-          <p className="font-medium text-sm">{examination.endDate ?? "—"}</p>
+          <p className="text-xs text-muted-foreground mb-1">Overall Examination Period</p>
+          <p className="font-medium text-sm">{examination.startDate ?? "—"} → {examination.endDate ?? "—"}</p>
         </div>
       </div>
 
@@ -128,14 +123,30 @@ export default async function ExamDetailPage({ params, searchParams }: Props) {
           {activeSession && (
             <>
               {/* Toolbar for active track */}
-              <div className="flex items-center justify-between bg-muted/30 p-3 rounded-lg border border-border">
-                <div className="flex items-center gap-3">
-                  <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${TRACK_COLOR[activeSession.track]}`}>
-                    {activeSession.track}
-                  </span>
-                  <p className="text-sm font-medium">{activeSession.name}</p>
+              <div className="flex flex-col xl:flex-row xl:items-center justify-between bg-muted/30 p-4 rounded-lg border border-border gap-4">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-3">
+                    <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${TRACK_COLOR[activeSession.track]}`}>
+                      {activeSession.track}
+                    </span>
+                    <p className="text-sm font-medium whitespace-nowrap">{activeSession.name}</p>
+                  </div>
+                  <div className="h-4 w-px bg-border hidden sm:block"></div>
+                  <div className="flex items-center gap-3 bg-background border border-border px-3 py-1.5 rounded-md">
+                    <div className="text-sm whitespace-nowrap">
+                      <span className="text-muted-foreground text-xs mr-2">Examination Period:</span>
+                      <span className="font-medium">{activeSession.startDate || "Not scheduled"} → {activeSession.endDate || "Not scheduled"}</span>
+                    </div>
+                    <div className="h-4 w-px bg-border"></div>
+                    <EditSessionDatesModal 
+                      sessionId={activeSession.id} 
+                      initialStart={activeSession.startDate} 
+                      initialEnd={activeSession.endDate} 
+                      trackName={activeSession.track} 
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <PublishControls
                     examSessionId={activeSession.id}
                     resultStatus={activeSession.resultStatus}

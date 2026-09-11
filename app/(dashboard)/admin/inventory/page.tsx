@@ -1,14 +1,15 @@
 import { requireRole } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
-import { inventoryCategories, inventoryItems } from "@/lib/db/schema";
-import { desc, eq, count, sum, lte, and, gt } from "drizzle-orm";
+import { inventoryCategories, inventoryItems, inventoryCustomFields } from "@/lib/db/schema";
+import { desc, eq, count, sum, lte, and, gt, asc } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { CategoryManager } from "@/components/inventory/category-manager";
 import { ItemsManager } from "@/components/inventory/items-manager";
-import { AlertTriangle, Package, Tag } from "lucide-react";
+import { AlertTriangle, Package, Tag, Settings } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 
-export const metadata: Metadata = { title: "Inventory | Admin" };
+export const metadata: Metadata = { title: "Stock Registration | Admin" };
 
 export default async function InventoryPage() {
   await requireRole(["admin", "super_admin"]);
@@ -18,8 +19,16 @@ export default async function InventoryPage() {
     with: {
       items: {
         orderBy: [desc(inventoryItems.updatedAt)],
+        with: {
+          customValues: true,
+        },
       },
     },
+  });
+
+  const customFields = await db.query.inventoryCustomFields.findMany({
+    where: eq(inventoryCustomFields.isActive, true),
+    orderBy: [asc(inventoryCustomFields.displayOrder), asc(inventoryCustomFields.createdAt)],
   });
 
   // Summary stats
@@ -32,9 +41,15 @@ export default async function InventoryPage() {
   return (
     <div>
       <PageHeader
-        title="Inventory"
+        title="Stock Registration"
         description="Track stock, supplies and equipment across the institution"
-        breadcrumbs={[{ label: "Admin" }, { label: "Inventory" }]}
+        breadcrumbs={[{ label: "Admin" }, { label: "Stock Registration" }]}
+        action={
+          <Link href="/admin/inventory/settings" className="inline-flex items-center gap-2 px-4 py-2 bg-muted text-foreground text-sm font-medium rounded hover:bg-muted/80 transition-colors">
+            <Settings size={16} />
+            Settings
+          </Link>
+        }
       />
 
       {/* Summary cards */}
@@ -132,16 +147,26 @@ export default async function InventoryPage() {
                   <ItemsManager
                     categoryId={cat.id}
                     categoryName={cat.name}
-                    items={cat.items.map((i) => ({
-                      id: i.id,
-                      categoryId: i.categoryId,
-                      name: i.name,
-                      description: i.description,
-                      quantity: i.quantity,
-                      unit: i.unit,
-                      minStockAlert: i.minStockAlert,
-                      notes: i.notes,
-                    }))}
+                    customFields={customFields}
+                    items={cat.items.map((i) => {
+                      const valuesRecord: Record<string, string> = {};
+                      i.customValues.forEach(cv => {
+                        if (cv.value !== null) valuesRecord[cv.fieldId] = cv.value;
+                      });
+                      return {
+                        id: i.id,
+                        categoryId: i.categoryId,
+                        name: i.name,
+                        description: i.description,
+                        quantity: i.quantity,
+                        unit: i.unit,
+                        minStockAlert: i.minStockAlert,
+                        notes: i.notes,
+                        purchasingDate: i.purchasingDate ? i.purchasingDate.toISOString().split('T')[0] : null,
+                        repairingDate: i.repairingDate ? i.repairingDate.toISOString().split('T')[0] : null,
+                        customValues: valuesRecord,
+                      };
+                    })}
                   />
                 </div>
               </div>

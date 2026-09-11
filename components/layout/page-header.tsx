@@ -46,12 +46,12 @@ export function PageHeader({
               {crumb.href ? (
                 <Link
                   href={crumb.href}
-                  className="text-[12px] text-slate-400 hover:text-slate-700 transition-colors font-dm-sans"
+                  className="inline-flex items-center text-[12px] text-slate-400 hover:text-slate-700 transition-colors font-dm-sans"
                 >
                   {crumb.label}
                 </Link>
               ) : (
-                <span className="text-[12px] text-slate-400 font-dm-sans">
+                <span className="inline-flex items-center text-[12px] text-slate-400 font-dm-sans h-[44px]">
                   {crumb.label}
                 </span>
               )}

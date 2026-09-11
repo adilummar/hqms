@@ -35,8 +35,10 @@ const ROLE_COLORS: Record<string, string> = {
   student:      "bg-gray-100   text-gray-800   border border-gray-200",
 };
 
+import { count } from "drizzle-orm";
+
 interface Props {
-  searchParams: Promise<{ role?: string; status?: string }>;
+  searchParams: Promise<{ role?: string; status?: string; page?: string }>;
 }
 
 export default async function UsersSettingsPage({ searchParams }: Props) {
@@ -48,6 +50,8 @@ export default async function UsersSettingsPage({ searchParams }: Props) {
   const params = await searchParams;
   const roleFilter   = params.role   as RoleValue | undefined;
   const statusFilter = params.status; // "active" | "inactive" | undefined
+  const page = Math.max(1, parseInt(params.page || "1", 10));
+  const pageSize = 50;
 
   // Build where clause from active filters
   const conditions = [];
@@ -59,11 +63,21 @@ export default async function UsersSettingsPage({ searchParams }: Props) {
   } else if (statusFilter === "inactive") {
     conditions.push(eq(users.isActive, false));
   }
+  
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  const filteredUsers = await db.query.users.findMany({
-    where: conditions.length > 0 ? and(...conditions) : undefined,
-    orderBy: [asc(users.username)],
-  });
+  const [totalCountResult, filteredUsers] = await Promise.all([
+    db.select({ value: count() }).from(users).where(whereClause),
+    db.query.users.findMany({
+      where: whereClause,
+      orderBy: [asc(users.username)],
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+    })
+  ]);
+
+  const totalUsers = totalCountResult[0].value;
+  const totalPages = Math.ceil(totalUsers / pageSize);
 
   const hasFilter = Boolean(roleFilter || statusFilter);
 
@@ -88,7 +102,7 @@ export default async function UsersSettingsPage({ searchParams }: Props) {
           <div>
             <h3 className="font-playfair text-lg font-semibold">System Users</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""}
+              {totalUsers} user{totalUsers !== 1 ? "s" : ""}
               {hasFilter && (
                 <>
                   {" "}matching filter{" — "}
@@ -185,6 +199,32 @@ export default async function UsersSettingsPage({ searchParams }: Props) {
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="px-5 py-3 border-t border-border bg-muted/10 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, totalUsers)} of {totalUsers} users
+            </span>
+            <div className="flex gap-2">
+              {page > 1 && (
+                <Link
+                  href={`/admin/settings/users?${new URLSearchParams({ ...(roleFilter && { role: roleFilter }), ...(statusFilter && { status: statusFilter }), page: (page - 1).toString() })}`}
+                  className="px-3 py-1.5 text-xs font-medium border border-border rounded hover:bg-muted transition-colors"
+                >
+                  Previous
+                </Link>
+              )}
+              {page < totalPages && (
+                <Link
+                  href={`/admin/settings/users?${new URLSearchParams({ ...(roleFilter && { role: roleFilter }), ...(statusFilter && { status: statusFilter }), page: (page + 1).toString() })}`}
+                  className="px-3 py-1.5 text-xs font-medium border border-border rounded hover:bg-muted transition-colors"
+                >
+                  Next
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

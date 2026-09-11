@@ -4,7 +4,7 @@ import { examinations, examSessions, academicYears } from "@/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import Link from "next/link";
-import { ExamActions } from "@/components/exams/exam-actions";
+import { ExaminationActions } from "@/components/exams/examination-actions";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Exams" };
@@ -125,13 +125,8 @@ export default async function ExamsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-right">
-                      <Link
-                        href={`/admin/exams/${exam.id}`}
-                        className="px-3 py-1.5 border border-border text-xs font-medium rounded hover:bg-muted transition-colors inline-block"
-                      >
-                        View & Manage
-                      </Link>
+                    <td className="px-5 py-3">
+                      <ExaminationActions examId={exam.id} examName={exam.name} />
                     </td>
                   </tr>
                 ))}

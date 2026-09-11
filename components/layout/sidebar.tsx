@@ -42,7 +42,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Exams",           href: "/admin/exams",                   icon: FileText },
   { label: "Stars",           href: "/admin/stars",                   icon: Star },
   { label: "Admissions",      href: "/admin/admissions/applications", icon: ClipboardList },
-  { label: "Inventory",       href: "/admin/inventory",               icon: Archive },
+  { label: "Stock Registration", href: "/admin/inventory", icon: Archive },
   { label: "Reports",         href: "/admin/reports",                 icon: BarChart3 },
 ];
 

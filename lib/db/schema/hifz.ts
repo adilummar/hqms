@@ -13,6 +13,7 @@ import { juzStatusEnum } from "./enums";
 import { students } from "./students";
 import { users } from "./users";
 import { remarksOptions } from "./remarks";
+import { academicYears } from "./settings";
 import { relations } from "drizzle-orm";
 
 // 30-juz tracker per student
@@ -164,6 +165,45 @@ export const monthlyTargetsRelations = relations(monthlyTargets, ({ one }) => ({
   }),
   setByUser: one(users, {
     fields: [monthlyTargets.setBy],
+    references: [users.id],
+  }),
+}));
+
+export const studentAnnualHifzTargets = pgTable(
+  "student_annual_hifz_targets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    academicYearId: uuid("academic_year_id")
+      .notNull()
+      .references(() => academicYears.id, { onDelete: "cascade" }),
+    targetJuzAmount: numeric("target_juz_amount", { precision: 4, scale: 2 }).notNull(),
+    startingJuzNumber: integer("starting_juz_number").notNull(),
+    startingPage: integer("starting_page").notNull(),
+    calculatedTotalPages: integer("calculated_total_pages").notNull(),
+    isManualOverride: boolean("is_manual_override").default(false).notNull(),
+    overrideBy: uuid("override_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    uniq: unique().on(table.studentId, table.academicYearId),
+  })
+);
+
+export const studentAnnualHifzTargetsRelations = relations(studentAnnualHifzTargets, ({ one }) => ({
+  student: one(students, {
+    fields: [studentAnnualHifzTargets.studentId],
+    references: [students.id],
+  }),
+  academicYear: one(academicYears, {
+    fields: [studentAnnualHifzTargets.academicYearId],
+    references: [academicYears.id],
+  }),
+  overrideByUser: one(users, {
+    fields: [studentAnnualHifzTargets.overrideBy],
     references: [users.id],
   }),
 }));

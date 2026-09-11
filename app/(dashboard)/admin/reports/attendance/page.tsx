@@ -42,14 +42,14 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
     studentCode: string;
     firstName: string;
     lastName: string | null;
-    status: AttStatus | "not_marked";
-    remarks: string | null;
+    outcome: string; // "FULL_DAY_PRESENT" | "HALF_DAY_PRESENT" | "FULL_DAY_ABSENT" | "PENDING_PARTIAL" | "NO_RECORD"
   };
 
-  let present: StudentRow[] = [];
-  let absent: StudentRow[] = [];
-  let onLeave: StudentRow[] = [];
-  let notMarked: StudentRow[] = [];
+  let fullPresent: StudentRow[] = [];
+  let halfPresent: StudentRow[] = [];
+  let fullAbsent: StudentRow[] = [];
+  let pending: StudentRow[] = [];
+  let noRecord: StudentRow[] = [];
 
   if (selectedClassId) {
     const classEnrollments = await db.query.enrollments.findMany({
@@ -84,33 +84,50 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
         }),
       ]);
 
-      const attMap = new Map(
-        dayAttendance.map((r) => [r.studentId, r])
-      );
+      const getOutcome = (fn: string, an: string) => {
+        if (fn === "unmarked" && an === "unmarked") return "NO_RECORD";
+        if (fn === "unmarked" || an === "unmarked") return "PENDING_PARTIAL";
+        
+        // Treat leave as absent for daily FN/AN outcome logic or leave it?
+        // Let's treat 'leave' as 'absent' logically for present/absent matrix.
+        const fnState = (fn === "leave") ? "absent" : fn;
+        const anState = (an === "leave") ? "absent" : an;
+
+        if (fnState === "present" && anState === "present") return "FULL_DAY_PRESENT";
+        if (fnState === "absent" && anState === "absent") return "FULL_DAY_ABSENT";
+        
+        return "HALF_DAY_PRESENT";
+      };
 
       const allRows: StudentRow[] = studentsData
         .sort((a, b) => a.firstName.localeCompare(b.firstName))
         .map((s) => {
-          const rec = attMap.get(s.id);
+          const sRecs = dayAttendance.filter(r => r.studentId === s.id);
+          const fnRec = sRecs.find(r => r.session === "FN");
+          const anRec = sRecs.find(r => r.session === "AN");
+          
+          const fnStat = fnRec ? fnRec.status : "unmarked";
+          const anStat = anRec ? anRec.status : "unmarked";
+
           return {
             id: s.id,
             studentCode: s.studentCode,
             firstName: s.firstName,
             lastName: s.lastName,
-            status: (rec?.status as AttStatus) ?? "not_marked",
-            remarks: rec?.remarks ?? null,
+            outcome: getOutcome(fnStat, anStat),
           };
         });
 
-      present   = allRows.filter((r) => r.status === "present");
-      absent    = allRows.filter((r) => r.status === "absent");
-      onLeave   = allRows.filter((r) => r.status === "leave");
-      notMarked = allRows.filter((r) => r.status === "not_marked");
+      fullPresent = allRows.filter((r) => r.outcome === "FULL_DAY_PRESENT");
+      halfPresent = allRows.filter((r) => r.outcome === "HALF_DAY_PRESENT");
+      fullAbsent  = allRows.filter((r) => r.outcome === "FULL_DAY_ABSENT");
+      pending     = allRows.filter((r) => r.outcome === "PENDING_PARTIAL");
+      noRecord    = allRows.filter((r) => r.outcome === "NO_RECORD");
     }
   }
 
-  const total = present.length + absent.length + onLeave.length + notMarked.length;
-  const markedCount = present.length + absent.length + onLeave.length;
+  const total = fullPresent.length + halfPresent.length + fullAbsent.length + pending.length + noRecord.length;
+  const markedCount = fullPresent.length + halfPresent.length + fullAbsent.length + pending.length;
 
   const formattedDate = selectedDate
     ? new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", {
@@ -121,7 +138,6 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
       })
     : "";
 
-  // ── Small helper: badge pill ────────────────────────────────────────────────
   function StatusPill({ count, label, color }: { count: number; label: string; color: string }) {
     return (
       <div className={`rounded-lg border px-4 py-3 text-center ${color}`}>
@@ -131,7 +147,6 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
     );
   }
 
-  // ── Student name list card ──────────────────────────────────────────────────
   function StudentList({
     title,
     rows,
@@ -147,7 +162,6 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
   }) {
     return (
       <div className="bg-card border border-border rounded-lg overflow-hidden">
-        {/* Header */}
         <div className={`px-4 py-3 border-b border-border flex items-center justify-between ${accent}`}>
           <div className="flex items-center gap-2">
             <span className={`w-2.5 h-2.5 rounded-full ${dotColor}`} />
@@ -171,11 +185,6 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
                   </p>
                   <p className="text-xs text-muted-foreground font-mono">{s.studentCode}</p>
                 </div>
-                {s.remarks && (
-                  <p className="ml-auto text-xs text-muted-foreground italic truncate max-w-[120px]" title={s.remarks}>
-                    {s.remarks}
-                  </p>
-                )}
               </li>
             ))}
           </ul>
@@ -268,23 +277,23 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
           {/* ── Summary pills ── */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 print:hidden">
             <StatusPill
-              count={present.length}
-              label="Present"
+              count={fullPresent.length}
+              label="Full Present"
               color="bg-emerald-50 border-emerald-200 text-emerald-800"
             />
             <StatusPill
-              count={absent.length}
-              label="Absent"
+              count={halfPresent.length}
+              label="Half Present"
+              color="bg-blue-50 border-blue-200 text-blue-700"
+            />
+            <StatusPill
+              count={fullAbsent.length}
+              label="Full Absent"
               color="bg-red-50 border-red-200 text-red-700"
             />
             <StatusPill
-              count={onLeave.length}
-              label="On Leave"
-              color="bg-amber-50 border-amber-200 text-amber-700"
-            />
-            <StatusPill
-              count={notMarked.length}
-              label="Not Marked"
+              count={noRecord.length}
+              label="No Record"
               color="bg-muted border-border text-muted-foreground"
             />
           </div>
@@ -298,9 +307,9 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
               </p>
               {markedCount > 0 ? (
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {markedCount} of {total} students marked •{" "}
+                  {markedCount} of {total} students partially/fully marked •{" "}
                   <span className="text-emerald-700 font-medium">
-                    {total > 0 ? Math.round((present.length / total) * 100) : 0}% attendance
+                    {total > 0 ? Math.round(((fullPresent.length + (halfPresent.length * 0.5)) / total) * 100) : 0}% attendance
                   </span>
                 </p>
               ) : (
@@ -314,35 +323,33 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
           {/* ── Four lists grid ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <StudentList
-              title="Present"
-              rows={present}
+              title="Full Day Present"
+              rows={fullPresent}
               accent="bg-emerald-50/60"
               dotColor="bg-emerald-500"
-              emptyText="No students marked present"
+              emptyText="No students marked full present"
             />
             <StudentList
-              title="Absent"
-              rows={absent}
+              title="Half Day Present"
+              rows={halfPresent}
+              accent="bg-blue-50/60"
+              dotColor="bg-blue-500"
+              emptyText="No students marked half present"
+            />
+            <StudentList
+              title="Full Day Absent"
+              rows={fullAbsent}
               accent="bg-red-50/60"
               dotColor="bg-red-500"
-              emptyText="No students marked absent"
+              emptyText="No students marked full absent"
             />
-            {onLeave.length > 0 && (
+            {(pending.length > 0 || noRecord.length > 0) && (
               <StudentList
-                title="On Leave"
-                rows={onLeave}
-                accent="bg-amber-50/60"
-                dotColor="bg-amber-400"
-                emptyText="No students on leave"
-              />
-            )}
-            {notMarked.length > 0 && (
-              <StudentList
-                title="Not Marked"
-                rows={notMarked}
+                title="Pending / No Record"
+                rows={[...pending, ...noRecord]}
                 accent="bg-muted/40"
                 dotColor="bg-muted-foreground/40"
-                emptyText="All students marked"
+                emptyText="All students fully marked"
               />
             )}
           </div>
@@ -351,9 +358,9 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
           <div className="hidden print:block mt-6">
             <div className="grid grid-cols-2 gap-6">
               {[
-                { title: "Present", rows: present, symbol: "✓" },
-                { title: "Absent",  rows: absent,  symbol: "✗" },
-                ...(onLeave.length > 0 ? [{ title: "On Leave", rows: onLeave, symbol: "L" }] : []),
+                { title: "Full Present", rows: fullPresent, symbol: "✓✓" },
+                { title: "Half Present", rows: halfPresent, symbol: "✓" },
+                { title: "Full Absent",  rows: fullAbsent,  symbol: "✗✗" },
               ].map(({ title, rows, symbol }) => (
                 <div key={title}>
                   <h2 className="font-bold text-sm border-b pb-1 mb-2">

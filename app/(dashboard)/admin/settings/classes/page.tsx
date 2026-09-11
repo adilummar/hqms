@@ -1,6 +1,6 @@
 import { requireRole } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
-import { classes, users } from "@/lib/db/schema";
+import { classes, users, enrollments } from "@/lib/db/schema";
 import { asc, eq, and } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { AddClassDialog } from "@/components/settings/add-class-dialog";
@@ -8,23 +8,47 @@ import { EditClassDialog } from "@/components/settings/edit-class-dialog";
 import { DeleteClassButton } from "@/components/settings/delete-class-button";
 import type { Metadata } from "next";
 
+interface Props {
+  searchParams: Promise<{ track?: string }>;
+}
+
 export const metadata: Metadata = { title: "Classes | Settings" };
 
-export default async function ClassesSettingsPage() {
+export default async function ClassesSettingsPage({ searchParams }: Props) {
   await requireRole(["super_admin", "admin"]);
+  const params = await searchParams;
+  const currentTrack = params.track || "all";
 
-  const allClasses = await db.query.classes.findMany({
-    orderBy: [asc(classes.name)],
-    with: {
-      tutor: { columns: { username: true } }
-    }
-  });
+  const [allClasses, tutors, activeEnrollments] = await Promise.all([
+    db.query.classes.findMany({
+      where: currentTrack !== "all" ? eq(classes.track, currentTrack as any) : undefined,
+      orderBy: [asc(classes.name)],
+      with: {
+        tutor: { columns: { username: true } }
+      }
+    }),
+    db.query.users.findMany({
+      where: and(eq(users.role, "tutor"), eq(users.isActive, true)),
+      columns: { id: true, username: true },
+      orderBy: [asc(users.username)],
+    }),
+    db.query.enrollments.findMany({
+      where: eq(enrollments.status, "active"),
+      columns: { classId: true }
+    })
+  ]);
 
-  const tutors = await db.query.users.findMany({
-    where: and(eq(users.role, "tutor"), eq(users.isActive, true)),
-    columns: { id: true, username: true },
-    orderBy: [asc(users.username)],
-  });
+  const studentCounts = activeEnrollments.reduce((acc, e) => {
+    acc[e.classId] = (acc[e.classId] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const tracks = [
+    { value: "all", label: "All Classes" },
+    { value: "hifz", label: "Hifz" },
+    { value: "madrasa", label: "Madrasa" },
+    { value: "school", label: "School" },
+  ];
 
   return (
     <div className="max-w-4xl">
@@ -37,6 +61,22 @@ export default async function ClassesSettingsPage() {
           { label: "Classes" },
         ]}
       />
+
+      <div className="mt-6 flex flex-wrap gap-2">
+        {tracks.map((track) => (
+          <a
+            key={track.value}
+            href={`/admin/settings/classes${track.value === "all" ? "" : `?track=${track.value}`}`}
+            className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
+              currentTrack === track.value
+                ? "border-foreground bg-foreground text-background"
+                : "border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {track.label}
+          </a>
+        ))}
+      </div>
 
       <div className="mt-6 bg-card border border-border rounded-lg shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex justify-between items-center bg-muted/20">
@@ -51,6 +91,7 @@ export default async function ClassesSettingsPage() {
               <th className="text-left px-5 py-3 font-medium text-muted-foreground">Class Name</th>
               <th className="text-left px-5 py-3 font-medium text-muted-foreground">Track</th>
               <th className="text-left px-5 py-3 font-medium text-muted-foreground">Assigned Tutor</th>
+              <th className="text-center px-5 py-3 font-medium text-muted-foreground">Students</th>
               <th className="text-left px-5 py-3 font-medium text-muted-foreground">Status</th>
               <th className="text-right px-5 py-3 font-medium text-muted-foreground">Actions</th>
             </tr>
@@ -58,7 +99,7 @@ export default async function ClassesSettingsPage() {
           <tbody className="divide-y divide-border">
             {allClasses.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-5 py-6 text-center text-muted-foreground">No classes found</td>
+                <td colSpan={6} className="px-5 py-6 text-center text-muted-foreground">No classes found</td>
               </tr>
             ) : (
               allClasses.map((c) => (
@@ -71,6 +112,9 @@ export default async function ClassesSettingsPage() {
                     ) : (
                       "Unassigned"
                     )}
+                  </td>
+                  <td className="px-5 py-3 text-center font-jetbrains text-muted-foreground">
+                    {studentCounts[c.id] || 0}
                   </td>
                   <td className="px-5 py-3">
                     {c.isActive ? (

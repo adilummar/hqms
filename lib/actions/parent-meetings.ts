@@ -27,7 +27,7 @@ const saveMeetingAttendanceSchema = z.object({
   entries: z.array(
     z.object({
       studentId: z.string().uuid(),
-      attended: z.boolean(),
+      status: z.enum(["ON_TIME", "LATE", "ABSENT_WITH_REASON", "ABSENT_WITHOUT_VALID_REASON"]),
       remarks: z.string().optional(),
     })
   ),
@@ -62,6 +62,28 @@ export async function createParentMeeting(input: unknown) {
     meeting.id,
     { title, meetingDate }
   );
+
+  try {
+    const { notificationService } = await import("@/lib/services/notifications");
+    const recipients = await notificationService.resolveMeetingAnnouncementRecipients();
+    
+    // Convert YYYY-MM-DD to readable date
+    const dateObj = new Date(meetingDate);
+    const dateString = dateObj.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+
+    await notificationService.createNotification({
+      type: "parent_meeting_announced",
+      title: "Parent Meeting Scheduled",
+      body: `A parent meeting "${title}" has been scheduled for ${dateString}.`,
+      entityType: "parent_meeting",
+      entityId: meeting.id,
+      deepLink: `/parent`,
+      recipients,
+      idempotencyKey: `parent_meeting_announced:${meeting.id}`,
+    });
+  } catch (err) {
+    console.error("Failed to send meeting announcement notification:", err);
+  }
 
   revalidatePath("/admin/settings/parent-meetings");
   return { success: true, data: meeting };
@@ -145,15 +167,36 @@ export async function saveParentMeetingAttendance(input: unknown) {
 
   const { meetingId, entries } = parsed.data;
 
+  // We'll record which entries genuinely changed status to notify afterwards
+  const genuineTransitions: Array<typeof entries[0] & { idempotencyKey: string }> = [];
+
+  // Pre-fetch existing records to compare states
+  const studentIds = entries.map(e => e.studentId);
+  const existingRecords = await db.query.parentMeetingAttendance.findMany({
+    where: and(
+      eq(parentMeetingAttendance.meetingId, meetingId),
+      inArray(parentMeetingAttendance.studentId, studentIds)
+    )
+  });
+  
+  const existingMap = new Map(existingRecords.map(r => [r.studentId, r.status]));
+
   await db.transaction(async (tx) => {
     for (const entry of entries) {
-      await tx
+      const isAttended = entry.status === "ON_TIME" || entry.status === "LATE";
+      const remarks = (entry.status === "ON_TIME") ? null : entry.remarks || null;
+      
+      const existingStatus = existingMap.get(entry.studentId);
+      const isGenuineTransition = !existingStatus || existingStatus !== entry.status;
+
+      const [updatedRecord] = await tx
         .insert(parentMeetingAttendance)
         .values({
           meetingId,
           studentId: entry.studentId,
-          attended: entry.attended,
-          remarks: (!entry.attended && entry.remarks) ? entry.remarks : null,
+          attended: isAttended,
+          status: entry.status,
+          remarks: remarks,
           recordedBy: session.user.id,
         })
         .onConflictDoUpdate({
@@ -162,12 +205,22 @@ export async function saveParentMeetingAttendance(input: unknown) {
             parentMeetingAttendance.studentId,
           ],
           set: {
-            attended: entry.attended,
-            remarks: (!entry.attended && entry.remarks) ? entry.remarks : null,
+            attended: isAttended,
+            status: entry.status,
+            remarks: remarks,
             recordedBy: session.user.id,
             updatedAt: new Date(),
           },
+        })
+        .returning({ updatedAt: parentMeetingAttendance.updatedAt });
+        
+      if (isGenuineTransition) {
+        // Safe transition key relying on exact DB timestamp
+        genuineTransitions.push({
+          ...entry,
+          idempotencyKey: `parent_meeting_attendance:${meetingId}:${entry.studentId}:${entry.status}:${updatedRecord.updatedAt.getTime()}`
         });
+      }
     }
   });
 
@@ -178,6 +231,49 @@ export async function saveParentMeetingAttendance(input: unknown) {
     meetingId,
     { count: entries.length }
   );
+
+  // Send notifications ONLY for genuine attendance updates
+  try {
+    const { notificationService } = await import("@/lib/services/notifications");
+    
+    if (genuineTransitions.length > 0) {
+      const meeting = await db.query.parentMeetings.findFirst({
+        where: eq(parentMeetings.id, meetingId)
+      });
+
+      if (meeting) {
+        for (const entry of genuineTransitions) {
+          const recipients = await notificationService.resolveMeetingAttendanceRecipients(entry.studentId);
+          
+          const statusMap: Record<string, string> = {
+            "ON_TIME": "On Time",
+            "LATE": "Late",
+            "ABSENT_WITH_REASON": "Absent with Reason",
+            "ABSENT_WITHOUT_VALID_REASON": "Absent without Valid Reason",
+          };
+          const statusText = statusMap[entry.status] || entry.status;
+          
+          let body = `Your attendance for the parent meeting "${meeting.title}" has been recorded as ${statusText}.`;
+          if (entry.status === "ABSENT_WITH_REASON" && entry.remarks) {
+            body += ` Reason: ${entry.remarks}`;
+          }
+
+          await notificationService.createNotification({
+            type: "parent_meeting_attendance_recorded",
+            title: "Parent Meeting Attendance Updated",
+            body,
+            entityType: "parent_meeting_attendance",
+            entityId: meetingId,
+            deepLink: `/parent`,
+            recipients,
+            idempotencyKey: entry.idempotencyKey,
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Failed to send meeting attendance notifications:", err);
+  }
 
   revalidatePath("/tutor/parent-meetings");
   revalidatePath("/admin/settings/parent-meetings");

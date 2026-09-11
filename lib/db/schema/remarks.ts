@@ -15,6 +15,7 @@ export const remarksOptions = pgTable("remarks_options", {
   isActive: boolean("is_active").default(true).notNull(),
   displayOrder: integer("display_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Seed data:

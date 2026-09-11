@@ -1,7 +1,7 @@
 import { requireStudent, getStudentProfileId } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { examSessions, enrollments, examSubjects, studentStars } from "@/lib/db/schema";
-import { eq, and, inArray, desc } from "drizzle-orm";
+import { eq, and, inArray, desc, isNull } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -53,11 +53,18 @@ export default async function StudentDashboard() {
   }
 
   const stars = await db.query.studentStars.findMany({
-    where: eq(studentStars.studentId, studentId),
-    columns: { type: true },
+    where: and(
+      eq(studentStars.studentId, studentId),
+      isNull(studentStars.deletedAt)
+    ),
+    columns: { type: true, value: true },
   });
-  const blueStars = stars.filter((s) => s.type === "blue").length;
-  const blackStars = stars.filter((s) => s.type === "black").length;
+  const blueStars = stars
+    .filter((s) => s.type === "blue")
+    .reduce((sum, s) => sum + (s.value || 1), 0);
+  const blackStars = stars
+    .filter((s) => s.type === "black")
+    .reduce((sum, s) => sum + (s.value || 1), 0);
 
   return (
     <div className="space-y-6">

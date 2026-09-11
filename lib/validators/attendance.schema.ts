@@ -5,10 +5,13 @@ export const markAttendanceSchema = z.object({
   classId: z.string().uuid(),
   track: z.enum(["hifz", "madrasa", "school"]),
   date: z.string().min(1),
-  status: z.enum(["present", "absent", "leave"]),
-  leaveType: z.enum(["sick_leave", "casual_leave", "approved_leave"]).optional(),
-  remarks: z.string().optional(),
-});
+  session: z.enum(["FN", "AN"]),
+  status: z.enum(["present", "absent", "unmarked"]),
+  absenceReasonId: z.string().uuid().optional(),
+}).refine(data => {
+  if (data.status === "absent" && !data.absenceReasonId) return false;
+  return true;
+}, { message: "Absence reason is required when status is absent", path: ["absenceReasonId"] });
 
 export const bulkMarkAttendanceSchema = z.object({
   classId: z.string().uuid(),
@@ -17,10 +20,13 @@ export const bulkMarkAttendanceSchema = z.object({
   entries: z.array(
     z.object({
       studentId: z.string().uuid(),
-      status: z.enum(["present", "absent", "leave"]),
-      leaveType: z.enum(["sick_leave", "casual_leave", "approved_leave"]).optional(),
-      remarks: z.string().optional(),
-    })
+      session: z.enum(["FN", "AN"]),
+      status: z.enum(["present", "absent", "unmarked"]),
+      absenceReasonId: z.string().uuid().optional().or(z.literal("")),
+    }).refine(data => {
+      if (data.status === "absent" && !data.absenceReasonId) return false;
+      return true;
+    }, { message: "Absence reason is required when absent", path: ["absenceReasonId"] })
   ),
 });
 

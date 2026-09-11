@@ -1,7 +1,7 @@
 import { requireParent, getParentStudentId } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { students, juzTracker, hifzDailyEntries, monthlyTargets, studentStars, examSessions, examSubjects, enrollments, examinations } from "@/lib/db/schema";
-import { eq, and, between, count, desc, asc, inArray } from "drizzle-orm";
+import { eq, and, between, count, desc, asc, inArray, isNull } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { JuzGrid } from "@/components/hifz/juz-grid";
 import { Progress } from "@/components/ui/progress";
@@ -80,8 +80,11 @@ export default async function ParentDashboard() {
         )
       ),
       db.query.studentStars.findMany({
-        where: eq(studentStars.studentId, studentId),
-        columns: { type: true },
+        where: and(
+          eq(studentStars.studentId, studentId),
+          isNull(studentStars.deletedAt)
+        ),
+        columns: { type: true, value: true },
       }),
       publishedExaminationIds.length > 0
         ? db.query.examinations.findMany({
@@ -110,8 +113,12 @@ export default async function ParentDashboard() {
   const actualJuz = juzCompletions[0]?.count ?? 0;
   const targetJuz = monthlyTarget ? parseFloat(String(monthlyTarget.targetJuz)) : 0;
   const progress = targetJuz > 0 ? Math.min(100, (actualJuz / targetJuz) * 100) : 0;
-  const blueStars = starCounts.filter((s) => s.type === "blue").length;
-  const blackStars = starCounts.filter((s) => s.type === "black").length;
+  const blueStars = starCounts
+    .filter((s) => s.type === "blue")
+    .reduce((sum, s) => sum + (s.value || 1), 0);
+  const blackStars = starCounts
+    .filter((s) => s.type === "black")
+    .reduce((sum, s) => sum + (s.value || 1), 0);
 
   return (
     <div className="space-y-6">

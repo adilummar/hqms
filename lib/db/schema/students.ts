@@ -8,6 +8,7 @@ import {
   jsonb,
   boolean,
   unique,
+  integer,
 } from "drizzle-orm/pg-core";
 import { studentStatusEnum, enrollmentStatusEnum, starTypeEnum } from "./enums";
 import { users } from "./users";
@@ -167,12 +168,16 @@ export const studentStars = pgTable("student_stars", {
     .notNull()
     .references(() => students.id, { onDelete: "cascade" }),
   type: starTypeEnum("type").notNull(),
+  value: integer("value").notNull().default(1),
   reason: text("reason").notNull(),
   awardedBy: uuid("awarded_by")
     .notNull()
     .references(() => users.id, { onDelete: "restrict" }),
   awardedAt: timestamp("awarded_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: uuid("deleted_by").references(() => users.id, { onDelete: "set null" }),
 });
 
 export const studentStarsRelations = relations(studentStars, ({ one }) => ({

@@ -1,7 +1,7 @@
 import { requireParent, getParentStudentId } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { studentStars } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, isNull } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { StarSummary } from "@/components/stars/star-summary";
 import { Star, StarOff } from "lucide-react";
@@ -15,13 +15,20 @@ export default async function ParentStarsPage() {
   const studentId = await getParentStudentId();
 
   const stars = await db.query.studentStars.findMany({
-    where: eq(studentStars.studentId, studentId),
+    where: and(
+      eq(studentStars.studentId, studentId),
+      isNull(studentStars.deletedAt)
+    ),
     with: { awardedByUser: { columns: { username: true } } },
     orderBy: [desc(studentStars.awardedAt)],
   });
 
-  const blueCount = stars.filter((s) => s.type === "blue").length;
-  const blackCount = stars.filter((s) => s.type === "black").length;
+  const blueCount = stars
+    .filter((s) => s.type === "blue")
+    .reduce((sum, s) => sum + (s.value || 1), 0);
+  const blackCount = stars
+    .filter((s) => s.type === "black")
+    .reduce((sum, s) => sum + (s.value || 1), 0);
 
   return (
     <div className="space-y-6">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Printer, Search, ArrowUpDown, ChevronDown, Users, UserCheck, UserX, ClipboardList } from "lucide-react";
+import { Printer, Search, ArrowUpDown, ChevronDown, Users, UserCheck, UserX, ClipboardList, Clock, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 
 export interface MeetingReportRow {
   studentId: string;
@@ -10,7 +10,8 @@ export interface MeetingReportRow {
   lastName: string | null;
   className: string;
   classTrack: string;
-  attended: boolean;
+  attended: boolean | null;
+  status: string | null;
   remarks: string | null;
 }
 
@@ -31,7 +32,7 @@ interface Props {
 }
 
 type SortField = "name" | "class" | "status" | "remarks";
-type StatusFilter = "all" | "attended" | "absent";
+type StatusFilter = "all" | "on_time" | "late" | "absent_reason" | "absent_no_reason" | "legacy_attended" | "legacy_absent";
 
 export function ParentMeetingReportClient({
   meeting,
@@ -59,8 +60,12 @@ export function ParentMeetingReportClient({
     let data = [...rows];
 
     // Status filter
-    if (statusFilter === "attended") data = data.filter((r) => r.attended);
-    else if (statusFilter === "absent") data = data.filter((r) => !r.attended);
+    if (statusFilter === "on_time") data = data.filter((r) => r.status === "ON_TIME");
+    else if (statusFilter === "late") data = data.filter((r) => r.status === "LATE");
+    else if (statusFilter === "absent_reason") data = data.filter((r) => r.status === "ABSENT_WITH_REASON");
+    else if (statusFilter === "absent_no_reason") data = data.filter((r) => r.status === "ABSENT_WITHOUT_VALID_REASON");
+    else if (statusFilter === "legacy_attended") data = data.filter((r) => r.status === null && r.attended === true);
+    else if (statusFilter === "legacy_absent") data = data.filter((r) => r.status === null && r.attended === false);
 
     // Search filter
     const q = search.trim().toLowerCase();
@@ -82,7 +87,7 @@ export function ParentMeetingReportClient({
       } else if (sortField === "class") {
         cmp = a.className.localeCompare(b.className);
       } else if (sortField === "status") {
-        cmp = Number(b.attended) - Number(a.attended); // attended first by default
+        cmp = (a.status || String(a.attended)).localeCompare(b.status || String(b.attended));
       } else if (sortField === "remarks") {
         cmp = (a.remarks ?? "").localeCompare(b.remarks ?? "");
       }
@@ -92,9 +97,17 @@ export function ParentMeetingReportClient({
     return data;
   }, [rows, statusFilter, search, sortField, sortAsc]);
 
-  const attendedCount = rows.filter((r) => r.attended).length;
-  const absentCount = rows.filter((r) => !r.attended).length;
-  const attendanceRate = rows.length > 0 ? Math.round((attendedCount / rows.length) * 100) : 0;
+  const onTimeCount = rows.filter((r) => r.status === "ON_TIME").length;
+  const lateCount = rows.filter((r) => r.status === "LATE").length;
+  const absentReasonCount = rows.filter((r) => r.status === "ABSENT_WITH_REASON").length;
+  const absentNoReasonCount = rows.filter((r) => r.status === "ABSENT_WITHOUT_VALID_REASON").length;
+  const legacyAttendedCount = rows.filter((r) => r.status === null && r.attended === true).length;
+  const legacyAbsentCount = rows.filter((r) => r.status === null && r.attended === false).length;
+
+  const totalAttended = onTimeCount + lateCount + legacyAttendedCount;
+  const totalAbsent = absentReasonCount + absentNoReasonCount + legacyAbsentCount;
+  const recordedRows = rows.filter(r => r.status !== null || r.attended !== null).length;
+  const attendanceRate = recordedRows > 0 ? Math.round((totalAttended / recordedRows) * 100) : 0;
 
   const SortBtn = ({ field, label }: { field: SortField; label: string }) => (
     <button
@@ -112,7 +125,7 @@ export function ParentMeetingReportClient({
   return (
     <div className="space-y-5">
       {/* ── Summary Cards ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 print:hidden">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 print:hidden">
         {[
           {
             icon: <Users size={18} />,
@@ -122,16 +135,23 @@ export function ParentMeetingReportClient({
             bg: "bg-card border-border",
           },
           {
-            icon: <UserCheck size={18} />,
-            label: "Parents Attended",
-            value: attendedCount,
+            icon: <CheckCircle2 size={18} />,
+            label: "On Time (inc. Legacy)",
+            value: totalAttended,
             color: "text-emerald-700",
             bg: "bg-emerald-50 border-emerald-200",
           },
           {
-            icon: <UserX size={18} />,
-            label: "Parents Absent",
-            value: absentCount,
+            icon: <Clock size={18} />,
+            label: "Late",
+            value: lateCount,
+            color: "text-blue-700",
+            bg: "bg-blue-50 border-blue-200",
+          },
+          {
+            icon: <AlertCircle size={18} />,
+            label: "Absent",
+            value: totalAbsent,
             color: "text-red-600",
             bg: "bg-red-50 border-red-200",
           },
@@ -173,8 +193,12 @@ export function ParentMeetingReportClient({
             className="h-9 pl-3 pr-8 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground appearance-none"
           >
             <option value="all">All Students</option>
-            <option value="attended">Parents Attended</option>
-            <option value="absent">Parents Absent</option>
+            <option value="on_time">On Time</option>
+            <option value="late">Late</option>
+            <option value="absent_reason">Absent (Reason)</option>
+            <option value="absent_no_reason">Absent (No Reason)</option>
+            <option value="legacy_attended">Legacy: Attended</option>
+            <option value="legacy_absent">Legacy: Absent</option>
           </select>
           <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
         </div>
@@ -192,7 +216,7 @@ export function ParentMeetingReportClient({
       {/* ── Showing info ──────────────────────────────────────────── */}
       <p className="text-xs text-muted-foreground print:hidden">
         Showing {filtered.length} of {rows.length} students
-        {statusFilter !== "all" && ` · Filtered: ${statusFilter === "attended" ? "Attended" : "Absent"}`}
+        {statusFilter !== "all" && ` · Filtered by Status`}
         {search && ` · Search: "${search}"`}
       </p>
 
@@ -206,8 +230,9 @@ export function ParentMeetingReportClient({
             <span><strong>Meeting:</strong> {meeting.title}</span>
             <span><strong>Date:</strong> {formattedDate}</span>
             <span><strong>Total:</strong> {rows.length} students</span>
-            <span><strong>Attended:</strong> {attendedCount}</span>
-            <span><strong>Absent:</strong> {absentCount}</span>
+            <span><strong>Attended (On Time/Legacy):</strong> {totalAttended}</span>
+            <span><strong>Late:</strong> {lateCount}</span>
+            <span><strong>Absent:</strong> {totalAbsent}</span>
             <span><strong>Rate:</strong> {attendanceRate}%</span>
           </div>
           {meeting.description && (
@@ -246,89 +271,59 @@ export function ParentMeetingReportClient({
                   </td>
                 </tr>
               ) : (
-                filtered.map((row, idx) => (
-                  <tr
-                    key={row.studentId}
-                    className={`transition-colors print:break-inside-avoid ${
-                      row.attended
-                        ? "hover:bg-emerald-50/30 print:bg-white"
-                        : "bg-red-50/20 hover:bg-red-50/40 print:bg-white"
-                    }`}
-                  >
-                    <td className="px-5 py-3 text-xs text-muted-foreground font-jetbrains print:text-gray-500">
-                      {idx + 1}
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="font-medium text-foreground print:text-gray-900">
-                        {row.firstName} {row.lastName ?? ""}
-                      </div>
-                      <div className="text-xs text-muted-foreground font-jetbrains print:text-gray-500">
-                        {row.studentCode}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className="text-muted-foreground print:text-gray-600">{row.className}</span>
-                      <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground capitalize print:hidden">
-                        {row.classTrack}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-center">
-                      {row.attended ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 print:bg-transparent print:text-gray-800 print:border print:border-gray-400">
-                          <span className="print:hidden">✓</span> Yes
+                filtered.map((row, idx) => {
+                  let uiLabel = "Not Marked";
+                  let uiColor = "bg-gray-100 text-gray-800";
+                  if (row.status === "ON_TIME") {
+                    uiLabel = "On Time"; uiColor = "bg-emerald-100 text-emerald-800";
+                  } else if (row.status === "LATE") {
+                    uiLabel = "Late"; uiColor = "bg-blue-100 text-blue-800";
+                  } else if (row.status === "ABSENT_WITH_REASON") {
+                    uiLabel = "Absent (Reason)"; uiColor = "bg-yellow-100 text-yellow-800";
+                  } else if (row.status === "ABSENT_WITHOUT_VALID_REASON") {
+                    uiLabel = "Absent (No Reason)"; uiColor = "bg-red-100 text-red-800";
+                  } else if (row.attended !== null) {
+                    uiLabel = row.attended ? "Legacy: Attended" : "Legacy: Absent";
+                    uiColor = "bg-gray-100 text-gray-800";
+                  }
+
+                  return (
+                    <tr
+                      key={row.studentId}
+                      className={`transition-colors print:break-inside-avoid hover:bg-muted/30`}
+                    >
+                      <td className="px-5 py-3 text-xs text-muted-foreground font-jetbrains print:text-gray-500">
+                        {idx + 1}
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="font-medium text-foreground print:text-gray-900">
+                          {row.firstName} {row.lastName ?? ""}
+                        </div>
+                        <div className="text-xs text-muted-foreground font-jetbrains print:text-gray-500">
+                          {row.studentCode}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className="text-muted-foreground print:text-gray-600">{row.className}</span>
+                        <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground capitalize print:hidden">
+                          {row.classTrack}
                         </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-600 print:bg-transparent print:text-gray-800 print:border print:border-gray-400">
-                          <span className="print:hidden">✗</span> No
+                      </td>
+                      <td className="px-5 py-3 text-center">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${uiColor} print:bg-transparent print:text-gray-800 print:border print:border-gray-400`}>
+                          {uiLabel}
                         </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-sm text-muted-foreground print:text-gray-600 italic">
-                      {row.remarks ? row.remarks : <span className="text-muted-foreground/40 not-italic">—</span>}
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-5 py-3 text-sm text-muted-foreground print:text-gray-600 italic">
+                        {row.remarks ? row.remarks : <span className="text-muted-foreground/40 not-italic">—</span>}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
-
-            {/* Table footer with totals */}
-            {filtered.length > 0 && (
-              <tfoot>
-                <tr className="border-t-2 border-border print:border-gray-700 bg-muted/30 print:bg-transparent">
-                  <td colSpan={3} className="px-5 py-3 text-xs font-semibold text-muted-foreground print:text-gray-700">
-                    Total: {filtered.length} {statusFilter !== "all" ? `(filtered from ${rows.length})` : "students"}
-                  </td>
-                  <td className="px-5 py-3 text-center">
-                    <span className="text-xs font-semibold text-emerald-700 print:text-gray-800">
-                      {filtered.filter((r) => r.attended).length} attended
-                    </span>
-                    <span className="mx-1 text-muted-foreground">·</span>
-                    <span className="text-xs font-semibold text-red-600 print:text-gray-800">
-                      {filtered.filter((r) => !r.attended).length} absent
-                    </span>
-                  </td>
-                  <td className="px-5 py-3" />
-                </tr>
-              </tfoot>
-            )}
           </table>
         </div>
-      </div>
-
-      {/* ── Print-only signature block ─────────────────────────── */}
-      <div className="hidden print:block mt-10 pt-6 border-t border-gray-300">
-        <div className="grid grid-cols-3 gap-8 text-sm">
-          {["Prepared By", "Verified By", "Principal"].map((role) => (
-            <div key={role} className="text-center">
-              <div className="h-10 border-b border-gray-400 mb-1" />
-              <p className="text-xs text-gray-500">{role}</p>
-            </div>
-          ))}
-        </div>
-        <p className="text-[10px] text-gray-400 text-right mt-4">
-          Printed on {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
-          {" · "}Generated by HQMS
-        </p>
       </div>
     </div>
   );

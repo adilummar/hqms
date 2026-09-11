@@ -16,6 +16,13 @@ const schema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   tutorMarkEntryOnly: z.boolean(),
+  sessionDates: z.record(
+    z.string(),
+    z.object({
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    })
+  ).optional(),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -32,10 +39,12 @@ export function CreateExamForm({ academicYears }: Props) {
   const [isPending, startTransition] = useTransition();
   const currentYear = academicYears.find(y => y.isCurrent);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { tracks: ["school", "madrasa", "hifz"], academicYearId: currentYear?.id ?? "", tutorMarkEntryOnly: false },
+    defaultValues: { tracks: ["school", "madrasa", "hifz"], academicYearId: currentYear?.id ?? "", tutorMarkEntryOnly: false, sessionDates: {} },
   });
+
+  const selectedTracks = watch("tracks") || [];
 
   function onSubmit(data: FormData) {
     startTransition(async () => {
@@ -83,16 +92,38 @@ export function CreateExamForm({ academicYears }: Props) {
         {errors.academicYearId && <p className="text-xs text-red-500 mt-1">{errors.academicYearId.message}</p>}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={lbl}>Start Date</label>
-          <input type="date" {...register("startDate")} className={inp} />
-        </div>
-        <div>
-          <label className={lbl}>End Date</label>
-          <input type="date" {...register("endDate")} className={inp} />
+      <div className="bg-muted/30 p-4 rounded-lg border border-border space-y-4">
+        <h3 className="font-medium text-sm">Overall Examination Period (Optional)</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={lbl}>Overall Start Date</label>
+            <input type="date" {...register("startDate")} className={inp} />
+          </div>
+          <div>
+            <label className={lbl}>Overall End Date</label>
+            <input type="date" {...register("endDate")} className={inp} />
+          </div>
         </div>
       </div>
+
+      {selectedTracks.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="font-medium text-sm border-b border-border pb-2">Examination Component Dates</h3>
+          {selectedTracks.map((track) => (
+            <div key={track} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center bg-card p-3 border border-border rounded-lg">
+              <p className="text-sm font-medium capitalize text-primary">{track}</p>
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">Start Date</label>
+                <input type="date" {...register(`sessionDates.${track}.startDate` as const)} className={inp} />
+              </div>
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">End Date</label>
+                <input type="date" {...register(`sessionDates.${track}.endDate` as const)} className={inp} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="flex items-center space-x-2 pt-2">
         <input 

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { inventoryCategories, inventoryItems } from "@/lib/db/schema";
+import { inventoryCategories, inventoryItems, inventoryCustomFields, inventoryCustomValues } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
 import { revalidatePath } from "next/cache";
@@ -28,6 +28,9 @@ const itemSchema = z.object({
   unit: z.string().max(30).optional(),
   minStockAlert: z.coerce.number().int().min(0).optional(),
   notes: z.string().optional(),
+  purchasingDate: z.string().optional().nullable().transform(v => v ? new Date(v) : null),
+  repairingDate: z.string().optional().nullable().transform(v => v ? new Date(v) : null),
+  customValues: z.record(z.string(), z.string().nullable()).optional(),
 });
 
 const updateItemSchema = itemSchema.partial().extend({
@@ -82,10 +85,24 @@ export async function createItem(input: unknown) {
   const parsed = itemSchema.safeParse(input);
   if (!parsed.success) return { success: false, error: parsed.error.flatten().fieldErrors };
 
+  const { customValues, ...itemData } = parsed.data;
+
   const [item] = await db.insert(inventoryItems).values({
-    ...parsed.data,
+    ...itemData,
     lastUpdatedBy: session.user.id,
   }).returning();
+
+  if (customValues && Object.keys(customValues).length > 0) {
+    const valuesToInsert = Object.entries(customValues).map(([fieldId, value]) => ({
+      itemId: item.id,
+      fieldId,
+      value,
+    })).filter(v => v.value !== null && v.value !== "");
+
+    if (valuesToInsert.length > 0) {
+      await db.insert(inventoryCustomValues).values(valuesToInsert);
+    }
+  }
 
   await logActivity(session.user.id, "inventory.item_create", "inventory_item", item.id, { name: item.name });
   REVALIDATE();
@@ -97,11 +114,26 @@ export async function updateItem(input: unknown) {
   const parsed = updateItemSchema.safeParse(input);
   if (!parsed.success) return { success: false, error: parsed.error.flatten().fieldErrors };
 
-  const { id, ...rest } = parsed.data;
+  const { id, customValues, ...rest } = parsed.data;
   const [item] = await db.update(inventoryItems)
     .set({ ...rest, lastUpdatedBy: session.user.id, updatedAt: new Date() })
     .where(eq(inventoryItems.id, id))
     .returning();
+
+  if (customValues) {
+    // Delete existing
+    await db.delete(inventoryCustomValues).where(eq(inventoryCustomValues.itemId, id));
+    
+    const valuesToInsert = Object.entries(customValues).map(([fieldId, value]) => ({
+      itemId: id,
+      fieldId,
+      value,
+    })).filter(v => v.value !== null && v.value !== "");
+
+    if (valuesToInsert.length > 0) {
+      await db.insert(inventoryCustomValues).values(valuesToInsert);
+    }
+  }
 
   await logActivity(session.user.id, "inventory.item_update", "inventory_item", id);
   REVALIDATE();
@@ -132,3 +164,55 @@ export async function adjustQuantity(id: string, delta: number) {
   REVALIDATE();
   return { success: true, data: item };
 }
+
+// -- Custom Fields -------------------------------------------------------------
+
+const customFieldSchema = z.object({
+  name: z.string().min(1).max(150),
+  type: z.enum(["text", "number", "date", "boolean", "select"]),
+  options: z.array(z.string()).optional(),
+  isRequired: z.boolean().default(false),
+  isActive: z.boolean().default(true),
+  displayOrder: z.coerce.number().int().default(0),
+});
+
+export async function createCustomField(input: unknown) {
+  const session = await requireRole(["admin", "super_admin"]);
+  const parsed = customFieldSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: parsed.error.flatten().fieldErrors };
+
+  const [field] = await db.insert(inventoryCustomFields).values(parsed.data).returning();
+  
+  await logActivity(session.user.id, "inventory.custom_field_create", "inventory_custom_fields", field.id, { name: field.name });
+  REVALIDATE();
+  return { success: true, data: field };
+}
+
+export async function updateCustomField(id: string, input: unknown) {
+  const session = await requireRole(["admin", "super_admin"]);
+  const parsed = customFieldSchema.partial().safeParse(input);
+  if (!parsed.success) return { success: false, error: parsed.error.flatten().fieldErrors };
+
+  const [field] = await db.update(inventoryCustomFields)
+    .set({ ...parsed.data, updatedAt: new Date() })
+    .where(eq(inventoryCustomFields.id, id))
+    .returning();
+
+  await logActivity(session.user.id, "inventory.custom_field_update", "inventory_custom_fields", id);
+  REVALIDATE();
+  return { success: true, data: field };
+}
+
+export async function toggleCustomFieldActive(id: string, isActive: boolean) {
+  const session = await requireRole(["admin", "super_admin"]);
+  
+  const [field] = await db.update(inventoryCustomFields)
+    .set({ isActive, updatedAt: new Date() })
+    .where(eq(inventoryCustomFields.id, id))
+    .returning();
+
+  await logActivity(session.user.id, "inventory.custom_field_toggle", "inventory_custom_fields", id, { isActive });
+  REVALIDATE();
+  return { success: true, data: field };
+}
+

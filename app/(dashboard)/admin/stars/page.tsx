@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { classes, enrollments, students, studentStars } from "@/lib/db/schema";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { AwardStarForm } from "@/components/stars/award-star-form";
 import { StarSummary } from "@/components/stars/star-summary";
@@ -17,6 +17,7 @@ interface Props {
 interface StudentStar {
   id: string;
   type: "blue" | "black";
+  value: number;
   reason: string;
   awardedAt: Date;
   awardedBy: string;
@@ -69,7 +70,10 @@ export default async function AdminStarsPage({ searchParams }: Props) {
           },
         }),
         db.query.studentStars.findMany({
-          where: inArray(studentStars.studentId, studentIds),
+          where: and(
+            inArray(studentStars.studentId, studentIds),
+            isNull(studentStars.deletedAt)
+          ),
           with: { awardedByUser: { columns: { username: true } } },
           orderBy: [desc(studentStars.awardedAt)],
         }),
@@ -80,14 +84,18 @@ export default async function AdminStarsPage({ searchParams }: Props) {
       );
       starsMap = Object.fromEntries(studentList.map((s) => [s.id, []]));
       for (const star of allStars) {
-        starsMap[star.studentId]?.push(star);
+        starsMap[star.studentId]?.push(star as unknown as StudentStar);
       }
     }
   }
 
   const allVisibleStars = Object.values(starsMap).flat();
-  const totalBlue  = allVisibleStars.filter((s) => s.type === "blue").length;
-  const totalBlack = allVisibleStars.filter((s) => s.type === "black").length;
+  const totalBlue = allVisibleStars
+    .filter((s) => s.type === "blue")
+    .reduce((sum, s) => sum + (s.value || 1), 0);
+  const totalBlack = allVisibleStars
+    .filter((s) => s.type === "black")
+    .reduce((sum, s) => sum + (s.value || 1), 0);
 
   const selectedClass = allClasses.find((c) => c.id === selectedClassId);
 

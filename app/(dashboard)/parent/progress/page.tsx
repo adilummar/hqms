@@ -1,15 +1,23 @@
 import { requireParent, getParentStudentId } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
-import { students, hifzDailyEntries } from "@/lib/db/schema";
+import { students, hifzDailyEntries, academicYears } from "@/lib/db/schema";
 import { eq, desc, and, gte, lte, asc } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { MonthSelector } from "@/components/parent/month-selector";
+import { getStudentTargetMetrics } from "@/lib/services/hifz-targets";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Hifz Progress | Parent Portal" };
 
 interface Props {
   searchParams: Promise<{ year?: string; month?: string }>;
+}
+
+function getMonday(d: Date) {
+  d = new Date(d);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(d.setDate(diff));
 }
 
 export default async function ParentProgressPage({ searchParams }: Props) {
@@ -24,6 +32,24 @@ export default async function ParentProgressPage({ searchParams }: Props) {
   const startDate = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-01`;
   const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
   const endDate = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+  // Get current academic year for metrics
+  const currentAcYear = await db.query.academicYears.findFirst({
+    where: eq(academicYears.isCurrent, true)
+  });
+
+  let targetMetrics = null;
+  if (currentAcYear) {
+    const weekStart = getMonday(now);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    targetMetrics = await getStudentTargetMetrics(
+      studentId,
+      currentAcYear.id,
+      weekStart,
+      weekEnd
+    );
+  }
 
   const [student, monthEntries, firstEntry] = await Promise.all([
     db.query.students.findFirst({
@@ -74,6 +100,32 @@ export default async function ParentProgressPage({ searchParams }: Props) {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {targetMetrics && (
+          <div className="bg-[#1A1A1A] border border-border p-5 rounded-lg col-span-1 md:col-span-4 mb-2 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+            <h3 className="text-white font-playfair font-semibold mb-3">Weekly Hifz Target</h3>
+            <div className="flex flex-wrap gap-x-8 gap-y-4">
+              <div>
+                <p className="text-sm text-gray-400 font-medium mb-1">Target</p>
+                <span className="text-2xl font-jetbrains font-bold text-white">{targetMetrics.weeklyTargetPages.toFixed(2)} <span className="text-sm text-gray-500 font-sans font-normal">pages</span></span>
+              </div>
+              <div>
+                <p className="text-sm text-gray-400 font-medium mb-1">Actual (This Week)</p>
+                <span className="text-2xl font-jetbrains font-bold text-[#C9A84C]">{targetMetrics.weeklyActualPages} <span className="text-sm text-gray-500 font-sans font-normal">pages</span></span>
+              </div>
+              <div>
+                <p className="text-sm text-gray-400 font-medium mb-1">Achievement</p>
+                <span className="text-2xl font-jetbrains font-bold text-white">{targetMetrics.weeklyAchievementPercent.toFixed(1)}%</span>
+              </div>
+              <div className="ml-auto text-right">
+                <p className="text-sm text-gray-400 font-medium mb-1">Annual Target</p>
+                <span className="text-lg font-jetbrains font-semibold text-white">{targetMetrics.annualTargetPages} <span className="text-sm text-gray-500 font-sans font-normal">total pages</span></span>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="bg-card border border-border p-5 rounded-lg">
           <p className="text-sm text-muted-foreground font-medium mb-1">Daily Logs This Month</p>
           <span className="text-3xl font-jetbrains font-bold text-foreground">{totalEntries}</span>

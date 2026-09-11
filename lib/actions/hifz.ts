@@ -46,6 +46,7 @@ export async function saveDailyHifzEntry(input: z.infer<typeof hifzEntrySchema>)
   const data = parsed.data;
 
   // Ensure an existing entry for this student and date doesn't conflict if we aren't updating it
+  let isNewEntry = false;
   if (!data.id) {
     const existing = await db.query.hifzDailyEntries.findFirst({
       where: and(
@@ -55,6 +56,8 @@ export async function saveDailyHifzEntry(input: z.infer<typeof hifzEntrySchema>)
     });
     if (existing) {
       data.id = existing.id;
+    } else {
+      isNewEntry = true;
     }
   }
 
@@ -99,6 +102,7 @@ export async function saveDailyHifzEntry(input: z.infer<typeof hifzEntrySchema>)
     entryId = inserted.id;
   }
 
+  let justCompletedJuz: number | null = null;
   // Handle Juz Tracking Updates
   if (data.startJuzNumber && data.startJuzDate) {
     await db.insert(juzTracker)
@@ -121,13 +125,17 @@ export async function saveDailyHifzEntry(input: z.infer<typeof hifzEntrySchema>)
       });
     await logActivity(session.user.id, "juz.start", "juz_tracker", data.studentId);
   } else if (data.completeJuzId && data.completeJuzDate) {
-    await db.update(juzTracker)
+    const [updatedJuz] = await db.update(juzTracker)
       .set({
         status: "completed",
         completionDate: data.completeJuzDate,
         updatedAt: new Date(),
       })
-      .where(eq(juzTracker.id, data.completeJuzId));
+      .where(eq(juzTracker.id, data.completeJuzId))
+      .returning();
+      
+    if (updatedJuz) justCompletedJuz = updatedJuz.juzNumber;
+    
     await logActivity(session.user.id, "juz.complete", "juz_tracker", data.completeJuzId);
   }
 
@@ -137,6 +145,45 @@ export async function saveDailyHifzEntry(input: z.infer<typeof hifzEntrySchema>)
     "hifz_daily_entries",
     entryId
   );
+  
+  // Notifications
+  try {
+    const { notificationService } = await import("@/lib/services/notifications");
+    
+    if (isNewEntry) {
+      const recipients = await notificationService.resolveHifzEntryRecipients(data.studentId);
+      
+      const dateObj = new Date(data.date);
+      const dateString = dateObj.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+      
+      await notificationService.createNotification({
+        type: "hifz_entry_created",
+        title: "Today's Hifz Progress Recorded",
+        body: `Hifz entry for ${dateString} has been successfully recorded.`,
+        entityType: "hifz_daily_entries",
+        entityId: entryId,
+        deepLink: `/parent/progress`, // Appropriate for both parent/student as relative
+        recipients,
+        idempotencyKey: `hifz_entry_created:${entryId}`,
+      });
+    }
+
+    if (justCompletedJuz !== null) {
+      const recipients = await notificationService.resolveHifzEntryRecipients(data.studentId);
+      await notificationService.createNotification({
+        type: "juz_completed",
+        title: `Juz ${justCompletedJuz} Completed!`,
+        body: `Alhamdulillah, Juz ${justCompletedJuz} has been marked as completed on ${data.completeJuzDate}.`,
+        entityType: "juz_tracker",
+        entityId: data.completeJuzId,
+        deepLink: `/parent/progress`,
+        recipients,
+        idempotencyKey: `juz_completed:${data.completeJuzId}:${data.completeJuzDate}`,
+      });
+    }
+  } catch (err) {
+    console.error("Failed to send hifz notifications:", err);
+  }
 
   revalidatePath("/tutor/hifz");
   revalidatePath(`/admin/students/${data.studentId}`);
@@ -230,6 +277,25 @@ export async function convertToHafiz(studentId: string) {
 
   await logActivity(session.user.id, "student.convert_hafiz", "students", studentId);
 
+  // Notification for Hafiz milestone
+  try {
+    const { notificationService } = await import("@/lib/services/notifications");
+    const recipients = await notificationService.resolveHifzEntryRecipients(studentId);
+    
+    await notificationService.createNotification({
+      type: "hafiz_milestone",
+      title: "Congratulations! Hafiz Milestone Achieved",
+      body: "MashaAllah! The student has successfully completed the memorization of all 30 Juz.",
+      entityType: "students",
+      entityId: studentId,
+      deepLink: `/parent/progress`,
+      recipients,
+      idempotencyKey: `hafiz_milestone:${studentId}`,
+    });
+  } catch (err) {
+    console.error("Failed to send Hafiz milestone notification:", err);
+  }
+
   revalidatePath("/tutor/hifz");
   revalidatePath(`/tutor/hifz/entry/${studentId}`);
   revalidatePath(`/admin/students/${studentId}`);
@@ -279,6 +345,8 @@ export async function saveBulkHifzEntries(input: unknown) {
 
   const { date, entries } = parsed.data;
   let saved = 0;
+  const newEntryIds: string[] = [];
+  const newEntryStudentIds: string[] = [];
 
   for (const entry of entries) {
     // Check for existing entry on this date
@@ -305,12 +373,15 @@ export async function saveBulkHifzEntries(input: unknown) {
         .set({ ...values, updatedAt: new Date() })
         .where(eq(hifzDailyEntries.id, existing.id));
     } else {
-      await db.insert(hifzDailyEntries).values({
+      const [inserted] = await db.insert(hifzDailyEntries).values({
         studentId: entry.studentId,
         date,
         recordedBy: session.user.id,
         ...values,
-      });
+      }).returning();
+      
+      newEntryIds.push(inserted.id);
+      newEntryStudentIds.push(entry.studentId);
     }
 
     await logActivity(
@@ -320,6 +391,35 @@ export async function saveBulkHifzEntries(input: unknown) {
       entry.studentId
     );
     saved++;
+  }
+
+  // Notifications for newly created entries
+  if (newEntryIds.length > 0) {
+    try {
+      const { notificationService } = await import("@/lib/services/notifications");
+      const dateObj = new Date(date);
+      const dateString = dateObj.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+      
+      for (let i = 0; i < newEntryIds.length; i++) {
+        const entryId = newEntryIds[i];
+        const studentId = newEntryStudentIds[i];
+        
+        const recipients = await notificationService.resolveHifzEntryRecipients(studentId);
+        
+        await notificationService.createNotification({
+          type: "hifz_entry_created",
+          title: "Today's Hifz Progress Recorded",
+          body: `Hifz entry for ${dateString} has been successfully recorded.`,
+          entityType: "hifz_daily_entries",
+          entityId: entryId,
+          deepLink: `/parent/progress`,
+          recipients,
+          idempotencyKey: `hifz_entry_created:${entryId}`,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to send bulk hifz notifications:", err);
+    }
   }
 
   revalidatePath("/tutor/hifz");

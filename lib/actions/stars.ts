@@ -5,12 +5,20 @@ import { classes, enrollments, studentStars } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
 import { revalidatePath } from "next/cache";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 const awardStarSchema = z.object({
   studentId: z.string().uuid(),
   type: z.enum(["blue", "black"]),
+  value: z.number().int().min(1).max(10),
+  reason: z.string().trim().min(3, "Please provide a reason").max(500),
+});
+
+const updateStarSchema = z.object({
+  starId: z.string().uuid(),
+  type: z.enum(["blue", "black"]),
+  value: z.number().int().min(1).max(10),
   reason: z.string().trim().min(3, "Please provide a reason").max(500),
 });
 
@@ -54,7 +62,7 @@ export async function awardStar(input: unknown) {
     return { success: false, error: parsed.error.flatten().fieldErrors };
   }
 
-  const { studentId, type, reason } = parsed.data;
+  const { studentId, type, value, reason } = parsed.data;
   if (!(await canManageStudent(session, studentId))) {
     return {
       success: false,
@@ -64,7 +72,7 @@ export async function awardStar(input: unknown) {
 
   const [star] = await db
     .insert(studentStars)
-    .values({ studentId, type, reason, awardedBy: session.user.id })
+    .values({ studentId, type, value, reason, awardedBy: session.user.id })
     .returning();
 
   await logActivity(
@@ -72,7 +80,7 @@ export async function awardStar(input: unknown) {
     `star.award_${type}`,
     "student_star",
     star.id,
-    { studentId, reason }
+    { studentId, reason, value }
   );
 
   revalidatePath("/tutor/stars");
@@ -81,6 +89,57 @@ export async function awardStar(input: unknown) {
   revalidatePath("/parent/stars");
   revalidatePath("/student/stars");
   return { success: true, data: star };
+}
+
+export async function updateStar(input: unknown) {
+  const session = await requireRole(["tutor", "admin", "super_admin"]);
+  const parsed = updateStarSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.flatten().fieldErrors };
+  }
+
+  const { starId, type, value, reason } = parsed.data;
+
+  const star = await db.query.studentStars.findFirst({
+    where: eq(studentStars.id, starId),
+  });
+  
+  if (!star) {
+    return { success: false, error: "Star not found." };
+  }
+
+  if (!isAdmin(session) && star.awardedBy !== session.user.id) {
+    return {
+      success: false,
+      error: "You can only edit stars that you awarded.",
+    };
+  }
+
+  const [updated] = await db
+    .update(studentStars)
+    .set({
+      type,
+      value,
+      reason,
+      updatedAt: new Date(),
+    })
+    .where(eq(studentStars.id, starId))
+    .returning();
+
+  await logActivity(
+    session.user.id,
+    "star.update",
+    "student_star",
+    starId,
+    { studentId: star.studentId, type, value, reason }
+  );
+
+  revalidatePath("/tutor/stars");
+  revalidatePath("/admin/students");
+  revalidatePath("/admin/stars");
+  revalidatePath("/parent/stars");
+  revalidatePath("/student/stars");
+  return { success: true, data: updated };
 }
 
 export async function removeStar(starId: string) {
@@ -103,7 +162,13 @@ export async function removeStar(starId: string) {
     };
   }
 
-  await db.delete(studentStars).where(eq(studentStars.id, parsedId.data));
+  await db
+    .update(studentStars)
+    .set({
+      deletedAt: new Date(),
+      deletedBy: session.user.id,
+    })
+    .where(eq(studentStars.id, parsedId.data));
 
   await logActivity(
     session.user.id,
@@ -129,7 +194,10 @@ export async function getStudentStars(studentId: string) {
   }
 
   return db.query.studentStars.findMany({
-    where: eq(studentStars.studentId, parsedId.data),
+    where: and(
+      eq(studentStars.studentId, parsedId.data),
+      isNull(studentStars.deletedAt)
+    ),
     with: { awardedByUser: { columns: { username: true } } },
     orderBy: [desc(studentStars.awardedAt)],
   });
@@ -163,17 +231,20 @@ export async function getClassStarCounts(classId: string) {
   if (studentIds.length === 0) return [];
 
   const stars = await db.query.studentStars.findMany({
-    where: inArray(studentStars.studentId, studentIds),
-    columns: { studentId: true, type: true },
+    where: and(
+      inArray(studentStars.studentId, studentIds),
+      isNull(studentStars.deletedAt)
+    ),
+    columns: { studentId: true, type: true, value: true },
   });
 
   return studentIds.map((id) => ({
     studentId: id,
-    blueCount: stars.filter(
-      (star) => star.studentId === id && star.type === "blue"
-    ).length,
-    blackCount: stars.filter(
-      (star) => star.studentId === id && star.type === "black"
-    ).length,
+    blueCount: stars
+      .filter((star) => star.studentId === id && star.type === "blue")
+      .reduce((sum, star) => sum + star.value, 0),
+    blackCount: stars
+      .filter((star) => star.studentId === id && star.type === "black")
+      .reduce((sum, star) => sum + star.value, 0),
   }));
 }

@@ -75,6 +75,13 @@ export async function createLeavePeriod(input: unknown) {
 export async function activateLeavePeriod(periodId: string) {
   const session = await requireRole(["admin", "super_admin"]);
 
+  // Fetch period details before activating (needed for notification)
+  const period = await db.query.leavePeriods.findFirst({
+    where: eq(leavePeriods.id, periodId)
+  });
+
+  if (!period) return { success: false, error: "Not found" };
+
   // Deactivate all others
   await db.update(leavePeriods).set({ isActive: false, updatedAt: new Date() });
   // Activate target
@@ -84,6 +91,29 @@ export async function activateLeavePeriod(periodId: string) {
     .where(eq(leavePeriods.id, periodId));
 
   await logActivity(session.user.id, "leave_period.activate", "leave_periods", periodId);
+  
+  // Send notification
+  try {
+    const { notificationService } = await import("@/lib/services/notifications");
+    const recipients = await notificationService.resolveLeavePeriodRecipients();
+    
+    const startStr = new Date(period.startDate).toLocaleDateString();
+    const endStr = new Date(period.endDate).toLocaleDateString();
+
+    await notificationService.createNotification({
+      type: "leave_period_activated",
+      title: "Holiday Leave Tracking Is Now Open",
+      body: `The leave period "${period.name}" (${startStr} to ${endStr}) is now open for tracking.`,
+      entityType: "leave_periods",
+      entityId: periodId,
+      deepLink: `/parent/leave-tracker`,
+      recipients,
+      idempotencyKey: `leave_period_activated:${periodId}`,
+    });
+  } catch (err) {
+    console.error("Failed to send leave period activation notification:", err);
+  }
+
   revalidatePath("/admin/leave-tracker");
   revalidatePath("/parent/leave-tracker");
   revalidatePath("/tutor/hifz");

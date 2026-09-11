@@ -29,6 +29,27 @@
       "when": 1785411481777,
       "tag": "0003_clammy_randall",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789123551511,
+      "tag": "0004_mysterious_zemo",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789155817944,
+      "tag": "0005_loving_lizard",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789159403489,
+      "tag": "0006_quiet_meltdown",
+      "breakpoints": true
     }
   ]
 }

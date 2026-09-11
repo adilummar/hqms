@@ -2,6 +2,7 @@
 
 import { Bell, Menu, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "@/components/layout/notification-bell";
 
 interface HeaderProps {
   username: string;
@@ -67,14 +68,7 @@ export function Header({ username, role, onMenuToggle, isTabletExpanded = false 
       {/* ── Right: Notifications + User ─────────────────────────── */}
       <div className="flex items-center gap-2">
         {/* Notification bell */}
-        <button
-          className="relative flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all duration-200"
-          aria-label="Notifications"
-        >
-          <Bell size={16} />
-          {/* Notification dot */}
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-teal" />
-        </button>
+        <NotificationBell role={role} />
 
         {/* Divider */}
         <div className="w-px h-5 bg-slate-200 mx-1" />

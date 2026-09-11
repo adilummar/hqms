@@ -53,7 +53,7 @@ export default async function TutorParentMeetingsPage({ searchParams }: Props) {
 
   // Fetch students and existing attendance
   let studentList: { id: string; studentCode: string; firstName: string; lastName: string | null }[] = [];
-  let existingAttendance: { studentId: string; attended: boolean; remarks: string | null }[] = [];
+  let existingAttendance: { studentId: string; attended: boolean | null; status: string | null; remarks: string | null }[] = [];
 
   if (selectedMeeting && selectedClassId) {
     const classEnrollments = await db.query.enrollments.findMany({
@@ -85,6 +85,7 @@ export default async function TutorParentMeetingsPage({ searchParams }: Props) {
       existingAttendance = attendance.map((a) => ({
         studentId: a.studentId,
         attended: a.attended,
+        status: a.status,
         remarks: a.remarks,
       }));
     }

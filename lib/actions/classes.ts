@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { classes, academicYears } from "@/lib/db/schema";
+import { classes, academicYears, enrollments } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
 import { z } from "zod";
@@ -131,6 +131,19 @@ export async function deleteClass(input: z.infer<typeof deleteClassSchema>) {
   const { id } = parsed.data;
 
   try {
+    // Explicitly check for links to prevent DB constraint errors bubbling up confusingly
+    const classEnrollments = await db.query.enrollments.findMany({
+      where: eq(enrollments.classId, id),
+      limit: 1,
+    });
+    
+    if (classEnrollments.length > 0) {
+      return {
+        success: false,
+        error: "Cannot delete this class — it still has student enrollments linked to it.",
+      };
+    }
+
     await db.delete(classes).where(eq(classes.id, id));
     await logActivity(session.user.id, "class.delete", "classes", id);
     revalidatePath("/admin/settings/classes");
@@ -138,13 +151,9 @@ export async function deleteClass(input: z.infer<typeof deleteClassSchema>) {
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[deleteClass] Error:", err);
-    // Foreign key violation (Postgres code 23503) — class still has students/exams linked
-    if (err.code === "23503" || msg.includes("foreign key") || msg.includes("violates")) {
-      return {
-        success: false,
-        error: "Cannot delete this class — it still has students or exam records linked to it.",
-      };
-    }
-    return { success: false, error: "Failed to delete class: " + msg };
+    return {
+      success: false,
+      error: "Cannot delete this class — it may have dependent records (like exams or students) linked to it.",
+    };
   }
 }

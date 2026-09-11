@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Printer, Search, ArrowUpDown, ChevronDown, Users, CheckCircle2, XCircle } from "lucide-react";
+import { Printer, Search, ArrowUpDown, ChevronDown, Users, CheckCircle2, XCircle, Clock, AlertCircle } from "lucide-react";
 
 export interface YearlyMeetingInfo {
   id: string;
@@ -16,7 +16,7 @@ export interface YearlyStudentRow {
   lastName: string | null;
   className: string;
   classTrack: string;
-  attendance: Record<string, boolean | null>;
+  attendance: Record<string, string | null>;
 }
 
 interface Props {
@@ -51,13 +51,14 @@ export function ParentMeetingYearlyReportClient({
     }
   };
 
-  const getAttendanceRate = (attendance: Record<string, boolean | null>) => {
+  const getAttendanceRate = (attendance: Record<string, string | null>) => {
     let attended = 0;
     let total = 0;
     for (const m of meetings) {
-      if (attendance[m.id] !== null && attendance[m.id] !== undefined) {
+      const stat = attendance[m.id];
+      if (stat !== null && stat !== undefined) {
         total++;
-        if (attendance[m.id] === true) attended++;
+        if (stat === "ON_TIME" || stat === "LATE" || stat === "LEGACY_YES") attended++;
       }
     }
     return total > 0 ? Math.round((attended / total) * 100) : 0;
@@ -155,11 +156,19 @@ export function ParentMeetingYearlyReportClient({
       </div>
 
       {/* ── Showing info ──────────────────────────────────────────── */}
-      <p className="text-xs text-muted-foreground print:hidden">
-        Showing {filtered.length} of {rows.length} students
-        {statusFilter !== "all" && ` · Filtered`}
-        {search && ` · Search: "${search}"`}
-      </p>
+      <div className="flex flex-wrap items-center justify-between text-xs text-muted-foreground print:hidden mb-4">
+        <p>
+          Showing {filtered.length} of {rows.length} students
+          {statusFilter !== "all" && ` · Filtered`}
+          {search && ` · Search: "${search}"`}
+        </p>
+        <div className="flex gap-4">
+          <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 size={14}/> {filtered.reduce((acc, r) => acc + Object.values(r.attendance).filter(v => v === "ON_TIME" || v === "LEGACY_YES").length, 0)} On Time</span>
+          <span className="flex items-center gap-1 text-blue-600"><Clock size={14}/> {filtered.reduce((acc, r) => acc + Object.values(r.attendance).filter(v => v === "LATE").length, 0)} Late</span>
+          <span className="flex items-center gap-1 text-amber-600"><AlertCircle size={14}/> {filtered.reduce((acc, r) => acc + Object.values(r.attendance).filter(v => v === "ABSENT_WITH_REASON").length, 0)} Absent (Reason)</span>
+          <span className="flex items-center gap-1 text-red-600"><XCircle size={14}/> {filtered.reduce((acc, r) => acc + Object.values(r.attendance).filter(v => v === "ABSENT_WITHOUT_VALID_REASON" || v === "LEGACY_NO").length, 0)} Absent (No Valid)</span>
+        </div>
+      </div>
 
       {/* ── Report Table ──────────────────────────────────────────── */}
       <div className="bg-card border border-border rounded-lg shadow-sm print:shadow-none print:border-none overflow-hidden">
@@ -235,12 +244,20 @@ export function ParentMeetingYearlyReportClient({
                         const att = row.attendance[m.id];
                         return (
                           <td key={m.id} className="px-4 py-3 text-center">
-                            {att === true ? (
-                              <div className="mx-auto flex justify-center text-emerald-600">
+                            {att === "ON_TIME" || att === "LEGACY_YES" ? (
+                              <div className="mx-auto flex justify-center text-emerald-600" title="On Time/Attended">
                                 <CheckCircle2 size={16} />
                               </div>
-                            ) : att === false ? (
-                              <div className="mx-auto flex justify-center text-red-500">
+                            ) : att === "LATE" ? (
+                              <div className="mx-auto flex justify-center text-blue-600" title="Late">
+                                <Clock size={16} />
+                              </div>
+                            ) : att === "ABSENT_WITH_REASON" ? (
+                              <div className="mx-auto flex justify-center text-yellow-500" title="Absent (Reason)">
+                                <AlertCircle size={16} />
+                              </div>
+                            ) : att === "ABSENT_WITHOUT_VALID_REASON" || att === "LEGACY_NO" ? (
+                              <div className="mx-auto flex justify-center text-red-500" title="Absent (No Reason)">
                                 <XCircle size={16} />
                               </div>
                             ) : (

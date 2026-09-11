@@ -3,9 +3,10 @@
 import { useState, useCallback } from "react";
 import { saveBulkHifzEntries } from "@/lib/actions/hifz";
 import { toast } from "sonner";
-import { Save, Loader2, CheckCircle2 } from "lucide-react";
+import { Save, Loader2, CheckCircle2, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { leavePeriods } from "@/lib/db/schema";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -87,6 +88,56 @@ const selectCls =
 const labelCls =
   "text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none pt-2 shrink-0";
 
+const JUZ_OPTIONS = Array.from({ length: 30 }, (_, i) => i + 1);
+
+function DauraJuzSelector({ value, onChange, disabled }: { value: string, onChange: (val: string) => void, disabled?: boolean }) {
+  const selected = parseJuzNumbers(value);
+  
+  const toggleJuz = (juz: number) => {
+    if (selected.includes(juz)) {
+      onChange(selected.filter((j) => j !== juz).join(" "));
+    } else {
+      onChange([...selected, juz].sort((a, b) => a - b).join(" "));
+    }
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        disabled={disabled}
+        className={cn(
+          inputCls,
+          "w-full flex items-center justify-between text-left",
+          !selected.length && "text-muted-foreground"
+        )}
+      >
+        <span className="truncate">
+          {selected.length > 0 ? `Juz ${selected.join(", ")}` : "Select Juz"}
+        </span>
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-2" align="start">
+        <div className="grid grid-cols-5 gap-1">
+          {JUZ_OPTIONS.map((juz) => (
+            <button
+              key={juz}
+              onClick={() => toggleJuz(juz)}
+              className={cn(
+                "h-8 text-xs rounded-md border flex items-center justify-center transition-colors",
+                selected.includes(juz)
+                  ? "bg-foreground text-background border-foreground"
+                  : "bg-background text-foreground border-border hover:bg-muted"
+              )}
+            >
+              {juz}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export function HifzBulkEntry({
@@ -115,6 +166,65 @@ export function HifzBulkEntry({
   const [savedIds, setSavedIds] = useState<Set<string>>(
     () => new Set(students.filter((s) => s.existingEntry).map((s) => s.id))
   );
+
+  // Common Actions State
+  const [bulkSabaqRemark, setBulkSabaqRemark] = useState("");
+  const [bulkSabaqJuzRemark, setBulkSabaqJuzRemark] = useState("");
+  const [bulkDauraRemark, setBulkDauraRemark] = useState("");
+  const [bulkDauraJuz, setBulkDauraJuz] = useState("");
+
+  const applyToAll = () => {
+    if (!bulkSabaqRemark && !bulkSabaqJuzRemark && !bulkDauraRemark && !bulkDauraJuz) {
+      toast.info("Select a reason or Daura value to apply.");
+      return;
+    }
+    
+    setRows((prev) =>
+      prev.map((r) => {
+        let next = { ...r };
+  
+        // Sabaq: apply if unmarked
+        if (bulkSabaqRemark) {
+          const isMarked = parseFloat(next.sabaqPages || "0") > 0 || parseFloat(next.sabaqFromPage || "0") > 0 || parseFloat(next.sabaqToPage || "0") > 0;
+          if (!isMarked && !next.sabaqRemarksId) {
+            next.sabaqRemarksId = bulkSabaqRemark;
+          }
+        }
+  
+        // Sabaq Juz: apply if no reason is currently selected
+        if (bulkSabaqJuzRemark) {
+          if (!next.sabaqJuzRemarksId) {
+            next.sabaqJuzRemarksId = bulkSabaqJuzRemark;
+            next.sabaqJuzGiven = false;
+          }
+        }
+  
+        // Daura Juz: apply if no daura marks and no reasons exist
+        if (bulkDauraJuz) {
+          const hasDauraMark = parseJuzNumbers(next.dauraJuz).length > 0;
+          if (!hasDauraMark && !next.dauraRemarksId) {
+            next.dauraJuz = bulkDauraJuz;
+          }
+        }
+  
+        // Daura Reason: apply if no marks exist
+        if (bulkDauraRemark) {
+          const nextHasDaura = parseJuzNumbers(next.dauraJuz).length > 0;
+          if (!nextHasDaura && !next.dauraRemarksId) {
+            next.dauraRemarksId = bulkDauraRemark;
+          }
+        }
+  
+        return next;
+      })
+    );
+  
+    let msg = [];
+    if (bulkSabaqRemark) msg.push("Sabaq");
+    if (bulkSabaqJuzRemark) msg.push("Sabaq Juz");
+    if (bulkDauraJuz || bulkDauraRemark) msg.push("Daura");
+    toast.success(`Applied ${msg.join(", ")} to eligible students.`);
+  };
 
   // ── Row update ──────────────────────────────────────────────────────────────
   const updateRow = useCallback(
@@ -206,6 +316,83 @@ export function HifzBulkEntry({
         </div>
       )}
 
+      {/* ── Common Actions Bar ──────────────────────────────────────────── */}
+      {!activeLeave && (
+        <div className="bg-card border border-border rounded-xl p-4 mb-6 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+              Apply to All Students
+            </h3>
+            <button
+              onClick={() => {
+                setBulkSabaqRemark("");
+                setBulkSabaqJuzRemark("");
+                setBulkDauraRemark("");
+                setBulkDauraJuz("");
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Reset Selection
+            </button>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_2fr_auto] gap-4 items-end">
+            <div>
+              <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Sabaq</label>
+              <select
+                value={bulkSabaqRemark}
+                onChange={(e) => setBulkSabaqRemark(e.target.value)}
+                className={cn(selectCls, "w-full")}
+              >
+                <option value="">Select Reason…</option>
+                {sabaqRemarks.map((r) => (
+                  <option key={r.id} value={r.id}>{r.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Sabaq Juz</label>
+              <select
+                value={bulkSabaqJuzRemark}
+                onChange={(e) => setBulkSabaqJuzRemark(e.target.value)}
+                className={cn(selectCls, "w-full")}
+              >
+                <option value="">Select Reason…</option>
+                {sabaqJuzRemarks.map((r) => (
+                  <option key={r.id} value={r.id}>{r.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1 min-w-[120px]">
+                <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Daura Juz</label>
+                <DauraJuzSelector value={bulkDauraJuz} onChange={setBulkDauraJuz} />
+              </div>
+              <div className="flex-1">
+                <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Daura Reason</label>
+                <select
+                  value={bulkDauraRemark}
+                  onChange={(e) => setBulkDauraRemark(e.target.value)}
+                  className={cn(selectCls, "w-full")}
+                >
+                  <option value="">Select Reason…</option>
+                  {dauraRemarks.map((r) => (
+                    <option key={r.id} value={r.id}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="w-full lg:w-auto">
+              <button
+                onClick={applyToAll}
+                className="w-full lg:w-auto h-8 px-5 bg-foreground text-background text-sm font-medium rounded-lg hover:bg-foreground/90 transition-colors whitespace-nowrap"
+              >
+                Apply to All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Summary bar ──────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-4 px-1">
         <p className="text-xs text-muted-foreground">
@@ -228,6 +415,11 @@ export function HifzBulkEntry({
           const row = rows[i];
           const isSaved = savedIds.has(student.id);
           const touched = hasData(row);
+          
+          // Compute disable logic
+          const sabaqMarkGiven = parseFloat(row.sabaqPages || "0") > 0 || parseFloat(row.sabaqFromPage || "0") > 0 || parseFloat(row.sabaqToPage || "0") > 0;
+          const sabaqJuzMarkGiven = row.sabaqJuzGiven;
+          const dauraMarkGiven = parseJuzNumbers(row.dauraJuz).length > 0;
 
           return (
             <div
@@ -310,6 +502,7 @@ export function HifzBulkEntry({
                     )}
                     {sabaqRemarks.length > 0 && (
                       <select
+                        disabled={sabaqMarkGiven}
                         value={row.sabaqRemarksId}
                         onChange={(e) =>
                           updateRow(student.id, { sabaqRemarksId: e.target.value })
@@ -354,6 +547,7 @@ export function HifzBulkEntry({
                     </label>
                     {sabaqJuzRemarks.length > 0 && (
                       <select
+                        disabled={sabaqJuzMarkGiven}
                         value={row.sabaqJuzRemarksId}
                         onChange={(e) =>
                           updateRow(student.id, { sabaqJuzRemarksId: e.target.value })
@@ -378,17 +572,15 @@ export function HifzBulkEntry({
                 <div className="grid grid-cols-[3rem_1fr] gap-x-3 items-start">
                   <span className={labelCls}>Daura</span>
                   <div className="flex flex-wrap gap-2 items-center">
-                    <input
-                      type="text"
-                      placeholder="Juz e.g. 2 15"
-                      value={row.dauraJuz}
-                      onChange={(e) =>
-                        updateRow(student.id, { dauraJuz: e.target.value })
-                      }
-                      className={cn(inputCls, "w-32")}
-                    />
+                    <div className="min-w-[140px] max-w-[200px]">
+                      <DauraJuzSelector 
+                        value={row.dauraJuz} 
+                        onChange={(v) => updateRow(student.id, { dauraJuz: v })} 
+                      />
+                    </div>
                     {dauraRemarks.length > 0 && (
                       <select
+                        disabled={dauraMarkGiven}
                         value={row.dauraRemarksId}
                         onChange={(e) =>
                           updateRow(student.id, { dauraRemarksId: e.target.value })
@@ -413,12 +605,6 @@ export function HifzBulkEntry({
       </fieldset>
 
       {/* ── Fixed Save All button ─────────────────────────────────────────── */}
-      {/*
-        Sidebar widths:
-          mobile  (<md)  : 0      — full width
-          tablet  (md)   : 4rem   — icon-only sidebar (w-16)
-          desktop (lg+)  : 16rem  — full sidebar (w-64)
-      */}
       <div className="fixed bottom-0 left-0 right-0 md:left-16 lg:left-64 z-40 pointer-events-none">
         <div className="px-4 pb-5 pt-10 bg-gradient-to-t from-background via-background/95 to-transparent pointer-events-auto">
           <button

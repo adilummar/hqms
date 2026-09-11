@@ -1,4 +1,3 @@
-// Phase 3 — Schema only, no Phase 1 UI
 import {
   pgTable,
   uuid,
@@ -6,10 +5,12 @@ import {
   text,
   boolean,
   timestamp,
+  unique,
 } from "drizzle-orm/pg-core";
-import { notificationChannelEnum } from "./enums";
+import { notificationChannelEnum, notificationTypeEnum } from "./enums";
 import { users } from "./users";
 import { students } from "./students";
+import { relations } from "drizzle-orm";
 
 export const notificationTemplates = pgTable("notification_templates", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -41,3 +42,31 @@ export const notificationLogs = pgTable("notification_logs", {
   error: text("error"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// New In-App Notifications Inbox
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    recipientUserId: uuid("recipient_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: notificationTypeEnum("type").notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    body: text("body").notNull(),
+    entityType: varchar("entity_type", { length: 50 }),
+    entityId: uuid("entity_id"),
+    deepLink: varchar("deep_link", { length: 500 }),
+    idempotencyKey: varchar("idempotency_key", { length: 255 }).unique().notNull(),
+    isRead: boolean("is_read").default(false).notNull(),
+    readAt: timestamp("read_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  }
+);
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  recipientUser: one(users, {
+    fields: [notifications.recipientUserId],
+    references: [users.id],
+  }),
+}));
