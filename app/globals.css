@@ -43,6 +43,9 @@
 }
 
 :root {
+  --font-inter: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-dm-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono-custom: 'JetBrains Mono', ui-monospace, monospace;
   /* ── HQMS Slate-Teal Design System ───────────────────────────── */
 
   /* Surfaces */

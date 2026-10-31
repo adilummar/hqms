@@ -1,28 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Inter, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "./providers";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-  weight: ["400", "500", "600", "700", "800"],
-});
-
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-dm-sans",
-  display: "swap",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono-custom",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -53,7 +33,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${dmSans.variable} ${jetbrainsMono.variable} antialiased`}>
+      <body className="antialiased">
         {/* Unregister stale PWA service workers from previous next-pwa builds */}
         <Script
           id="unregister-sw"
