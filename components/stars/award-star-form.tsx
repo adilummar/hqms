@@ -58,7 +58,8 @@ export function AwardStarForm({
   function handleAward(event: React.FormEvent) {
     event.preventDefault();
     startTransition(async () => {
-      const result = await awardStar({ studentId: student.id, type, value, reason });
+      const starValue = Math.min(10, Math.max(1, value || 1));
+      const result = await awardStar({ studentId: student.id, type, value: starValue, reason });
       if (result.success && result.data) {
         setStars((previous) => [
           { ...result.data, awardedByUser: { username: "You" } },
@@ -86,10 +87,11 @@ export function AwardStarForm({
     if (!editingId) return;
 
     startTransition(async () => {
+      const starValue = Math.min(10, Math.max(1, editValue || 1));
       const result = await updateStar({
         starId: editingId,
         type: editType,
-        value: editValue,
+        value: starValue,
         reason: editReason,
       });
 
@@ -206,7 +208,20 @@ export function AwardStarForm({
                 min={1}
                 max={10}
                 value={value}
-                onChange={(e) => setValue(parseInt(e.target.value) || 1)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "") {
+                    setValue(1);
+                    return;
+                  }
+                  const num = parseInt(val, 10);
+                  if (isNaN(num)) return;
+                  setValue(Math.min(10, Math.max(1, num)));
+                }}
+                onBlur={() => {
+                  if (!value || value < 1) setValue(1);
+                  if (value > 10) setValue(10);
+                }}
                 required
                 className="w-full rounded-sm border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-foreground"
               />
@@ -281,7 +296,20 @@ export function AwardStarForm({
                       min={1}
                       max={10}
                       value={editValue}
-                      onChange={(e) => setEditValue(parseInt(e.target.value) || 1)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "") {
+                          setEditValue(1);
+                          return;
+                        }
+                        const num = parseInt(val, 10);
+                        if (isNaN(num)) return;
+                        setEditValue(Math.min(10, Math.max(1, num)));
+                      }}
+                      onBlur={() => {
+                        if (!editValue || editValue < 1) setEditValue(1);
+                        if (editValue > 10) setEditValue(10);
+                      }}
                       className="w-16 rounded-sm border border-border bg-background px-2 py-1"
                       required
                     />
