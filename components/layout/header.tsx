@@ -3,6 +3,7 @@
 import { Bell, Menu, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { HeaderCheckIn } from "@/components/staff-attendance/header-checkin";
 
 interface HeaderProps {
   username: string;
@@ -16,6 +17,7 @@ const ROLE_LABELS: Record<string, string> = {
   admin: "Administrator",
   tutor: "Tutor",
   school_admin: "School Admin",
+  madrasa_admin: "Madrasa Admin",
   parent: "Parent",
   student: "Student",
 };
@@ -25,6 +27,7 @@ const ROLE_COLORS: Record<string, string> = {
   admin: "bg-teal-50 text-teal-700",
   tutor: "bg-blue-50 text-blue-700",
   school_admin: "bg-orange-50 text-orange-700",
+  madrasa_admin: "bg-indigo-50 text-indigo-700",
   parent: "bg-green-50 text-green-700",
   student: "bg-slate-100 text-slate-600",
 };
@@ -65,8 +68,11 @@ export function Header({ username, role, onMenuToggle, isTabletExpanded = false 
         </div>
       </div>
 
-      {/* ── Right: Notifications + User ─────────────────────────── */}
-      <div className="flex items-center gap-2">
+      {/* ── Right: Check-In + Notifications + User ──────────────── */}
+      <div className="flex items-center gap-2.5">
+        {/* Staff Check-In pill */}
+        <HeaderCheckIn role={role} />
+
         {/* Notification bell */}
         <NotificationBell role={role} />
 

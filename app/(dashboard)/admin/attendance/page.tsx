@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { classes, enrollments, students, attendanceRecords } from "@/lib/db/schema";
@@ -141,6 +142,22 @@ export default async function AdminAttendancePage({ searchParams }: Props) {
         description={`Monthly grid for ${monthName}`}
         breadcrumbs={[{ label: "Admin" }, { label: "Attendance" }]}
       />
+
+      {/* Navigation Tabs */}
+      <div className="flex gap-2 border-b border-border -mt-2 mb-6 print:hidden">
+        <Link
+          href="/admin/attendance"
+          className="border-b-2 border-teal pb-3 px-4 text-sm font-semibold text-foreground transition-colors font-dm-sans"
+        >
+          Students Attendance
+        </Link>
+        <Link
+          href="/admin/attendance/staff"
+          className="border-b-2 border-transparent pb-3 px-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors font-dm-sans"
+        >
+          Staff Attendance
+        </Link>
+      </div>
 
       {/* Controls */}
       <form method="GET" className="flex flex-wrap gap-3 mb-6 items-end">

@@ -82,6 +82,17 @@ export const attendanceRelations = relations(attendanceRecords, ({ one }) => ({
   }),
 }));
 
+export const staffAttendanceRelations = relations(staffAttendance, ({ one }) => ({
+  user: one(users, {
+    fields: [staffAttendance.userId],
+    references: [users.id],
+  }),
+  recordedByUser: one(users, {
+    fields: [staffAttendance.recordedBy],
+    references: [users.id],
+  }),
+}));
+
 // ── Parent Meetings ───────────────────────────────────────────────────────────
 // Whole-school meetings created by super_admin.
 // Tutors mark per-student attendance (attended boolean + optional remarks).

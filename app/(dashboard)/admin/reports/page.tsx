@@ -119,6 +119,7 @@ export default async function ReportsPage({ searchParams }: Props) {
 
   const reportLinks = [
     { label: "Monthly Targets & Toppers", href: "/admin/hifz/targets",              icon: "🎯", description: "View student progress vs targets" },
+    { label: "Staff Attendance",          href: "/admin/attendance/staff",          icon: "👔", description: "Daily check-in & monthly matrix" },
     { label: "Attendance Grid",           href: "/admin/attendance",                icon: "📋", description: "Monthly attendance grid by class" },
     { label: "Student List",              href: "/admin/students",                  icon: "👥", description: "All enrolled students" },
     { label: "Applications",              href: "/admin/admissions/applications",   icon: "📝", description: "Admission pipeline status" },
@@ -126,6 +127,15 @@ export default async function ReportsPage({ searchParams }: Props) {
   ];
 
   const featuredReports = [
+    {
+      href: "/admin/attendance/staff",
+      emoji: "👔",
+      bg: "bg-teal-100",
+      title: "Staff Attendance Report",
+      description: "Daily check-in timestamps, staff presence tracking, and monthly attendance matrix across tutors and administrative staff.",
+      tags: ["Check-In Timestamps", "Daily Log", "Monthly Matrix", "Faculty & Staff"],
+      tagStyle: "bg-teal-50 text-teal-700 border-teal-200",
+    },
     {
       href: "/admin/reports/attendance",
       emoji: "✅",
