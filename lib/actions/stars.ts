@@ -38,7 +38,8 @@ async function tutorCanManageStudent(userId: string, studentId: string) {
         eq(enrollments.studentId, studentId),
         eq(enrollments.status, "active"),
         eq(classes.tutorId, userId),
-        eq(classes.isActive, true)
+        eq(classes.isActive, true),
+        eq(classes.track, "hifz")
       )
     )
     .limit(1);
@@ -213,7 +214,8 @@ export async function getClassStarCounts(classId: string) {
       where: and(
         eq(classes.id, parsedId.data),
         eq(classes.tutorId, session.user.id),
-        eq(classes.isActive, true)
+        eq(classes.isActive, true),
+        eq(classes.track, "hifz")
       ),
       columns: { id: true },
     });

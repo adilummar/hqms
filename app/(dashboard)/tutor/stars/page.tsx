@@ -32,8 +32,12 @@ export default async function TutorStarsPage({ searchParams }: Props) {
 
   const tutorClasses = await db.query.classes.findMany({
     where: isAdmin
-      ? eq(classes.isActive, true)
-      : and(eq(classes.tutorId, session.user.id), eq(classes.isActive, true)),
+      ? and(eq(classes.isActive, true), eq(classes.track, "hifz"))
+      : and(
+          eq(classes.tutorId, session.user.id),
+          eq(classes.isActive, true),
+          eq(classes.track, "hifz")
+        ),
     orderBy: [classes.displayOrder, classes.name],
   });
 

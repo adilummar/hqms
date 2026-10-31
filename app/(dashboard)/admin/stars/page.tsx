@@ -28,9 +28,9 @@ export default async function AdminStarsPage({ searchParams }: Props) {
   const session = await requireAdmin();
   const params = await searchParams;
 
-  // Admins see ALL active classes
+  // Admins see only active Hifz classes
   const allClasses = await db.query.classes.findMany({
-    where: eq(classes.isActive, true),
+    where: and(eq(classes.isActive, true), eq(classes.track, "hifz")),
     orderBy: [classes.displayOrder, classes.name],
   });
 
@@ -160,7 +160,7 @@ export default async function AdminStarsPage({ searchParams }: Props) {
       {/* ── Student Cards ───────────────────────────────────────── */}
       {allClasses.length === 0 ? (
         <div className="rounded-xl border border-border p-14 text-center text-sm text-muted-foreground">
-          No active classes found. Create a class first.
+          No active Hifz classes found. Create a class first.
         </div>
       ) : studentList.length === 0 ? (
         <div className="rounded-xl border border-border p-14 text-center text-sm text-muted-foreground">
