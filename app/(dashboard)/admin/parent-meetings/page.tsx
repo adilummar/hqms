@@ -10,7 +10,7 @@ import {
 import { eq, and, inArray, desc, asc } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { ParentMeetingRoster } from "@/components/meetings/parent-meeting-roster";
-import { CalendarDays, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { CalendarDays, CheckCircle2, XCircle, Clock, UsersRound, Briefcase } from "lucide-react";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -119,6 +119,23 @@ export default async function AdminParentMeetingsPage({ searchParams }: Props) {
 
   return (
     <div>
+      {/* ── Top Tabs (Parent Meetings vs Staff Meetings) ── */}
+      <div className="flex items-center gap-2 border-b border-border pb-3 font-dm-sans mb-4">
+        <Link
+          href="/admin/parent-meetings"
+          className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-foreground text-background transition-colors flex items-center gap-2 shadow-xs"
+        >
+          <UsersRound size={15} />
+          Parent Meetings
+        </Link>
+        <Link
+          href="/admin/staff-meetings"
+          className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-2"
+        >
+          <Briefcase size={15} />
+          Staff Meetings
+        </Link>
+      </div>
       <PageHeader
         title="Parent Meeting Attendance"
         description="Mark and manage parent attendance across all classes"

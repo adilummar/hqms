@@ -15,6 +15,7 @@ import {
   GraduationCap,
   FileText,
   UsersRound,
+  Briefcase,
   Star,
   Archive,
   X,
@@ -39,6 +40,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Attendance",      href: "/admin/attendance",              icon: CalendarCheck },
   { label: "Leave Tracker",   href: "/admin/leave-tracker",          icon: CalendarCheck2 },
   { label: "Parent Meetings", href: "/admin/parent-meetings",         icon: UsersRound },
+  { label: "Staff Meetings",  href: "/admin/staff-meetings",          icon: Briefcase },
   { label: "Exams",           href: "/admin/exams",                   icon: FileText },
   { label: "Stars",           href: "/admin/stars",                   icon: Star },
   { label: "Admissions",      href: "/admin/admissions/applications", icon: ClipboardList },
@@ -52,6 +54,7 @@ const TUTOR_NAV: NavItem[] = [
   { label: "Monthly Targets", href: "/tutor/hifz/targets",   icon: BarChart3 },
   { label: "Attendance",      href: "/tutor/attendance",     icon: CalendarCheck },
   { label: "Parent Meetings", href: "/tutor/parent-meetings",icon: UsersRound },
+  { label: "Staff Meetings",  href: "/tutor/staff-meetings", icon: Briefcase },
   { label: "Stars",           href: "/tutor/stars",          icon: Star },
   { label: "Exams",           href: "/tutor/exams",          icon: FileText },
 ];

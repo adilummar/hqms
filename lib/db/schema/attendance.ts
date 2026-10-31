@@ -161,3 +161,76 @@ export const parentMeetingAttendanceRelations = relations(
     }),
   })
 );
+
+// ── Staff Meetings ───────────────────────────────────────────────────────────
+// Institutional staff/faculty meetings created by Admin.
+// Includes agenda, discussion minutes, and decisions/resolutions ("disitions").
+
+export const staffMeetings = pgTable("staff_meetings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  title: varchar("title", { length: 150 }).notNull(),
+  meetingDate: date("meeting_date").notNull(),
+  meetingTime: varchar("meeting_time", { length: 50 }),
+  location: varchar("location", { length: 150 }),
+  description: text("description"), // Agenda / Discussion topics
+  status: varchar("status", { length: 50 }).default("scheduled").notNull(), // scheduled, completed, cancelled
+  minutes: text("minutes"), // Discussion minutes
+  decisions: text("decisions"), // Decisions taken / Action items
+  createdBy: uuid("created_by")
+    .notNull()
+    .references(() => users.id, { onDelete: "restrict" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const staffMeetingAttendance = pgTable(
+  "staff_meeting_attendance",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    meetingId: uuid("meeting_id")
+      .notNull()
+      .references(() => staffMeetings.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    attended: boolean("attended").default(true).notNull(),
+    remarks: text("remarks"),
+    recordedBy: uuid("recorded_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    uniq: unique().on(table.meetingId, table.userId),
+  })
+);
+
+export const staffMeetingsRelations = relations(
+  staffMeetings,
+  ({ one, many }) => ({
+    createdByUser: one(users, {
+      fields: [staffMeetings.createdBy],
+      references: [users.id],
+    }),
+    attendanceRecords: many(staffMeetingAttendance),
+  })
+);
+
+export const staffMeetingAttendanceRelations = relations(
+  staffMeetingAttendance,
+  ({ one }) => ({
+    meeting: one(staffMeetings, {
+      fields: [staffMeetingAttendance.meetingId],
+      references: [staffMeetings.id],
+    }),
+    user: one(users, {
+      fields: [staffMeetingAttendance.userId],
+      references: [users.id],
+    }),
+    recordedByUser: one(users, {
+      fields: [staffMeetingAttendance.recordedBy],
+      references: [users.id],
+    }),
+  })
+);

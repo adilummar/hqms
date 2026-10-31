@@ -8,16 +8,7 @@ import { requireAdmin, requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-
-export const STAFF_ROLES = [
-  "super_admin",
-  "admin",
-  "tutor",
-  "school_admin",
-  "madrasa_admin",
-] as const;
-
-export type StaffRole = (typeof STAFF_ROLES)[number];
+import { STAFF_ROLES, type StaffRole } from "@/lib/constants/staff";
 
 function getTodayDateString(): string {
   return new Intl.DateTimeFormat("en-CA", {

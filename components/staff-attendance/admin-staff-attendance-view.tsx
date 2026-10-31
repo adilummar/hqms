@@ -20,7 +20,8 @@ import {
   Edit2,
   X,
 } from "lucide-react";
-import { adminRecordStaffAttendance, STAFF_ROLES } from "@/lib/actions/staff-attendance";
+import { adminRecordStaffAttendance } from "@/lib/actions/staff-attendance";
+import { STAFF_ROLES } from "@/lib/constants/staff";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 

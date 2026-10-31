@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { checkInStaff, getStaffCheckInStatus, STAFF_ROLES } from "@/lib/actions/staff-attendance";
+import { checkInStaff, getStaffCheckInStatus } from "@/lib/actions/staff-attendance";
+import { STAFF_ROLES } from "@/lib/constants/staff";
 import { CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
