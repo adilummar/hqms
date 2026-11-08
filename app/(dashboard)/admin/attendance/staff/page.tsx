@@ -5,6 +5,8 @@ import {
   getStaffDailyAttendanceData,
   getStaffMonthlyAttendanceData,
 } from "@/lib/actions/staff-attendance";
+import { getStaffOffDaySettings } from "@/lib/actions/staff-off-days";
+import { toIstDate } from "@/lib/services/staff-sessions";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -16,7 +18,6 @@ interface Props {
     date?: string;
     month?: string;
     year?: string;
-    role?: string;
   }>;
 }
 
@@ -25,27 +26,25 @@ export default async function StaffAttendancePage({ searchParams }: Props) {
   const params = await searchParams;
 
   const viewMode = params.view === "monthly" ? "monthly" : "daily";
-  const roleFilter = params.role || "all";
 
-  const now = new Date();
-  const year = params.year ? parseInt(params.year, 10) : now.getFullYear();
-  const month = params.month ? parseInt(params.month, 10) : now.getMonth() + 1;
-  const dateStr = params.date || now.toISOString().split("T")[0];
+  // Institution time (IST), never the server's UTC date.
+  const todayIst = toIstDate(new Date());
+  const [todayYear, todayMonth] = todayIst.split("-").map(Number);
+  const year = params.year ? parseInt(params.year, 10) : todayYear;
+  const month = params.month ? parseInt(params.month, 10) : todayMonth;
+  const dateStr = params.date || todayIst;
 
-  const [dailyData, monthlyData] = await Promise.all([
-    viewMode === "daily"
-      ? getStaffDailyAttendanceData(dateStr, roleFilter)
-      : Promise.resolve(undefined),
-    viewMode === "monthly"
-      ? getStaffMonthlyAttendanceData(year, month, roleFilter)
-      : Promise.resolve(undefined),
+  const [dailyData, monthlyData, offSettings] = await Promise.all([
+    viewMode === "daily" ? getStaffDailyAttendanceData(dateStr) : Promise.resolve(undefined),
+    viewMode === "monthly" ? getStaffMonthlyAttendanceData(year, month) : Promise.resolve(undefined),
+    getStaffOffDaySettings(),
   ]);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Staff Attendance"
-        description="Daily check-in logs, real-time presence, and monthly attendance matrix across all faculty and staff."
+        description="Forenoon (FN) and Afternoon (AN) attendance of Hifz tutors: daily log and monthly matrix."
         breadcrumbs={[
           { label: "Admin" },
           { label: "Attendance", href: "/admin/attendance" },
@@ -73,7 +72,7 @@ export default async function StaffAttendancePage({ searchParams }: Props) {
         viewMode={viewMode}
         dailyData={dailyData}
         monthlyData={monthlyData}
-        roleFilter={roleFilter}
+        offSettings={offSettings}
       />
     </div>
   );

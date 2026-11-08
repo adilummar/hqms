@@ -7,13 +7,14 @@ import {
   boolean,
   timestamp,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { attendanceStatusEnum, leaveTypeEnum, classTrackEnum, attendanceSessionEnum, parentMeetingStatusEnum } from "./enums";
 import { students } from "./students";
 import { classes } from "./classes";
 import { users } from "./users";
 import { remarksOptions } from "./remarks";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 export const attendanceRecords = pgTable(
   "attendance_records",
@@ -45,7 +46,9 @@ export const attendanceRecords = pgTable(
   })
 );
 
-// Staff attendance — Phase 2 ready (schema only)
+// Staff attendance.
+// Legacy rows (before the FN/AN rollout) have session = NULL: one row per
+// user per day. New rows carry session FN | AN: one row per user/date/session.
 export const staffAttendance = pgTable(
   "staff_attendance",
   {
@@ -54,6 +57,7 @@ export const staffAttendance = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     date: date("date").notNull(),
+    session: attendanceSessionEnum("session"), // NULL = legacy single-session record
     status: attendanceStatusEnum("status").notNull(),
     leaveType: leaveTypeEnum("leave_type"),
     remarks: text("remarks"),
@@ -61,9 +65,41 @@ export const staffAttendance = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
+    // ── FN/AN additions ──
+    checkInAt: timestamp("check_in_at", { withTimezone: true }), // real check-in moment (self check-in)
+    source: varchar("source", { length: 10 }), // 'self' | 'auto' | 'admin' (NULL = legacy)
+    originalStatus: attendanceStatusEnum("original_status"), // set on first admin correction
+    originalSource: varchar("original_source", { length: 10 }), // e.g. 'auto' when an automatic absence was corrected
+    correctedBy: uuid("corrected_by").references(() => users.id, { onDelete: "set null" }),
+    correctedAt: timestamp("corrected_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
-    uniq: unique().on(table.userId, table.date),
+    uniq: unique().on(table.userId, table.date, table.session),
+    legacyUniq: uniqueIndex("staff_attendance_legacy_user_date_uniq")
+      .on(table.userId, table.date)
+      .where(sql`${table.session} IS NULL`),
+  })
+);
+
+// Admin-managed non-working days for staff attendance (holidays, students'
+// leave periods, other closures). One row per date + scope; ranges are expanded.
+// Weekly off days live in settings.staff_weekly_off_days.
+export const staffOffDays = pgTable(
+  "staff_off_days",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    date: date("date").notNull(),
+    scope: varchar("scope", { length: 4 }).default("both").notNull(), // 'both' | 'FN' | 'AN'
+    type: varchar("type", { length: 20 }).default("holiday").notNull(), // 'holiday' | 'students_leave' | 'other'
+    reason: varchar("reason", { length: 150 }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    uniq: unique().on(table.date, table.scope),
   })
 );
 
@@ -89,6 +125,10 @@ export const staffAttendanceRelations = relations(staffAttendance, ({ one }) => 
   }),
   recordedByUser: one(users, {
     fields: [staffAttendance.recordedBy],
+    references: [users.id],
+  }),
+  correctedByUser: one(users, {
+    fields: [staffAttendance.correctedBy],
     references: [users.id],
   }),
 }));
