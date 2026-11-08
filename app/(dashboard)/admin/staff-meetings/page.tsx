@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { staffMeetings, staffMeetingAttendance } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
+import { getHifzTutors } from "@/lib/services/hifz-tutors";
 import { PageHeader } from "@/components/layout/page-header";
 import { CreateStaffMeetingDialog } from "@/components/staff-meetings/create-staff-meeting-dialog";
 import {
@@ -38,7 +39,10 @@ export default async function AdminStaffMeetingsPage() {
 
   const today = new Date().toISOString().split("T")[0];
 
-  const allMeetings = await db.query.staffMeetings.findMany({
+  // Only Hifz tutors count towards staff meeting attendance
+  const hifzTutorIds = new Set((await getHifzTutors()).map((t) => t.id));
+
+  const allMeetingsRaw = await db.query.staffMeetings.findMany({
     orderBy: [desc(staffMeetings.meetingDate), desc(staffMeetings.createdAt)],
     with: {
       createdByUser: {
@@ -49,6 +53,11 @@ export default async function AdminStaffMeetingsPage() {
       },
     },
   });
+
+  const allMeetings = allMeetingsRaw.map((m) => ({
+    ...m,
+    attendanceRecords: m.attendanceRecords.filter((a) => hifzTutorIds.has(a.userId)),
+  }));
 
   const totalMeetings = allMeetings.length;
   const completedMeetings = allMeetings.filter((m) => m.status === "completed").length;

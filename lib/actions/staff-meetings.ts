@@ -1,13 +1,13 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { staffMeetings, staffMeetingAttendance, users } from "@/lib/db/schema";
+import { staffMeetings, staffMeetingAttendance } from "@/lib/db/schema";
+import { getHifzTutors } from "@/lib/services/hifz-tutors";
 import { requireAdmin, requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
 import { revalidatePath } from "next/cache";
-import { eq, desc, asc, and, inArray } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { z } from "zod";
-import { STAFF_ROLES } from "@/lib/constants/staff";
 
 const createStaffMeetingSchema = z.object({
   title: z.string().trim().min(2, "Title must be at least 2 characters").max(150),
@@ -59,14 +59,8 @@ export async function createStaffMeeting(input: unknown) {
     })
     .returning();
 
-  // Pre-populate attendance roster for all active staff
-  const activeStaff = await db.query.users.findMany({
-    where: and(
-      eq(users.isActive, true),
-      inArray(users.role, [...STAFF_ROLES])
-    ),
-    columns: { id: true },
-  });
+  // Pre-populate attendance roster for Hifz tutors only
+  const activeStaff = await getHifzTutors();
 
   if (activeStaff.length > 0) {
     await db
@@ -271,15 +265,8 @@ export async function getStaffMeetingDetails(meetingId: string) {
 
   if (!meeting) return null;
 
-  // Retrieve all active staff to guarantee full roster coverage
-  const allActiveStaff = await db.query.users.findMany({
-    where: and(
-      eq(users.isActive, true),
-      inArray(users.role, [...STAFF_ROLES])
-    ),
-    columns: { id: true, username: true, email: true, role: true },
-    orderBy: [asc(users.role), asc(users.username)],
-  });
+  // Roster = Hifz tutors only (tutors assigned to active hifz-track classes)
+  const allActiveStaff = await getHifzTutors();
 
   const existingMap = new Map(
     meeting.attendanceRecords.map((att) => [att.userId, att])
