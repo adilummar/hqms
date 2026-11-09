@@ -1,11 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { examSessions, examSubjects, examGradeRules, examMarks, examTrackSubjects, classes } from "@/lib/db/schema";
+import { examSessions, examSubjects, examGradeRules, examMarks, examTrackSubjects } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
 import { z } from "zod";
-import { eq, and, ne, sql, inArray } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
+import { syncClassSubjects, assertClassesInTrack, findLastExamSubjects } from "@/lib/exams/subjects-db";
 import { revalidatePath } from "next/cache";
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -200,61 +201,6 @@ export async function updateSessionDates(sessionId: string, startDate: string | 
 
 // ─── Subject Actions ──────────────────────────────────────────────────────────
 
-type SubjectInput = z.infer<typeof subjectSchema>;
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
-/**
- * Make a class's subjects for an exam session equal to `subjects` WITHOUT
- * deleting rows that are merely edited: rows are matched by id (else by name)
- * and updated in place, so marks already entered for them survive. Only
- * subjects that were really removed from the list are deleted.
- */
-async function syncClassSubjects(tx: Tx, examSessionId: string, classId: string, subjects: SubjectInput[]) {
-  const existing = await tx
-    .select()
-    .from(examSubjects)
-    .where(and(eq(examSubjects.examSessionId, examSessionId), eq(examSubjects.classId, classId)));
-  const unmatched = new Map(existing.map((e) => [e.id, e]));
-  const norm = (n: string) => n.trim().toLowerCase();
-
-  for (let i = 0; i < subjects.length; i++) {
-    const s = subjects[i];
-    let match = s.id ? unmatched.get(s.id) : undefined;
-    if (!match) match = [...unmatched.values()].find((e) => norm(e.name) === norm(s.name));
-    const values = {
-      name: s.name.trim(),
-      totalMarks: s.totalMarks,
-      passMarks: s.passMarks,
-      displayOrder: i,
-      examDate: s.examDate || null,
-    };
-    if (match) {
-      unmatched.delete(match.id);
-      await tx.update(examSubjects).set(values).where(eq(examSubjects.id, match.id));
-    } else {
-      await tx.insert(examSubjects).values({ examSessionId, classId, ...values });
-    }
-  }
-
-  if (unmatched.size > 0) {
-    await tx.delete(examSubjects).where(inArray(examSubjects.id, [...unmatched.keys()]));
-  }
-}
-
-/** Returns the session, or an error when any class does not belong to the session's track. */
-async function assertClassesInTrack(examSessionId: string, classIds: string[]) {
-  const exam = await db.query.examSessions.findFirst({ where: eq(examSessions.id, examSessionId) });
-  if (!exam) return { ok: false as const, error: "Exam session not found" };
-  const rows = await db
-    .select({ id: classes.id, track: classes.track })
-    .from(classes)
-    .where(inArray(classes.id, classIds));
-  if (rows.length !== new Set(classIds).size || rows.some((c) => c.track !== exam.track)) {
-    return { ok: false as const, error: `Classes must belong to the ${exam.track} track` };
-  }
-  return { ok: true as const, exam };
-}
-
 function revalidateExam(examinationId: string) {
   revalidatePath(`/admin/exams/${examinationId}`);
 }
@@ -288,16 +234,8 @@ export async function copySubjectsFromLastExam(examSessionId: string, classId: s
   if (!check.ok) return { success: false, error: check.error };
   const current = check.exam;
 
-  // Most recent OTHER session of the same track that has subjects for this class.
-  const candidates = await db.query.examSessions.findMany({
-    where: and(eq(examSessions.track, current.track), ne(examSessions.id, examSessionId)),
-    with: { subjects: true },
-    orderBy: (t, { desc }) => [desc(t.createdAt)],
-  });
-  const source = candidates.find((c) => c.subjects.some((s) => s.classId === classId));
-  const prevSubjects = (source?.subjects ?? [])
-    .filter((s) => s.classId === classId)
-    .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+  // Subjects of the most recent OTHER exam of the SAME track for this class.
+  const prevSubjects = await findLastExamSubjects(current, classId);
   if (prevSubjects.length === 0) {
     return { success: false, error: `No previous ${current.track} exam has subjects for this class` };
   }
