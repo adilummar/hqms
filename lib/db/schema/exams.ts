@@ -97,6 +97,30 @@ export const examTrackSubjects = pgTable(
   (t) => ({ uniq: unique().on(t.track, t.name) })
 );
 
+// ─── Hifz Exam Juz Results ────────────────────────────────────────────────────
+// Exam-specific Hifz values per student, tied to the Hifz exam session:
+// the Juz the student had to obtain and the Juz actually memorized at that exam.
+// Deliberately separate from the daily juz_tracker progress.
+export const examHifzResults = pgTable(
+  "exam_hifz_results",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    examSessionId: uuid("exam_session_id")
+      .notNull()
+      .references(() => examSessions.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    juzToObtain: numeric("juz_to_obtain", { precision: 4, scale: 1 }),
+    juzMemorized: numeric("juz_memorized", { precision: 4, scale: 1 }),
+    remarks: varchar("remarks", { length: 300 }),
+    enteredBy: uuid("entered_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({ uniq: unique().on(t.examSessionId, t.studentId) })
+);
+
 // ─── Exam Grade Rules ─────────────────────────────────────────────────────────
 // Grade thresholds per exam session (applies to all subjects in that session).
 // e.g. A+: ≥90%, A: ≥75%, B: ≥60%, C: ≥45%, F: <pass mark

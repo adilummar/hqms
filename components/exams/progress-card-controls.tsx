@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { getProgressCardDefaults, type ProgressCardDefaults } from "@/lib/actions/progress-cards";
+import { saveHifzExamResults } from "@/lib/actions/exams";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import {
 export interface CardDetails {
   toBeObtained: string;
   memorizedJuz: string;
+  hifzRemarks: string;
   mentor: string;
   madrasaTeacher: string;
   schoolTeacher: string;
@@ -47,9 +49,10 @@ export function ProgressCardControls({ examinationId, students, studentId, curre
   const router = useRouter();
   const [selected, setSelected] = useState(studentId ?? "");
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [defaults, setDefaults] = useState<ProgressCardDefaults | null>(null);
-  const [form, setForm] = useState<CardDetails>({ toBeObtained: "", memorizedJuz: "", mentor: "", madrasaTeacher: "", schoolTeacher: "" });
+  const [form, setForm] = useState<CardDetails>({ toBeObtained: "", memorizedJuz: "", hifzRemarks: "", mentor: "", madrasaTeacher: "", schoolTeacher: "" });
 
   async function openDialog(forStudent: string) {
     if (!forStudent) { toast.error("Select a student first"); return; }
@@ -61,8 +64,9 @@ export function ProgressCardControls({ examinationId, students, studentId, curre
     const sameStudent = forStudent === studentId;
     setDefaults(d);
     setForm({
-      toBeObtained: sameStudent ? current.toBeObtained ?? "" : "",
+      toBeObtained: (sameStudent && current.toBeObtained) || d.toBeObtained,
       memorizedJuz: (sameStudent && current.memorizedJuz) || d.memorizedJuz,
+      hifzRemarks: d.hifzRemarks,
       mentor: (sameStudent && current.mentor) || d.mentor,
       madrasaTeacher: (sameStudent && current.madrasaTeacher) || remember("madrasa", d.madrasaClass) || d.madrasaTeacher,
       schoolTeacher: (sameStudent && current.schoolTeacher) || remember("school", d.schoolClass) || d.schoolTeacher,
@@ -70,19 +74,44 @@ export function ProgressCardControls({ examinationId, students, studentId, curre
     setOpen(true);
   }
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!defaults) return;
-    if (defaults.hasHifz && !form.toBeObtained.trim()) { toast.error("Enter the obtained (to be obtained) value"); return; }
+    if (defaults.hasHifz && !form.toBeObtained.trim()) { toast.error("Enter the Juz to be obtained"); return; }
     if (defaults.hasMadrasa && !form.madrasaTeacher.trim()) { toast.error("Enter the Madrasa class teacher"); return; }
     if (defaults.hasSchool && !form.schoolTeacher.trim()) { toast.error("Enter the School class teacher"); return; }
+
+    // Hifz Juz values belong to the Hifz exam: save them there (unless results are published/locked).
+    let juzSaved = false;
+    const juzChanged =
+      form.toBeObtained.trim() !== defaults.toBeObtained ||
+      form.memorizedJuz.trim() !== defaults.memorizedJuz ||
+      form.hifzRemarks.trim() !== defaults.hifzRemarks;
+    if (defaults.hifzSessionId && !defaults.hifzPublished && juzChanged) {
+      setSaving(true);
+      const res = await saveHifzExamResults({
+        examSessionId: defaults.hifzSessionId,
+        rows: [{
+          studentId: selected,
+          juzToObtain: form.toBeObtained.trim(),
+          juzMemorized: form.memorizedJuz.trim(),
+          remarks: form.hifzRemarks.trim() || null,
+        }],
+      });
+      setSaving(false);
+      if (res.success) juzSaved = true;
+      else if (res.error?.includes("0010 migration")) toast.warning("Juz values used for this card only: the database update (migration 0010) is not applied yet.");
+      else { toast.error(res.error ?? "Could not save Juz values"); return; }
+    }
 
     store("madrasa", defaults.madrasaClass, form.madrasaTeacher);
     store("school", defaults.schoolClass, form.schoolTeacher);
 
     const p = new URLSearchParams({ studentId: selected });
-    if (defaults.hasHifz) {
-      p.set("obtained", form.toBeObtained.trim());
+    // Values that could not be saved to the exam (published/locked or migration pending) travel in the URL for this print only.
+    const persisted = juzSaved || (!juzChanged && !!defaults.hifzSessionId);
+    if (!persisted) {
+      if (form.toBeObtained.trim()) p.set("obtained", form.toBeObtained.trim());
       if (form.memorizedJuz.trim()) p.set("memorized", form.memorizedJuz.trim());
     }
     if (defaults.hasHifzClass && form.mentor.trim()) p.set("mentor", form.mentor.trim());
@@ -141,18 +170,36 @@ export function ProgressCardControls({ examinationId, students, studentId, curre
 
             {defaults && (
               <div className="space-y-3">
-                {defaults.hasHifz && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">To be obtained (Juz) <span className="text-red-500">*</span></label>
-                      <input className={input} value={form.toBeObtained} onChange={set("toBeObtained")} placeholder="e.g. 22" autoFocus />
+                {defaults.hifzSessionId && (
+                  <div className="rounded-md border border-border p-3 space-y-3 bg-muted/20">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Hifz exam</p>
+                    {defaults.hifzPublished && (
+                      <p className="text-[11px] text-amber-600">
+                        Hifz results are published and locked, so these Juz values are used for this card only and are not saved.
+                      </p>
+                    )}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Juz to be Obtained{defaults.hasHifz && <span className="text-red-500"> *</span>}</label>
+                        <input className={input} value={form.toBeObtained} onChange={set("toBeObtained")} placeholder="e.g. 22" inputMode="decimal" autoFocus />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Juz Memorized</label>
+                        <input className={input} value={form.memorizedJuz} onChange={set("memorizedJuz")} placeholder="e.g. 19" inputMode="decimal" />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Memorized Juz</label>
-                      <input className={input} value={form.memorizedJuz} onChange={set("memorizedJuz")} placeholder="e.g. 19" />
-                      <p className="text-[11px] text-muted-foreground mt-1">Auto from Hifz progress</p>
-                    </div>
-                  </>
+                    {defaults.progressHint !== null && (
+                      <p className="text-[11px] text-muted-foreground">
+                        For reference: daily Hifz progress shows {defaults.progressHint} Juz completed. This is not copied into the exam result.
+                      </p>
+                    )}
+                    {!defaults.hifzPublished && (
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Hifz remarks (optional)</label>
+                        <input className={input} value={form.hifzRemarks} onChange={set("hifzRemarks")} maxLength={300} />
+                      </div>
+                    )}
+                  </div>
                 )}
                 {defaults.hasHifzClass && (
                   <div>
@@ -172,7 +219,7 @@ export function ProgressCardControls({ examinationId, students, studentId, curre
                     <input className={input} value={form.schoolTeacher} onChange={set("schoolTeacher")} placeholder="e.g. Abdul Rasheed Hudawi" />
                   </div>
                 )}
-                {!defaults.hasHifz && !defaults.hasMadrasa && !defaults.hasSchool && (
+                {!defaults.hasHifz && !defaults.hifzSessionId && !defaults.hasMadrasa && !defaults.hasSchool && (
                   <p className="text-sm text-muted-foreground">
                     This student has no classes with exam subjects in this examination, so the card will be empty.
                   </p>
@@ -182,7 +229,7 @@ export function ProgressCardControls({ examinationId, students, studentId, curre
 
             <DialogFooter>
               <button type="button" onClick={() => setOpen(false)} className="px-4 py-2 text-sm border border-border rounded-md hover:bg-muted">Cancel</button>
-              <button type="submit" className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md">Generate card</button>
+              <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md disabled:opacity-60">{saving ? "Saving…" : "Generate card"}</button>
             </DialogFooter>
           </form>
         </DialogContent>

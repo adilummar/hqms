@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { examSessions, classes, examSubjects, examMarks, enrollments } from "@/lib/db/schema";
 import { eq, and, inArray, asc } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
+import { getHifzResults } from "@/lib/exams/hifz-results";
 import { PageHeader } from "@/components/layout/page-header";
 import { MarkEntryGrid } from "@/components/exams/mark-entry-grid";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -79,6 +80,9 @@ export default async function TutorMarkEntryPage({
     });
   }
 
+  // Hifz exams also carry exam-specific Juz values per student (read-only here: tutors only see published Hifz results).
+  const hifzJuz = exam.track === "hifz" ? await getHifzResults(exam.id, studentIds) : undefined;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -97,6 +101,7 @@ export default async function TutorMarkEntryPage({
         subjects={subjects}
         students={enrolledStudents}
         initialMarks={marks}
+        hifzJuz={hifzJuz ? { ready: hifzJuz.ready, initial: hifzJuz.rows } : undefined}
       />
     </div>
   );

@@ -10,7 +10,8 @@
 // enrolments.academic_year_id with the exam's academic year: enrolments carry their own
 // (batch) year records that do not line up with the exam's year, which made the card empty.
 import { db } from "@/lib/db";
-import { examinations, examMarks, students, enrollments, juzTracker, classes } from "@/lib/db/schema";
+import { examinations, examMarks, students, enrollments, classes } from "@/lib/db/schema";
+import { getHifzResults } from "@/lib/exams/hifz-results";
 import { and, desc, eq, inArray } from "drizzle-orm";
 
 export type CardTrack = "hifz" | "madrasa" | "school";
@@ -28,14 +29,17 @@ export interface CardTrackData {
   /** Class teacher (madrasa/school) or mentor (hifz) */
   teacher: string;
   rank: number | null;
-  status: "PASS" | "FAILED";
+  /** "—" when the track has no marks to judge (Hifz with only Juz values recorded) */
+  status: "PASS" | "FAILED" | "—";
   subjects: CardSubject[];
   totalMax: number;
   totalScored: number;
-  /** hifz only */
-  memorizedJuz?: string;
-  /** hifz only */
-  toBeObtained?: string;
+  /** hifz only — null = not recorded for this exam */
+  memorizedJuz?: string | null;
+  /** hifz only — null = not recorded for this exam */
+  toBeObtained?: string | null;
+  /** hifz only — result remark(s) if any */
+  remarks?: string | null;
 }
 
 export interface ProgressCardData {
@@ -106,11 +110,7 @@ export async function buildProgressCardData(
         .from(examMarks)
         .where(and(eq(examMarks.studentId, studentId), inArray(examMarks.examSubjectId, allSubjectIds)))
     : [];
-
-  const completedJuz = await db
-    .select({ n: juzTracker.juzNumber })
-    .from(juzTracker)
-    .where(and(eq(juzTracker.studentId, studentId), eq(juzTracker.status, "completed")));
+  const marksBySubject = new Map(myMarks.map((m) => [m.examSubjectId, m]));
 
   // Header: the student's Hifz class + its tutor (independent of whether hifz has exam subjects).
   const hifzEnrollment = studentEnrollments.find((e) => e.class.track === "hifz");
@@ -125,45 +125,33 @@ export async function buildProgressCardData(
     if (!session) continue;
     if (options.publishedOnly && session.resultStatus !== "published") continue;
 
-    // The class is the one the student has marks in for THIS session. A track with no marks
-    // entered for the student is left off the card (shown as an empty state), never as zeros.
-    const marksBySubject = new Map(myMarks.map((m) => [m.examSubjectId, m]));
-    const classId = session.subjects.find((s) => marksBySubject.has(s.id))?.classId;
-    if (!classId) continue;
+    // Exam-specific Hifz values are stored per (hifz session, student) — never derived from daily progress.
+    const stored = track === "hifz" ? (await getHifzResults(session.id, [studentId])).rows[0] : undefined;
 
-    const classRow =
-      studentEnrollments.find((e) => e.classId === classId)?.class ??
-      (await db.query.classes.findFirst({ where: eq(classes.id, classId), with: { tutor: true } }));
+    // The class is the one the student has marks in for THIS session. A track with no marks
+    // entered for the student is left off the card (shown as an empty state), never as zeros —
+    // except Hifz, which may exist with only its Juz values recorded.
+    const classIdFromMarks = session.subjects.find((s) => marksBySubject.has(s.id))?.classId;
+    const classRow = classIdFromMarks
+      ? studentEnrollments.find((e) => e.classId === classIdFromMarks)?.class ??
+        (await db.query.classes.findFirst({ where: eq(classes.id, classIdFromMarks), with: { tutor: true } }))
+      : stored
+        ? hifzEnrollment?.class
+        : undefined;
     if (!classRow) continue;
     // Never mix tracks: a class must belong to the track being rendered.
     if (classRow.track !== track) continue;
 
-    const subjects = session.subjects
-      .filter((s) => s.classId === classId)
-      .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
-    if (subjects.length === 0) continue;
-
-    // Classmates (active, same class — same rule as the mark-entry screen) + this student → ranks.
-    const classmates = await db
-      .select({ id: enrollments.studentId })
-      .from(enrollments)
-      .where(and(eq(enrollments.classId, classId), eq(enrollments.status, "active")));
-    const classmateIds = [...new Set([...classmates.map((c) => c.id), studentId])];
-    const subjectIds = subjects.map((s) => s.id);
-    const classMarks = await db
-      .select()
-      .from(examMarks)
-      .where(and(inArray(examMarks.examSubjectId, subjectIds), inArray(examMarks.studentId, classmateIds)));
-
-    const totals = new Map<string, number>();
-    for (const m of classMarks) {
-      const v = m.isAbsent ? 0 : Number(m.marksObtained ?? 0);
-      totals.set(m.studentId, (totals.get(m.studentId) ?? 0) + v);
-    }
+    const subjects = classIdFromMarks
+      ? session.subjects
+          .filter((s) => s.classId === classIdFromMarks)
+          .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+      : [];
 
     let totalMax = 0;
     let totalScored = 0;
     let allPassed = true;
+    let rank: number | null = null;
     const cardSubjects: CardSubject[] = subjects.map((subject) => {
       const mark = marksBySubject.get(subject.id);
       const scored = mark?.isAbsent ? 0 : Number(mark?.marksObtained ?? 0);
@@ -173,29 +161,56 @@ export async function buildProgressCardData(
       return { name: trimName(subject.name), maxMark: subject.totalMarks, scored: mark?.isAbsent ? "AB" : round2(scored) };
     });
 
-    const myTotal = totals.get(studentId);
-    const rank = myTotal === undefined ? null : 1 + [...totals.values()].filter((t) => t > myTotal).length;
+    if (subjects.length > 0 && classIdFromMarks) {
+      // Classmates (active, same class — same rule as the mark-entry screen) + this student → ranks.
+      const classmates = await db
+        .select({ id: enrollments.studentId })
+        .from(enrollments)
+        .where(and(eq(enrollments.classId, classIdFromMarks), eq(enrollments.status, "active")));
+      const classmateIds = [...new Set([...classmates.map((c) => c.id), studentId])];
+      const classMarks = await db
+        .select()
+        .from(examMarks)
+        .where(and(inArray(examMarks.examSubjectId, subjects.map((s) => s.id)), inArray(examMarks.studentId, classmateIds)));
+      const totals = new Map<string, number>();
+      for (const m of classMarks) {
+        const v = m.isAbsent ? 0 : Number(m.marksObtained ?? 0);
+        totals.set(m.studentId, (totals.get(m.studentId) ?? 0) + v);
+      }
+      const myTotal = totals.get(studentId);
+      rank = myTotal === undefined ? null : 1 + [...totals.values()].filter((t) => t > myTotal).length;
+    }
 
     const teacher =
       (track === "hifz" ? mentorName : track === "madrasa" ? overrides.madrasaTeacher : overrides.schoolTeacher)?.trim() ||
       classRow.tutor?.username?.trim() ||
       "—";
 
+    let hifzExtras: Pick<CardTrackData, "memorizedJuz" | "toBeObtained" | "remarks"> | undefined;
+    if (track === "hifz") {
+      const fromStore = (n: number | null | undefined) => (n === null || n === undefined ? null : String(n));
+      // Remarks: the Hifz result's own remark plus any remark entered on the student's Hifz marks.
+      const markRemarks = subjects
+        .map((s) => marksBySubject.get(s.id)?.remarks?.trim())
+        .filter((r): r is string => !!r);
+      const remarks = [...new Set([stored?.remarks?.trim(), ...markRemarks].filter((r): r is string => !!r))].join("; ");
+      hifzExtras = {
+        toBeObtained: overrides.toBeObtained?.trim() || fromStore(stored?.juzToObtain),
+        memorizedJuz: overrides.memorizedJuz?.trim() || fromStore(stored?.juzMemorized),
+        remarks: remarks || null,
+      };
+    }
+
     tracks.push({
       track,
       className: classRow.name,
       teacher,
       rank,
-      status: allPassed ? "PASS" : "FAILED",
+      status: subjects.length === 0 ? "—" : allPassed ? "PASS" : "FAILED",
       subjects: cardSubjects,
       totalMax,
       totalScored: round2(totalScored),
-      ...(track === "hifz"
-        ? {
-            memorizedJuz: overrides.memorizedJuz?.trim() || String(completedJuz.length),
-            toBeObtained: overrides.toBeObtained?.trim() || "—",
-          }
-        : {}),
+      ...(hifzExtras ?? {}),
     });
   }
 

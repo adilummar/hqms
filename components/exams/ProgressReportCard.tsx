@@ -38,10 +38,11 @@ const cellStyle = { borderColor: LINE } as const;
 
 function TrackSection({ t }: { t: CardTrackData }) {
   const isHifz = t.track === "hifz";
-  const metaLeft: [string, string][] = isHifz
+  // null = not recorded for this exam (e.g. older Hifz exams): shown as unavailable, never as 0
+  const metaLeft: [string, string | null][] = isHifz
     ? [
-        ["Memorized Juz", t.memorizedJuz ?? "—"],
-        ["To be Obtained", t.toBeObtained ?? "—"],
+        ["Memorized Juz", t.memorizedJuz ?? null],
+        ["To be Obtained", t.toBeObtained ?? null],
       ]
     : [
         ["Standard", t.className],
@@ -70,14 +71,14 @@ function TrackSection({ t }: { t: CardTrackData }) {
           {[0, 1].map((i) => (
             <tr key={i}>
               <td className={cell} style={{ ...cellStyle, width: "27%" }}>{metaLeft[i][0]}</td>
-              <td className={`${cell} ${isHifz || i === 0 ? "" : "text-[12px]"}`} style={{ ...cellStyle, width: "33%" }}>{metaLeft[i][1]}</td>
+              <td className={`${cell} ${isHifz || i === 0 ? "" : "text-[12px]"}`} style={{ ...cellStyle, width: "33%" }}>{metaLeft[i][1] ?? <span className="font-normal italic text-gray-500">Not recorded</span>}</td>
               <td className={cell} style={{ ...cellStyle, width: "15%" }}>{metaRight[i][0]}</td>
               <td
                 className={cell}
                 style={{
                   ...cellStyle,
                   width: "25%",
-                  color: metaRight[i][0] === "Status" ? (t.status === "PASS" ? "#1a6b30" : "#b3261e") : undefined,
+                  color: metaRight[i][0] === "Status" ? (t.status === "PASS" ? "#1a6b30" : t.status === "FAILED" ? "#b3261e" : undefined) : undefined,
                 }}
               >
                 {metaRight[i][1]}
@@ -87,6 +88,7 @@ function TrackSection({ t }: { t: CardTrackData }) {
         </tbody>
       </table>
 
+      {t.subjects.length > 0 ? (
       <table className="w-full border-collapse text-[13px] font-semibold text-center" style={{ tableLayout: "fixed" }}>
         <thead>
           <tr className="text-white" style={{ background: GREEN }}>
@@ -116,6 +118,19 @@ function TrackSection({ t }: { t: CardTrackData }) {
           </tr>
         </tbody>
       </table>
+      ) : (
+        <p className="border px-2 py-1 text-[13px] font-normal italic text-gray-500" style={cellStyle}>Marks not entered for this exam.</p>
+      )}
+      {isHifz && t.remarks && (
+        <table className="w-full border-collapse text-[13px] font-semibold" style={{ tableLayout: "fixed" }}>
+          <tbody>
+            <tr>
+              <td className={cell} style={{ ...cellStyle, width: "27%" }}>Remarks</td>
+              <td className={`${cell} font-normal`} style={cellStyle}>{t.remarks}</td>
+            </tr>
+          </tbody>
+        </table>
+      )}
     </section>
   );
 }

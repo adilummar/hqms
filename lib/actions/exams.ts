@@ -7,6 +7,7 @@ import { logActivity } from "@/lib/actions/activity";
 import { z } from "zod";
 import { eq, and, sql, inArray } from "drizzle-orm";
 import { syncClassSubjects, assertClassesInTrack, findLastExamSubjects } from "@/lib/exams/subjects-db";
+import { saveHifzResults } from "@/lib/exams/hifz-results";
 import { revalidatePath } from "next/cache";
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -482,4 +483,39 @@ export async function saveBulkExamMarks(input: unknown) {
     console.error("[saveBulkExamMarks] Unexpected error:", err);
     return { success: false, error: err instanceof Error ? err.message : "Unexpected server error" };
   }
+}
+
+// ─── Hifz Exam Juz Actions ────────────────────────────────────────────────────
+// Exam-specific "Juz to be obtained" / "Juz memorized" per student. Requires migration 0010.
+
+const juzField = z
+  .union([z.string(), z.number(), z.null()])
+  .transform((v) => (v === null || v === "" ? null : Number(v)))
+  .refine((v) => v === null || !Number.isNaN(v), "Juz must be a number");
+
+const saveHifzResultsSchema = z.object({
+  examSessionId: z.string().uuid(),
+  rows: z
+    .array(
+      z.object({
+        studentId: z.string().uuid(),
+        juzToObtain: juzField,
+        juzMemorized: juzField,
+        remarks: z.string().max(300).nullable().optional().transform((v) => v ?? null),
+      })
+    )
+    .min(1)
+    .max(500),
+});
+
+export async function saveHifzExamResults(input: unknown) {
+  const session = await requireRole(["super_admin", "admin", "tutor"]);
+  const parsed = saveHifzResultsSchema.safeParse(input);
+  if (!parsed.success) return { success: false as const, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+
+  const res = await saveHifzResults(parsed.data.examSessionId, parsed.data.rows, session.user.id);
+  if (res.success) {
+    await logActivity(session.user.id, "exam.hifz_juz_saved", "exam_session", parsed.data.examSessionId);
+  }
+  return res;
 }
