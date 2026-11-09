@@ -6,6 +6,7 @@ import { eq, and } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { SubjectManager, GradeRulesManager, PublishControls } from "@/components/exams/exam-detail-panels";
+import { getTrackSubjectCatalogue } from "@/lib/exams/track-subjects";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { FileText } from "lucide-react";
@@ -49,7 +50,9 @@ export default async function ExamDetailPage({ params, searchParams }: Props) {
   const activeSession = examination.examSessions.find(s => s.track === activeTrackName);
 
   let trackClasses: any[] = [];
+  let catalogue: Awaited<ReturnType<typeof getTrackSubjectCatalogue>> = { ready: true, subjects: [] };
   if (activeSession) {
+    catalogue = await getTrackSubjectCatalogue(activeSession.track);
     trackClasses = await db.query.classes.findMany({
       where: and(eq(classes.track, activeSession.track as "school" | "madrasa" | "hifz"), eq(classes.isActive, true)),
       orderBy: (c, { asc }) => [asc(c.displayOrder)],
@@ -189,7 +192,11 @@ export default async function ExamDetailPage({ params, searchParams }: Props) {
                     </div>
                     <div className="p-6">
                       <SubjectManager
+                        key={activeSession.id}
                         examSessionId={activeSession.id}
+                        track={activeSession.track}
+                        catalogue={catalogue.subjects}
+                        catalogueReady={catalogue.ready}
                         classes={trackClasses.map(c => ({ id: c.id, name: c.name, track: c.track }))}
                         initialSubjects={activeSession.subjects.map(s => ({
                           id: s.id,
@@ -212,6 +219,7 @@ export default async function ExamDetailPage({ params, searchParams }: Props) {
                     </div>
                     <div className="p-6">
                       <GradeRulesManager
+                        key={activeSession.id}
                         examSessionId={activeSession.id}
                         initialRules={activeSession.gradeRules.map(r => ({
                           grade: r.grade,

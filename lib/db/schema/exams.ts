@@ -80,6 +80,23 @@ export const examSubjects = pgTable("exam_subjects", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ─── Track Subject Catalogue ──────────────────────────────────────────────────
+// Reusable subject list per track (school | madrasa | hifz). Admins add subjects
+// here once, then apply them to the classes of that track in any exam.
+export const examTrackSubjects = pgTable(
+  "exam_track_subjects",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    track: examTrackEnum("track").notNull(),
+    name: varchar("name", { length: 150 }).notNull(),
+    totalMarks: integer("total_marks").notNull().default(100),
+    passMarks: integer("pass_marks").notNull().default(35),
+    displayOrder: integer("display_order").default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({ uniq: unique().on(t.track, t.name) })
+);
+
 // ─── Exam Grade Rules ─────────────────────────────────────────────────────────
 // Grade thresholds per exam session (applies to all subjects in that session).
 // e.g. A+: ≥90%, A: ≥75%, B: ≥60%, C: ≥45%, F: <pass mark
