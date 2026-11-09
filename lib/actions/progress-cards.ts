@@ -5,6 +5,7 @@ import { buildProgressCardData } from "@/lib/exams/progress-card";
 
 export interface ProgressCardDefaults {
   hasHifz: boolean;
+  hasHifzClass: boolean;
   hasMadrasa: boolean;
   hasSchool: boolean;
   madrasaClass: string;
@@ -29,12 +30,13 @@ export async function getProgressCardDefaults(examinationId: string, studentId: 
   const clean = (v?: string) => (v && v !== "—" ? v : "");
   const defaults: ProgressCardDefaults = {
     hasHifz: !!by("hifz"),
+    hasHifzClass: res.data.header.hasHifzClass,
     hasMadrasa: !!by("madrasa"),
     hasSchool: !!by("school"),
     madrasaClass: by("madrasa")?.className ?? "",
     schoolClass: by("school")?.className ?? "",
     memorizedJuz: by("hifz")?.memorizedJuz ?? "",
-    mentor: clean(by("hifz")?.teacher),
+    mentor: clean(res.data.header.mentor),
     madrasaTeacher: clean(by("madrasa")?.teacher),
     schoolTeacher: clean(by("school")?.teacher),
   };

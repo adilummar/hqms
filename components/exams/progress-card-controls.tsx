@@ -84,8 +84,8 @@ export function ProgressCardControls({ examinationId, students, studentId, curre
     if (defaults.hasHifz) {
       p.set("obtained", form.toBeObtained.trim());
       if (form.memorizedJuz.trim()) p.set("memorized", form.memorizedJuz.trim());
-      if (form.mentor.trim()) p.set("mentor", form.mentor.trim());
     }
+    if (defaults.hasHifzClass && form.mentor.trim()) p.set("mentor", form.mentor.trim());
     if (defaults.hasMadrasa) p.set("madrasaTeacher", form.madrasaTeacher.trim());
     if (defaults.hasSchool) p.set("schoolTeacher", form.schoolTeacher.trim());
     setOpen(false);
@@ -147,18 +147,18 @@ export function ProgressCardControls({ examinationId, students, studentId, curre
                       <label className="block text-sm font-medium mb-1">To be obtained (Juz) <span className="text-red-500">*</span></label>
                       <input className={input} value={form.toBeObtained} onChange={set("toBeObtained")} placeholder="e.g. 22" autoFocus />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Memorized Juz</label>
-                        <input className={input} value={form.memorizedJuz} onChange={set("memorizedJuz")} placeholder="e.g. 19" />
-                        <p className="text-[11px] text-muted-foreground mt-1">Auto from Hifz progress</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Mentor</label>
-                        <input className={input} value={form.mentor} onChange={set("mentor")} placeholder="Hifz class teacher" />
-                      </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Memorized Juz</label>
+                      <input className={input} value={form.memorizedJuz} onChange={set("memorizedJuz")} placeholder="e.g. 19" />
+                      <p className="text-[11px] text-muted-foreground mt-1">Auto from Hifz progress</p>
                     </div>
                   </>
+                )}
+                {defaults.hasHifzClass && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Mentor</label>
+                    <input className={input} value={form.mentor} onChange={set("mentor")} placeholder="Hifz class teacher" />
+                  </div>
                 )}
                 {defaults.hasMadrasa && (
                   <div>

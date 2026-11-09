@@ -121,8 +121,6 @@ function TrackSection({ t }: { t: CardTrackData }) {
 }
 
 export function ProgressReportCard({ data }: { data: ProgressCardData }) {
-  const hifz = data.tracks.find((t) => t.track === "hifz");
-  const first = hifz ?? data.tracks[0];
 
   return (
     <div className="space-y-4">
@@ -159,8 +157,8 @@ export function ProgressReportCard({ data }: { data: ProgressCardData }) {
         <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-2 px-2 text-[15px] font-bold">
           <div className="flex"><span className="w-24 shrink-0">Ad. No :</span><span>{data.admissionNumber}</span></div>
           <div className="flex"><span className="w-20 shrink-0">Name :</span><span className="uppercase">{data.studentName}</span></div>
-          <div className="flex"><span className="w-24 shrink-0">Class :</span><span className="uppercase">{first?.className ?? "—"}</span></div>
-          <div className="flex"><span className="w-20 shrink-0">Mentor :</span><span className="uppercase">{hifz?.teacher ?? "—"}</span></div>
+          <div className="flex"><span className="w-24 shrink-0">Class :</span><span className="uppercase">{data.header.className}</span></div>
+          <div className="flex"><span className="w-20 shrink-0">Mentor :</span><span className="uppercase">{data.header.mentor}</span></div>
         </div>
 
         {/* Results */}

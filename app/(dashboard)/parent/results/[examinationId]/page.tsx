@@ -27,7 +27,7 @@ export default async function ParentResultDetailPage({
   if (!student) notFound();
 
   // Same builder and same card layout as the admin-printed progress card.
-  const res = await buildProgressCardData(examinationId, studentId);
+  const res = await buildProgressCardData(examinationId, studentId, {}, { publishedOnly: true });
 
   if (!res.success) {
     return (
