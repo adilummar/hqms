@@ -1,13 +1,12 @@
-"use server";
-
 import { requireParent, getParentStudentId } from "@/lib/auth/helpers";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { buttonVariants } from "@/components/ui/button";
-import { ChevronLeft, FileText, Printer } from "lucide-react";
+import { ChevronLeft, FileText } from "lucide-react";
 import Link from "next/link";
-import { getProgressCardData } from "@/lib/actions/progress-cards";
+import { buildProgressCardData } from "@/lib/exams/progress-card";
 import { ProgressReportCard } from "@/components/exams/ProgressReportCard";
+import { PrintButton } from "@/components/ui/print-button";
 import { db } from "@/lib/db";
 import { students } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -27,10 +26,10 @@ export default async function ParentResultDetailPage({
   });
   if (!student) notFound();
 
-  // Fetch the unified progress card data using the shared action!
-  const res = await getProgressCardData(examinationId, studentId);
-  
-  if (!res.success || !res.data) {
+  // Same builder and same card layout as the admin-printed progress card.
+  const res = await buildProgressCardData(examinationId, studentId);
+
+  if (!res.success) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4 print:hidden">
@@ -50,32 +49,6 @@ export default async function ParentResultDetailPage({
     );
   }
 
-  const { examName, tracks } = res.data;
-
-  // Map each track from the action's shape into the shape ProgressReportCard expects
-  const mapTrack = (trackName: "hifz" | "madrasa" | "school") => {
-    const t = tracks.find((t: any) => t.track === trackName);
-    if (!t || t.subjects.length === 0) return undefined;
-    return {
-      className: t.className,
-      tutorName: t.classTeacher,
-      rank: t.rank === "-" ? null : Number(t.rank),
-      status: t.status,
-      subjectResults: t.subjects.map((s: any) => ({
-        subjectName: s.name,
-        totalMarks: s.maxMark,
-        obtainedMarks: typeof s.scored === "number" ? s.scored : 0,
-        passMarks: 0,
-        isPassed: s.scored !== "AB" && typeof s.scored === "number",
-        grade: "",
-      })),
-    };
-  };
-
-  const hifzResult = mapTrack("hifz");
-  const madrasaResult = mapTrack("madrasa");
-  const schoolResult = mapTrack("school");
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 print:hidden">
@@ -88,16 +61,12 @@ export default async function ParentResultDetailPage({
             description="View and print your child's term progress card"
           />
         </div>
+        <PrintButton className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90">
+          Print Card
+        </PrintButton>
       </div>
 
-      <ProgressReportCard
-        student={student}
-        examSessionName={examName}
-        academicYearLabel=""
-        hifzResult={hifzResult}
-        madrasaResult={madrasaResult}
-        schoolResult={schoolResult}
-      />
+      <ProgressReportCard data={res.data} />
     </div>
   );
 }
