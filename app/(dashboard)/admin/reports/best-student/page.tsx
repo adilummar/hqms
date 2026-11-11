@@ -1,7 +1,5 @@
 import { requireAdmin } from "@/lib/auth/helpers";
-import { db } from "@/lib/db";
-import { classes } from "@/lib/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { getBestReportClasses } from "@/lib/reports/best-scope";
 import { PageHeader } from "@/components/layout/page-header";
 import { getAllStudentsRawMetrics } from "@/lib/actions/reports-best";
 
@@ -13,10 +11,8 @@ export default async function BestStudentReportPage({ searchParams }: Props) {
   await requireAdmin();
   const params = await searchParams;
 
-  const allClasses = await db.query.classes.findMany({
-    where: eq(classes.isActive, true),
-    orderBy: [asc(classes.displayOrder)],
-  });
+  // Class filter lists only HA / HB / HC (the report itself also enforces this server-side)
+  const allClasses = await getBestReportClasses();
 
   const classId = params.classId ?? null;
   const period = params.period || "monthly";

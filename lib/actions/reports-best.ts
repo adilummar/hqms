@@ -11,6 +11,7 @@ import { eq, and, between, isNull, inArray } from "drizzle-orm";
 import { calculateAttendanceMetrics, DailyAttendance, SessionStatus } from "@/lib/utils/attendance-calculator";
 import { aggregateStudyToJuz } from "@/lib/utils/juz-calculator";
 import { getClassPerformance } from "@/lib/actions/reports";
+import { getBestReportClasses } from "@/lib/reports/best-scope";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // BEST STUDENT RAW METRICS
@@ -26,12 +27,18 @@ export async function getAllStudentsRawMetrics(classId: string | null, startDate
   const studentMap: Map<string, { firstName: string; lastName: string | null; studentCode: string; className: string }> = new Map();
   let studentIds: string[];
 
+  // Best Student considers ONLY the Hifz classes HA / HB / HC (enforced here, not in the UI).
+  const scopeClasses = await getBestReportClasses();
+  const scopeIds = scopeClasses.map(c => c.id);
+  if (scopeIds.length === 0) return [];
+  if (classId && !scopeIds.includes(classId)) return []; // a class outside the scope is never reported
+
   if (classId) {
     const classEnrollments = await db.query.enrollments.findMany({
       where: and(eq(enrollments.classId, classId), eq(enrollments.status, "active")),
     });
     studentIds = classEnrollments.map(e => e.studentId);
-    const cls = await db.query.classes.findFirst({ where: eq(classes.id, classId) });
+    const cls = scopeClasses.find(c => c.id === classId);
     const studentsData = await db.query.students.findMany({
       where: and(inArray(students.id, studentIds), eq(students.status, "active")),
     });
@@ -40,7 +47,9 @@ export async function getAllStudentsRawMetrics(classId: string | null, startDate
     }
   } else {
     const allEnrollments = await db.query.enrollments.findMany({
-      where: eq(enrollments.status, "active"),
+      // Only enrolments in HA/HB/HC: a student's School / Madrasa class neither makes them
+      // eligible nor becomes the class name shown for them.
+      where: and(eq(enrollments.status, "active"), inArray(enrollments.classId, scopeIds)),
       with: { class: true },
     });
     studentIds = [...new Set(allEnrollments.map(e => e.studentId))];
@@ -124,7 +133,8 @@ export async function getAllStudentsRawMetrics(classId: string | null, startDate
 export async function getAllClassesRawMetrics(startDate: Date, endDate: Date) {
   await requireRole(["admin", "super_admin", "school_admin", "madrasa_admin"]);
 
-  const allClasses = await db.query.classes.findMany({ where: eq(classes.isActive, true) });
+  // Best Class compares ONLY the Hifz classes HA / HB / HC
+  const allClasses = await getBestReportClasses();
 
   const results = await Promise.all(
     allClasses.map(async cls => {
