@@ -23,6 +23,7 @@ import {
 } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { HifzBulkEntry } from "@/components/hifz/hifz-bulk-entry";
+import { getMonthlySabaqPages, rankByMonthlyPages } from "@/lib/services/hifz-monthly-rank";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -135,7 +136,8 @@ export default async function HifzBulkPage({ searchParams }: Props) {
         if (!juzMap.has(j.studentId)) juzMap.set(j.studentId, j.juzNumber);
       }
 
-      studentRows = studentsList.map((s) => {
+      const monthlyTotals = await getMonthlySabaqPages(studentIds);
+      studentRows = rankByMonthlyPages(studentsList, monthlyTotals).map((s) => {
         const entry = entryMap.get(s.id);
         return {
           id: s.id,

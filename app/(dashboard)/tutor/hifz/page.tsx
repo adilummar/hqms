@@ -10,6 +10,7 @@ import {
   leavePeriods,
 } from "@/lib/db/schema";
 import { eq, and, asc, inArray, ne } from "drizzle-orm";
+import { getMonthlySabaqPages, rankByMonthlyPages } from "@/lib/services/hifz-monthly-rank";
 import { PageHeader } from "@/components/layout/page-header";
 import { getActiveLeavePeriod } from "@/lib/actions/leave-tracker";
 import Link from "next/link";
@@ -69,6 +70,8 @@ export default async function TutorHifzPage({ searchParams }: Props) {
     student: typeof students.$inferSelect;
     entry: typeof hifzDailyEntries.$inferSelect | undefined;
     currentJuz: typeof juzTracker.$inferSelect | undefined;
+    monthlyPages: number;
+    rank: number;
   }[] = [];
 
   if (selectedClassId) {
@@ -104,10 +107,17 @@ export default async function TutorHifzPage({ searchParams }: Props) {
       const entryMap = new Map(todayEntries.map((e) => [e.studentId, e]));
       const juzMap = new Map(currentJuzList.map((j) => [j.studentId, j]));
 
-      studentRows = studentsList.map((s) => ({
+      // Rank by this month's Sabaq pages (one grouped query), ties alphabetical.
+      const monthlyTotals = await getMonthlySabaqPages(studentIds);
+      studentRows = rankByMonthlyPages(
+        studentsList.map((s) => ({ id: s.id, firstName: s.firstName, lastName: s.lastName, s })),
+        monthlyTotals
+      ).map(({ s, monthlyPages, rank }) => ({
         student: s,
         entry: entryMap.get(s.id),
         currentJuz: juzMap.get(s.id),
+        monthlyPages,
+        rank,
       }));
     }
   }
@@ -219,6 +229,8 @@ export default async function TutorHifzPage({ searchParams }: Props) {
         </button>
       </form>
 
+      <p className="text-xs text-muted-foreground mb-2">Ranked by Sabaq memorisation — Current Month</p>
+
       {/* Roster Table */}
       {!selectedClassId || studentRows.length === 0 ? (
         <div className="border border-border rounded-lg p-12 text-center text-muted-foreground">
@@ -240,11 +252,7 @@ export default async function TutorHifzPage({ searchParams }: Props) {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {[
-                // Pending first
-                ...studentRows.filter((r) => !r.entry),
-                ...studentRows.filter((r) => !!r.entry),
-              ].map(({ student: s, entry, currentJuz }) => {
+              {studentRows.map(({ student: s, entry, currentJuz, monthlyPages, rank }) => {
                 const isEntered = !!entry;
 
                 return (
@@ -257,8 +265,10 @@ export default async function TutorHifzPage({ searchParams }: Props) {
                         href={`/admin/students/${s.id}`}
                         className="font-medium text-foreground hover:underline"
                       >
+                        <span className="text-muted-foreground font-jetbrains text-xs mr-1.5">{rank}.</span>
                         {s.firstName} {s.lastName ?? ""}
                       </Link>
+                      <p className="text-[11px] text-muted-foreground">{monthlyPages} pages this month</p>
                       <div className="flex items-center gap-2">
                         <p className="text-xs text-muted-foreground font-jetbrains">{s.studentCode}</p>
                         {s.isHafiz && (
