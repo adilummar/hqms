@@ -143,7 +143,7 @@ export async function publishExamResults(examSessionId: string) {
       await notificationService.createNotification({
         type: "exam_results_published",
         title: "Your exam results are ready",
-        body: `Results for ${sessionData.examination.name} are now available.`,
+        body: `${sessionData.track === "hifz" ? "Hifz" : sessionData.track === "madrasa" ? "Madrasa" : "School"} results for ${sessionData.examination.name} are now available.`,
         entityType: "exam_session",
         entityId: examSessionId,
         deepLink: `/parent/results/${sessionData.examinationId}`,
