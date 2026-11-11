@@ -22,6 +22,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Trophy,
+  ListChecks,
 } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Parent Meetings", href: "/admin/parent-meetings",         icon: UsersRound },
   { label: "Staff Meetings",  href: "/admin/staff-meetings",          icon: Briefcase },
   { label: "Exams",           href: "/admin/exams",                   icon: FileText },
+  { label: "Bulk Mark Entry", href: "/admin/exams/bulk-mark-entry",   icon: ListChecks },
   { label: "Stars",           href: "/admin/stars",                   icon: Star },
   { label: "Admissions",      href: "/admin/admissions/applications", icon: ClipboardList },
   { label: "Stock Registration", href: "/admin/inventory", icon: Archive },
@@ -57,6 +59,7 @@ const TUTOR_NAV: NavItem[] = [
   { label: "Staff Meetings",  href: "/tutor/staff-meetings", icon: Briefcase },
   { label: "Stars",           href: "/tutor/stars",          icon: Star },
   { label: "Exams",           href: "/tutor/exams",          icon: FileText },
+  { label: "Bulk Mark Entry", href: "/tutor/exams/bulk-mark-entry", icon: ListChecks },
 ];
 
 const PARENT_NAV: NavItem[] = [
@@ -119,7 +122,9 @@ export function Sidebar({
     if (href === "/admin" || href === "/tutor" || href === "/parent" || href === "/student") {
       return false;
     }
-    if (href === "/tutor/hifz" && pathname.startsWith("/tutor/hifz/targets")) return false;
+    if (href === "/admin/exams" && pathname.startsWith("/admin/exams/bulk-mark-entry")) return false;
+    if (href === "/tutor/exams" && pathname.startsWith("/tutor/exams/bulk-mark-entry")) return false;
+    if (href === "/tutor/hifz" &&pathname.startsWith("/tutor/hifz/targets")) return false;
     if (href === "/admin/hifz" && pathname.startsWith("/admin/hifz/targets")) return false;
     return pathname.startsWith(`${href}/`);
   }
