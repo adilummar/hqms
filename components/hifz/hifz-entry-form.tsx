@@ -3,6 +3,7 @@
 import { useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveDailyHifzEntry } from "@/lib/actions/hifz";
+import { isValidJuz, findInvalidJuz, JUZ_RANGE_MESSAGE } from "@/lib/validators/juz";
 import { toast } from "sonner";
 import { Loader2, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import type { hifzDailyEntries, juzTracker, leavePeriods } from "@/lib/db/schema";
@@ -129,10 +130,26 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
 
   const hasSabaq = !!sabaqFromPage || !!sabaqToPage || !!sabaqPages;
 
+  // Juz must be a whole number 1–30 (also enforced again on the server)
+  const [juzErrors, setJuzErrors] = useState<{ sabaq?: string; start?: string }>({});
+  const checkJuzText = (v: string) => (v.trim() === "" || isValidJuz(Number(v)) ? undefined : JUZ_RANGE_MESSAGE);
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
+
+    const sabaqErr = checkJuzText(String(formData.get("sabaqJuzNumber") ?? ""));
+    const startErr = checkJuzText(String(formData.get("startJuzNumber") ?? ""));
+    const gridErr = findInvalidJuz([
+      ...formData.getAll("dauraJuzNumbers").map(Number),
+      ...formData.getAll("daura2JuzNumbers").map(Number),
+    ]);
+    if (sabaqErr || startErr || gridErr) {
+      setJuzErrors({ sabaq: sabaqErr, start: startErr });
+      toast.error(JUZ_RANGE_MESSAGE);
+      return;
+    }
+
     const data = {
       id: existingEntry?.id,
       studentId,
@@ -270,8 +287,11 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
           <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-xs text-muted-foreground mb-1">Start New Juz Number</label>
-              <input name="startJuzNumber" type="number" min="1" max="30" placeholder="e.g. 1"
-                className="w-48 h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground bg-background" />
+              <input name="startJuzNumber" type="number" min="1" max="30" step="1" placeholder="e.g. 1"
+                onChange={(e) => setJuzErrors((p) => ({ ...p, start: checkJuzText(e.target.value) }))}
+                aria-invalid={!!juzErrors.start}
+                className="w-48 h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground bg-background aria-[invalid=true]:border-destructive" />
+              {juzErrors.start && <p className="text-xs text-destructive mt-1">{juzErrors.start}</p>}
               {/* Start date = the entry date — no separate picker needed */}
               <input type="hidden" name="startJuzDate" value={date} />
               <p className="text-xs text-muted-foreground mt-1.5">Will be recorded as starting on <span className="font-medium">{date}</span></p>
@@ -321,6 +341,9 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
               type="number"
               min="1"
               max="30"
+              step="1"
+              onChange={(e) => setJuzErrors((p) => ({ ...p, sabaq: checkJuzText(e.target.value) }))}
+              aria-invalid={!!juzErrors.sabaq}
               placeholder={activeJuz ? String(activeJuz.juzNumber) : "1–30"}
               key={`juz-${existingEntry?.id ?? "new"}-${activeJuz?.juzNumber ?? 0}`}
               defaultValue={
@@ -328,8 +351,9 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
                   ? Number(existingEntry.sabaqJuzNumber)
                   : activeJuz?.juzNumber ?? undefined
               }
-              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground"
+              className="w-full h-9 px-3 border border-border rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-foreground aria-[invalid=true]:border-destructive"
             />
+            {juzErrors.sabaq && <p className="text-xs text-destructive mt-1">{juzErrors.sabaq}</p>}
           </div>
         </div>
         <div>

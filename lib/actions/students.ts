@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { findInvalidJuz } from "@/lib/validators/juz";
 import { students, juzTracker, hifzDailyEntries, monthlyTargets } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
@@ -186,6 +187,8 @@ export async function resetJuzEntries(
   await requireRole(["admin", "super_admin"]);
 
   if (!juzNumbers.length) return { success: true };
+  const invalidJuz = findInvalidJuz(juzNumbers);
+  if (invalidJuz) return { success: false, error: invalidJuz };
 
   await db
     .delete(juzTracker)

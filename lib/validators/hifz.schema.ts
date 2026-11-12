@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { juzNumberSchema, JUZ_RANGE_MESSAGE } from "@/lib/validators/juz";
 
 export const dailyEntrySchema = z
   .object({
@@ -15,7 +16,7 @@ export const dailyEntrySchema = z
     sabaqJuzRemarksId: z.string().uuid().optional(),
 
     // Daura — XOR with dauraRemarksId
-    dauraJuzNumbers: z.array(z.coerce.number().min(1).max(30)).optional(),
+    dauraJuzNumbers: z.array(z.coerce.number().int(JUZ_RANGE_MESSAGE).min(1, JUZ_RANGE_MESSAGE).max(30, JUZ_RANGE_MESSAGE)).optional(),
     dauraRemarksId: z.string().uuid().optional(),
 
     notes: z.string().optional(),
@@ -97,7 +98,7 @@ export const dailyEntrySchema = z
 
 export const updateJuzEntrySchema = z.object({
   studentId: z.string().uuid(),
-  juzNumber: z.number().min(1).max(30),
+  juzNumber: juzNumberSchema,
   startDate: z.string().optional(),
   completionDate: z.string().optional(),
   notes: z.string().optional(),

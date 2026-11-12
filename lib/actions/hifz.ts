@@ -5,6 +5,7 @@ import { hifzDailyEntries, juzTracker, students } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
 import { z } from "zod";
+import { juzNumberSchema, JUZ_RANGE_MESSAGE } from "@/lib/validators/juz";
 import { eq, and, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -16,20 +17,20 @@ const hifzEntrySchema = z.object({
   sabaqFromPage: z.string().nullable().optional(),
   sabaqToPage: z.string().nullable().optional(),
   sabaqPages: z.string().nullable().optional(),
-  sabaqJuzNumber: z.number().nullable().optional(),
+  sabaqJuzNumber: juzNumberSchema.nullable().optional(),
   sabaqRemarksId: z.string().nullable().optional(),
   // Sabaq Juz
   sabaqJuzGiven: z.boolean().default(false),
   sabaqJuzRemarksId: z.string().nullable().optional(),
   // Daura (session 1)
-  dauraJuzNumbers: z.array(z.number()).nullable().optional(),
+  dauraJuzNumbers: z.array(juzNumberSchema).nullable().optional(),
   dauraRemarksId: z.string().nullable().optional(),
   // Daura (session 2 — Hafiz mode)
-  daura2JuzNumbers: z.array(z.number()).nullable().optional(),
+  daura2JuzNumbers: z.array(juzNumberSchema).nullable().optional(),
   daura2RemarksId: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   // Juz Tracking
-  startJuzNumber: z.number().optional(),
+  startJuzNumber: juzNumberSchema.optional(),
   startJuzDate: z.string().optional(),
   completeJuzId: z.string().optional(),
   completeJuzDate: z.string().optional(),
@@ -40,9 +41,11 @@ export async function saveDailyHifzEntry(input: z.infer<typeof hifzEntrySchema>)
   
   const parsed = hifzEntrySchema.safeParse(input);
   if (!parsed.success) {
-    return { success: false, error: "Invalid form data" };
+    // Surface the Juz range message instead of a generic error
+    const juzIssue = parsed.error.issues.find((i) => i.message === JUZ_RANGE_MESSAGE);
+    return { success: false, error: juzIssue ? JUZ_RANGE_MESSAGE : "Invalid form data" };
   }
-  
+
   const data = parsed.data;
 
   // Ensure an existing entry for this student and date doesn't conflict if we aren't updating it
@@ -197,7 +200,7 @@ const juzProgressSchema = z.object({
   // Array of { juzNumber, status, startDate?, completionDate? }
   juzRows: z.array(
     z.object({
-      juzNumber: z.number().int().min(1).max(30),
+      juzNumber: juzNumberSchema,
       status: z.enum(["not_started", "in_progress", "completed"]),
       startDate: z.string().nullable().optional(),
       completionDate: z.string().nullable().optional(),
@@ -329,7 +332,7 @@ const bulkEntryItemSchema = z.object({
   sabaqRemarksId: z.string().uuid().nullable().optional(),
   sabaqJuzGiven: z.boolean().default(true),
   sabaqJuzRemarksId: z.string().uuid().nullable().optional(),
-  dauraJuzNumbers: z.array(z.number().int().min(1).max(30)).nullable().optional(),
+  dauraJuzNumbers: z.array(juzNumberSchema).nullable().optional(),
   dauraRemarksId: z.string().uuid().nullable().optional(),
 });
 
@@ -341,7 +344,10 @@ const bulkHifzEntrySchema = z.object({
 export async function saveBulkHifzEntries(input: unknown) {
   const session = await requireRole(["tutor", "admin", "super_admin"]);
   const parsed = bulkHifzEntrySchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: "Invalid data" };
+  if (!parsed.success) {
+    const juzIssue = parsed.error.issues.find((i) => i.message === JUZ_RANGE_MESSAGE);
+    return { success: false, error: juzIssue ? JUZ_RANGE_MESSAGE : "Invalid data" };
+  }
 
   const { date, entries } = parsed.data;
   let saved = 0;
