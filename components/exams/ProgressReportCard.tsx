@@ -1,5 +1,6 @@
 import { MicLogo } from "@/components/ui/mic-logo";
 import type { CardTrackData, ProgressCardData } from "@/lib/exams/progress-card";
+import { SECTION_TITLE, columnLabel, metaLeft as metaLeftRows, metaRight as metaRightRows } from "@/lib/exams/progress-card-view";
 
 // Printed progress report. Layout mirrors the college's paper card:
 // header → student block → HIFZ / MADRASA / SCHOOL result tables → remarks + signatures.
@@ -8,50 +9,14 @@ import type { CardTrackData, ProgressCardData } from "@/lib/exams/progress-card"
 const GREEN = "#2f7d46";
 const LINE = "#2f7d46";
 
-const SECTION_TITLE: Record<CardTrackData["track"], string> = {
-  hifz: "HIFZ EXAM RESULT",
-  madrasa: "HIFZ MADRASA RESULT",
-  school: "HIFZ SCHOOL RESULT",
-};
-
-/** Header label for a subject column, as printed on the paper card. */
-function columnLabel(track: CardTrackData["track"], name: string) {
-  const n = name.trim().toLowerCase();
-  if (track === "madrasa") {
-    if (/lisan|لسان/.test(n)) return "لسان";
-    if (/fiqh|فقه/.test(n)) return "فقه";
-    if (/tar[ie]*kh|تاريخ/.test(n)) return "تاريخ";
-    if (/duroos|durus|دروس/.test(n)) return "دروس";
-  }
-  if (track === "school") {
-    if (/^eng/.test(n)) return "ENG";
-    if (/^mal/.test(n)) return "MLM";
-    if (/^hin/.test(n)) return "HND";
-    if (/^(sci|evs)/.test(n)) return "SCI";
-    if (/^(math|mts)/.test(n)) return "MTS";
-  }
-  return name.toUpperCase();
-}
-
 const cell = `border px-2 py-1`;
 const cellStyle = { borderColor: LINE } as const;
 
 function TrackSection({ t }: { t: CardTrackData }) {
   const isHifz = t.track === "hifz";
-  // null = not recorded for this exam (e.g. older Hifz exams): shown as unavailable, never as 0
-  const metaLeft: [string, string | null][] = isHifz
-    ? [
-        ["Memorized Juz", t.memorizedJuz ?? null],
-        ["To be Obtained", t.toBeObtained ?? null],
-      ]
-    : [
-        ["Standard", t.className],
-        ["Class Teacher", t.teacher],
-      ];
-  const metaRight: [string, string][] = [
-    ["Rank", t.rank === null ? "—" : String(t.rank)],
-    ["Status", t.status],
-  ];
+  // null = not available (no stored value and no Hifz target/progress data): shown as unavailable, never as 0
+  const metaLeft = metaLeftRows(t);
+  const metaRight = metaRightRows(t);
 
   return (
     <section className="break-inside-avoid">
@@ -71,7 +36,7 @@ function TrackSection({ t }: { t: CardTrackData }) {
           {[0, 1].map((i) => (
             <tr key={i}>
               <td className={cell} style={{ ...cellStyle, width: "27%" }}>{metaLeft[i][0]}</td>
-              <td className={`${cell} ${isHifz || i === 0 ? "" : "text-[12px]"}`} style={{ ...cellStyle, width: "33%" }}>{metaLeft[i][1] ?? <span className="font-normal italic text-gray-500">Not recorded</span>}</td>
+              <td className={`${cell} ${isHifz || i === 0 ? "" : "text-[12px]"}`} style={{ ...cellStyle, width: "33%" }}>{metaLeft[i][1] ?? <span className="font-normal italic text-gray-500">Not available</span>}</td>
               <td className={cell} style={{ ...cellStyle, width: "15%" }}>{metaRight[i][0]}</td>
               <td
                 className={cell}

@@ -8,6 +8,8 @@ import { buildProgressCardData } from "@/lib/exams/progress-card";
 import { PrintButton } from "@/components/ui/print-button";
 import { ProgressReportCard } from "@/components/exams/ProgressReportCard";
 import { ProgressCardControls } from "@/components/exams/progress-card-controls";
+import { ProgressCardDownload } from "@/components/exams/progress-card-download";
+import Link from "next/link";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -60,11 +62,29 @@ export default async function ProgressCardsPage({ params, searchParams }: Props)
             { label: "Progress Cards" },
           ]}
           action={
-            result?.success && (
-              <PrintButton className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90">
-                Print Card
-              </PrintButton>
-            )
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href="/admin/progress-cards/bulk" className="border border-border px-4 py-2 rounded-md text-sm font-medium hover:bg-muted">
+                Bulk (whole class)
+              </Link>
+              {result?.success && studentId && (
+                <ProgressCardDownload
+                  examinationId={id}
+                  studentId={studentId}
+                  overrides={{
+                    toBeObtained: sp.obtained,
+                    memorizedJuz: sp.memorized,
+                    mentor: sp.mentor,
+                    madrasaTeacher: sp.madrasaTeacher,
+                    schoolTeacher: sp.schoolTeacher,
+                  }}
+                />
+              )}
+              {result?.success && (
+                <PrintButton className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90">
+                  Print Card
+                </PrintButton>
+              )}
+            </div>
           }
         />
 
