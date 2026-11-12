@@ -7,6 +7,7 @@ import { Save, Loader2, CheckCircle2, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { leavePeriods } from "@/lib/db/schema";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { calcSabaqPages, continuationFromPage, validateSabaqRange } from "@/lib/hifz/sabaq-pages";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -30,6 +31,8 @@ type StudentInput = {
   lastName: string | null;
   studentCode: string;
   currentJuzNumber: number | null;
+  /** Where this student's previous Sabaq (before the selected date) ended — informational */
+  lastSabaqToPage: string | null;
   existingEntry: ExistingEntry | null;
 };
 
@@ -56,12 +59,8 @@ interface Props {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function calcPages(from: string, to: string): string {
-  const f = parseFloat(from);
-  const t = parseFloat(to);
-  if (isNaN(f) || isNaN(t) || t < f) return "";
-  return (Math.round((t - f) * 10) / 10).toString();
-}
+// Inclusive range maths (To − From + 1) is shared with Individual entry and the server
+const calcPages = calcSabaqPages;
 
 function parseJuzNumbers(text: string): number[] {
   return text
@@ -255,6 +254,13 @@ export function HifzBulkEntry({
       toast.info("No data entered for any student.");
       return;
     }
+    // Same page-range rule as Individual entry; nothing is saved while any row is invalid
+    const bad = toSave.find((r) => validateSabaqRange(r.sabaqFromPage, r.sabaqToPage));
+    if (bad) {
+      const s = students.find((x) => x.id === bad.studentId);
+      toast.error(`${s?.firstName ?? "Student"}: ${validateSabaqRange(bad.sabaqFromPage, bad.sabaqToPage)}`);
+      return;
+    }
     setSaving(true);
     try {
       const entries = toSave.map((r) => ({
@@ -262,6 +268,8 @@ export function HifzBulkEntry({
         sabaqFromPage: r.sabaqFromPage || undefined,
         sabaqToPage: r.sabaqToPage || undefined,
         sabaqPages: r.sabaqPages || undefined,
+        // Same default the Individual form uses: the Juz being memorised (server never overwrites an existing value)
+        sabaqJuzNumber: r.sabaqFromPage || r.sabaqToPage ? students.find((s) => s.id === r.studentId)?.currentJuzNumber ?? undefined : undefined,
         sabaqRemarksId: r.sabaqRemarksId || undefined,
         sabaqJuzGiven: r.sabaqJuzGiven,
         sabaqJuzRemarksId: r.sabaqJuzRemarksId || undefined,
@@ -275,7 +283,7 @@ export function HifzBulkEntry({
         toast.success(`Saved ${result.saved} student${result.saved !== 1 ? "s" : ""}`);
         setSavedIds(new Set(toSave.map((r) => r.studentId)));
       } else {
-        toast.error("Failed to save. Please try again.");
+        toast.error(typeof result.error === "string" ? result.error : "Failed to save. Please try again.");
       }
     } catch {
       toast.error("An unexpected error occurred.");
@@ -420,6 +428,10 @@ export function HifzBulkEntry({
           const sabaqMarkGiven = parseFloat(row.sabaqPages || "0") > 0 || parseFloat(row.sabaqFromPage || "0") > 0 || parseFloat(row.sabaqToPage || "0") > 0;
           const sabaqJuzMarkGiven = row.sabaqJuzGiven;
           const dauraMarkGiven = parseJuzNumbers(row.dauraJuz).length > 0;
+          const rangeErr = validateSabaqRange(row.sabaqFromPage, row.sabaqToPage);
+          // Individual entry shows the indicator only when there is no entry yet for the date
+          const suggestedFrom =
+            !student.existingEntry && student.lastSabaqToPage ? continuationFromPage(student.lastSabaqToPage) : undefined;
 
           return (
             <div
@@ -476,7 +488,8 @@ export function HifzBulkEntry({
                       type="number"
                       step="0.5"
                       min="0"
-                      placeholder="From pg"
+                      placeholder={suggestedFrom ? `From pg (${suggestedFrom})` : "From pg"}
+                      aria-invalid={!!rangeErr}
                       value={row.sabaqFromPage}
                       onChange={(e) =>
                         updateRow(student.id, { sabaqFromPage: e.target.value })
@@ -500,6 +513,13 @@ export function HifzBulkEntry({
                         {row.sabaqPages} pg
                       </span>
                     )}
+                    {/* Same indicator + rule as Individual entry: shown only for a new entry that has a previous Sabaq. Informational — never fills the field. */}
+                    {suggestedFrom && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">
+                        ↩ continued from pg {student.lastSabaqToPage}
+                      </span>
+                    )}
+                    {rangeErr && <span className="basis-full text-[11px] text-destructive">{rangeErr}</span>}
                     {sabaqRemarks.length > 0 && (
                       <select
                         disabled={sabaqMarkGiven}

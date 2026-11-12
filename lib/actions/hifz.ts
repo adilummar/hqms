@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
 import { z } from "zod";
 import { juzNumberSchema, JUZ_RANGE_MESSAGE } from "@/lib/validators/juz";
+import { resolveSabaqPages, validateSabaqRange } from "@/lib/hifz/sabaq-pages";
 import { eq, and, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -47,6 +48,11 @@ export async function saveDailyHifzEntry(input: z.infer<typeof hifzEntrySchema>)
   }
 
   const data = parsed.data;
+
+  // Page range must be valid; the stored total follows the shared inclusive rule (To − From + 1)
+  const rangeError = validateSabaqRange(data.sabaqFromPage, data.sabaqToPage);
+  if (rangeError) return { success: false, error: rangeError };
+  data.sabaqPages = resolveSabaqPages(data.sabaqFromPage, data.sabaqToPage, data.sabaqPages, false);
 
   // Ensure an existing entry for this student and date doesn't conflict if we aren't updating it
   let isNewEntry = false;
@@ -329,6 +335,7 @@ const bulkEntryItemSchema = z.object({
   sabaqFromPage: z.string().nullable().optional(),
   sabaqToPage: z.string().nullable().optional(),
   sabaqPages: z.string().nullable().optional(),
+  sabaqJuzNumber: juzNumberSchema.nullable().optional(),
   sabaqRemarksId: z.string().uuid().nullable().optional(),
   sabaqJuzGiven: z.boolean().default(true),
   sabaqJuzRemarksId: z.string().uuid().nullable().optional(),
@@ -350,6 +357,12 @@ export async function saveBulkHifzEntries(input: unknown) {
   }
 
   const { date, entries } = parsed.data;
+
+  // Validate every row before writing anything (same range rule as Individual entry)
+  for (const entry of entries) {
+    const err = validateSabaqRange(entry.sabaqFromPage, entry.sabaqToPage);
+    if (err) return { success: false, error: err };
+  }
   let saved = 0;
   const newEntryIds: string[] = [];
   const newEntryStudentIds: string[] = [];
@@ -366,7 +379,8 @@ export async function saveBulkHifzEntries(input: unknown) {
     const values = {
       sabaqFromPage: entry.sabaqFromPage ?? null,
       sabaqToPage: entry.sabaqToPage ?? null,
-      sabaqPages: entry.sabaqPages ?? null,
+      // Bulk has a read-only total, so it is always derived (inclusive) from From/To
+      sabaqPages: resolveSabaqPages(entry.sabaqFromPage, entry.sabaqToPage, null, true),
       sabaqRemarksId: entry.sabaqRemarksId ?? null,
       sabaqJuzGiven: entry.sabaqJuzGiven,
       sabaqJuzRemarksId: entry.sabaqJuzRemarksId ?? null,
@@ -376,13 +390,15 @@ export async function saveBulkHifzEntries(input: unknown) {
 
     if (existing) {
       await db.update(hifzDailyEntries)
-        .set({ ...values, updatedAt: new Date() })
+        // Juz number: only filled in when the entry has none (never overwrites an existing one)
+        .set({ ...values, ...(existing.sabaqJuzNumber == null && entry.sabaqJuzNumber ? { sabaqJuzNumber: entry.sabaqJuzNumber } : {}), updatedAt: new Date() })
         .where(eq(hifzDailyEntries.id, existing.id));
     } else {
       const [inserted] = await db.insert(hifzDailyEntries).values({
         studentId: entry.studentId,
         date,
         recordedBy: session.user.id,
+        sabaqJuzNumber: entry.sabaqJuzNumber ?? null,
         ...values,
       }).returning();
       

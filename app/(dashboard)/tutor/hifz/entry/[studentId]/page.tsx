@@ -8,6 +8,7 @@ import { HafizModeToggle } from "@/components/hifz/hafiz-mode-toggle";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getActiveLeavePeriod } from "@/lib/actions/leave-tracker";
+import { getPreviousSabaqEnds } from "@/lib/services/hifz-continuation";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Daily Hifz Entry Form" };
@@ -82,15 +83,10 @@ export default async function HifzEntryPage({ params, searchParams }: Props) {
           lte(juzTracker.completionDate, targetDate)
         )
       ),
-    // Fetch the most recent entry BEFORE targetDate to auto-fill From Page
-    db.query.hifzDailyEntries.findFirst({
-      where: and(
-        eq(hifzDailyEntries.studentId, studentId),
-        lt(hifzDailyEntries.date, targetDate)
-      ),
-      orderBy: [desc(hifzDailyEntries.date)],
-    }),
+    // Most recent entry BEFORE targetDate → "continued from" page (shared with Bulk entry)
+    getPreviousSabaqEnds([studentId], targetDate),
   ]);
+  const lastSabaqToPage = lastEntry.get(studentId) ?? undefined;
 
   const completedJuzCount = completedJuz[0]?.value ?? 0;
 
@@ -127,7 +123,7 @@ export default async function HifzEntryPage({ params, searchParams }: Props) {
         sabaqJuzRemarks={sabaqJuzRemarks}
         dauraRemarks={dauraRemarks}
         isHafiz={student.isHafiz}
-        lastSabaqToPage={lastEntry?.sabaqToPage ?? undefined}
+        lastSabaqToPage={lastSabaqToPage}
         activeLeave={activeLeave}
       />
     </div>

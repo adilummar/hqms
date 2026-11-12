@@ -4,6 +4,7 @@ import { useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveDailyHifzEntry } from "@/lib/actions/hifz";
 import { isValidJuz, findInvalidJuz, JUZ_RANGE_MESSAGE } from "@/lib/validators/juz";
+import { calcSabaqPages, continuationFromPage, validateSabaqRange } from "@/lib/hifz/sabaq-pages";
 import { toast } from "sonner";
 import { Loader2, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import type { hifzDailyEntries, juzTracker, leavePeriods } from "@/lib/db/schema";
@@ -80,15 +81,8 @@ function DauraBlock({
   );
 }
 
-function calculateSabaqPages(fromValue: string, toValue: string) {
-  if (!fromValue || !toValue) return "";
-
-  const from = parseFloat(fromValue);
-  const to = parseFloat(toValue);
-  return !Number.isNaN(from) && !Number.isNaN(to) && to >= from
-    ? (to - from + 1).toString()
-    : "";
-}
+// Inclusive range maths lives in lib/hifz/sabaq-pages.ts (shared with Bulk entry + server)
+const calculateSabaqPages = calcSabaqPages;
 
 export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaqRemarks, sabaqJuzRemarks, dauraRemarks, isHafiz = false, lastSabaqToPage, activeLeave }: Props) {
   const router = useRouter();
@@ -117,10 +111,7 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
   // - If last toPage is a half-page (e.g. 14.5) → student wasn't done with that page → start from SAME page (14.5)
   // - If last toPage is a whole page (e.g. 14) → student finished that page → start from NEXT page (15)
   const suggestedFromPage = !existingEntry && lastSabaqToPage
-    ? (() => {
-        const last = parseFloat(lastSabaqToPage);
-        return (last % 1 === 0 ? last + 1 : last).toString();
-      })()
+    ? continuationFromPage(lastSabaqToPage)
     : undefined;
 
   const [sabaqFromPage, setSabaqFromPage] = useState(existingEntry?.sabaqFromPage?.toString() ?? suggestedFromPage ?? "");
@@ -144,6 +135,14 @@ export function HifzEntryForm({ studentId, date, existingEntry, activeJuz, sabaq
       ...formData.getAll("dauraJuzNumbers").map(Number),
       ...formData.getAll("daura2JuzNumbers").map(Number),
     ]);
+    const rangeErr = validateSabaqRange(
+      String(formData.get("sabaqFromPage") ?? ""),
+      String(formData.get("sabaqToPage") ?? "")
+    );
+    if (rangeErr) {
+      toast.error(rangeErr);
+      return;
+    }
     if (sabaqErr || startErr || gridErr) {
       setJuzErrors({ sabaq: sabaqErr, start: startErr });
       toast.error(JUZ_RANGE_MESSAGE);

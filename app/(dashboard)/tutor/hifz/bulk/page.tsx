@@ -24,6 +24,7 @@ import {
 import { PageHeader } from "@/components/layout/page-header";
 import { HifzBulkEntry } from "@/components/hifz/hifz-bulk-entry";
 import { getMonthlySabaqPages, rankByMonthlyPages } from "@/lib/services/hifz-monthly-rank";
+import { getPreviousSabaqEnds } from "@/lib/services/hifz-continuation";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -68,6 +69,7 @@ export default async function HifzBulkPage({ searchParams }: Props) {
     lastName: string | null;
     studentCode: string;
     currentJuzNumber: number | null;
+    lastSabaqToPage: string | null;
     existingEntry: {
       id: string;
       sabaqFromPage: string | null;
@@ -137,6 +139,8 @@ export default async function HifzBulkPage({ searchParams }: Props) {
       }
 
       const monthlyTotals = await getMonthlySabaqPages(studentIds);
+      // Each student's own previous Sabaq end (one grouped query, same helper Individual entry uses)
+      const prevEnds = await getPreviousSabaqEnds(studentIds, selectedDate);
       studentRows = rankByMonthlyPages(studentsList, monthlyTotals).map((s) => {
         const entry = entryMap.get(s.id);
         return {
@@ -145,6 +149,7 @@ export default async function HifzBulkPage({ searchParams }: Props) {
           lastName: s.lastName,
           studentCode: s.studentCode,
           currentJuzNumber: juzMap.get(s.id) ?? null,
+          lastSabaqToPage: prevEnds.get(s.id) ?? null,
           existingEntry: entry
             ? {
                 id: entry.id,

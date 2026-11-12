@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { findInvalidJuz } from "@/lib/validators/juz";
+import { resolveSabaqPages, validateSabaqRange } from "@/lib/hifz/sabaq-pages";
 import { students, juzTracker, hifzDailyEntries, monthlyTargets } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
@@ -78,10 +79,9 @@ export async function createOrUpdateDailyEntry(input: unknown) {
   }
 
   const d = parsed.data;
-  const sabaqPages =
-    d.sabaqFromPage !== undefined && d.sabaqToPage !== undefined
-      ? String(d.sabaqToPage - d.sabaqFromPage)
-      : null;
+  const rangeError = validateSabaqRange(d.sabaqFromPage, d.sabaqToPage);
+  if (rangeError) return { success: false, error: rangeError };
+  const sabaqPages = resolveSabaqPages(d.sabaqFromPage, d.sabaqToPage, null, true);
 
   const [entry] = await db
     .insert(hifzDailyEntries)
