@@ -6,7 +6,7 @@ export const markAttendanceSchema = z.object({
   track: z.enum(["hifz", "madrasa", "school"]),
   date: z.string().min(1),
   session: z.enum(["FN", "AN"]),
-  status: z.enum(["present", "absent", "unmarked"]),
+  status: z.enum(["present", "absent", "friday", "holiday", "unmarked"]),
   absenceReasonId: z.string().uuid().optional(),
 }).refine(data => {
   if (data.status === "absent" && !data.absenceReasonId) return false;
@@ -21,7 +21,7 @@ export const bulkMarkAttendanceSchema = z.object({
     z.object({
       studentId: z.string().uuid(),
       session: z.enum(["FN", "AN"]),
-      status: z.enum(["present", "absent", "unmarked"]),
+      status: z.enum(["present", "absent", "friday", "holiday", "unmarked"]),
       absenceReasonId: z.string().uuid().optional().or(z.literal("")),
     }).refine(data => {
       if (data.status === "absent" && !data.absenceReasonId) return false;

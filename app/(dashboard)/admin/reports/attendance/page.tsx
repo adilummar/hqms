@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth/helpers";
+import { collapseOffSessions } from "@/lib/attendance/status";
 import { db } from "@/lib/db";
 import {
   attendanceRecords,
@@ -50,6 +51,7 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
   let fullAbsent: StudentRow[] = [];
   let pending: StudentRow[] = [];
   let noRecord: StudentRow[] = [];
+  let offDay: StudentRow[] = [];
 
   if (selectedClassId) {
     const classEnrollments = await db.query.enrollments.findMany({
@@ -84,8 +86,11 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
         }),
       ]);
 
-      const getOutcome = (fn: string, an: string) => {
-        if (fn === "unmarked" && an === "unmarked") return "NO_RECORD";
+      const getOutcome = (fnIn: string, anIn: string) => {
+        // Friday/Holiday sessions are off-days: not present, absent or pending
+        const { fn, an, offDay } = collapseOffSessions(fnIn, anIn);
+        if (offDay) return "OFF_DAY";
+        if (fn === "unmarked" && an === "unmarked") return fnIn !== anIn ? "PENDING_PARTIAL" : "NO_RECORD";
         if (fn === "unmarked" || an === "unmarked") return "PENDING_PARTIAL";
         
         // Treat leave as absent for daily FN/AN outcome logic or leave it?
@@ -123,11 +128,12 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
       fullAbsent  = allRows.filter((r) => r.outcome === "FULL_DAY_ABSENT");
       pending     = allRows.filter((r) => r.outcome === "PENDING_PARTIAL");
       noRecord    = allRows.filter((r) => r.outcome === "NO_RECORD");
+      offDay      = allRows.filter((r) => r.outcome === "OFF_DAY");
     }
   }
 
-  const total = fullPresent.length + halfPresent.length + fullAbsent.length + pending.length + noRecord.length;
-  const markedCount = fullPresent.length + halfPresent.length + fullAbsent.length + pending.length;
+  const total = fullPresent.length + halfPresent.length + fullAbsent.length + pending.length + noRecord.length + offDay.length;
+  const markedCount = fullPresent.length + halfPresent.length + fullAbsent.length + pending.length + offDay.length;
 
   const formattedDate = selectedDate
     ? new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", {
@@ -291,6 +297,13 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
               label="Full Absent"
               color="bg-red-50 border-red-200 text-red-700"
             />
+            {offDay.length > 0 && (
+              <StatusPill
+                count={offDay.length}
+                label="Off Day"
+                color="bg-violet-50 border-violet-200 text-violet-700"
+              />
+            )}
             <StatusPill
               count={noRecord.length}
               label="No Record"
@@ -343,6 +356,15 @@ export default async function AttendanceReportPage({ searchParams }: Props) {
               dotColor="bg-red-500"
               emptyText="No students marked full absent"
             />
+            {offDay.length > 0 && (
+              <StudentList
+                title="Off Day (Friday / Holiday)"
+                rows={offDay}
+                accent="bg-violet-50/60"
+                dotColor="bg-violet-500"
+                emptyText="No students on an off day"
+              />
+            )}
             {(pending.length > 0 || noRecord.length > 0) && (
               <StudentList
                 title="Pending / No Record"

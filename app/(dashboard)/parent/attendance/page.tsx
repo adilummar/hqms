@@ -1,4 +1,5 @@
 import { requireParent, getParentStudentId } from "@/lib/auth/helpers";
+import { collapseOffSessions } from "@/lib/attendance/status";
 import { db } from "@/lib/db";
 import { students, attendanceRecords, parentMeetingAttendance, parentMeetings } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
@@ -82,9 +83,12 @@ export default async function ParentAttendancePage() {
         if (AN === "present") presentSessions += 1;
       }
 
-      if (FN === "present" && AN === "present") uiStatus = "full_present";
-      else if (FN === "absent" && AN === "absent") uiStatus = "full_absent";
-      else if ((FN === "present" && AN === "absent") || (FN === "absent" && AN === "present")) uiStatus = "half_present";
+      // Friday/Holiday sessions are off-days: excluded above, and the other session decides the day
+      const c = collapseOffSessions(FN ?? "", AN ?? "");
+      if (c.offDay) uiStatus = "off_day";
+      else if (c.fn === "present" && c.an === "present") uiStatus = "full_present";
+      else if (c.fn === "absent" && c.an === "absent") uiStatus = "full_absent";
+      else if ((c.fn === "present" && c.an === "absent") || (c.fn === "absent" && c.an === "present")) uiStatus = "half_present";
       else if (FN || AN) uiStatus = "partial";
     }
 

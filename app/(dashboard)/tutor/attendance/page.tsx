@@ -34,7 +34,7 @@ export default async function TutorAttendancePage({ searchParams }: Props) {
   const selectedClassId = params.classId ?? allClasses[0]?.id;
 
   let studentList: { id: string; studentCode: string; firstName: string; lastName: string | null }[] = [];
-  let existingEntries: { studentId: string; session: "FN" | "AN" | null; status: "present" | "absent" | "leave"; absenceReasonId?: string | null }[] = [];
+  let existingEntries: { studentId: string; session: "FN" | "AN" | null; status: "present" | "absent" | "leave" | "friday" | "holiday"; absenceReasonId?: string | null }[] = [];
 
   if (selectedClassId) {
     const classEnrollments = await db.query.enrollments.findMany({

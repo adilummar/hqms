@@ -5,7 +5,9 @@ import { bulkMarkAttendance } from "@/lib/actions/attendance";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
-type AttendanceStatus = "present" | "absent" | "unmarked";
+import { applyToAll, type RosterStatus } from "@/lib/attendance/status";
+
+type AttendanceStatus = RosterStatus;
 type SessionType = "FN" | "AN";
 type Track = "hifz" | "madrasa" | "school";
 
@@ -19,7 +21,7 @@ interface Student {
 export interface ExistingEntry {
   studentId: string;
   session: SessionType | null; // null for legacy
-  status: "present" | "absent" | "leave";
+  status: "present" | "absent" | "leave" | "friday" | "holiday";
   absenceReasonId?: string | null;
 }
 
@@ -40,13 +42,25 @@ interface Props {
 const STATUS_LABELS: Record<AttendanceStatus, string> = {
   present: "P",
   absent: "A",
+  friday: "F",
+  holiday: "H",
   unmarked: "—",
 };
 
 const STATUS_STYLES: Record<AttendanceStatus, string> = {
   present: "bg-foreground text-background border-foreground",
   absent: "bg-red-50 text-red-700 border-red-300",
+  friday: "bg-violet-50 text-violet-700 border-violet-300",
+  holiday: "bg-sky-50 text-sky-700 border-sky-300",
   unmarked: "bg-background text-muted-foreground border-border hover:border-foreground/40",
+};
+
+const STATUS_TITLES: Record<AttendanceStatus, string> = {
+  present: "Present",
+  absent: "Absent",
+  friday: "Friday (off day)",
+  holiday: "Holiday (off day)",
+  unmarked: "Clear / Unmarked",
 };
 
 export function AttendanceRoster({ students, classId, track, date, existingEntries, remarkOptions = [] }: Props) {
@@ -106,24 +120,19 @@ export function AttendanceRoster({ students, classId, track, date, existingEntri
 
   const fnPresentCount = Object.values(fnEntries).filter((s) => s === "present").length;
   const fnAbsentCount = Object.values(fnEntries).filter((s) => s === "absent").length;
+  const fnOffCount = Object.values(fnEntries).filter((s) => s === "friday" || s === "holiday").length;
   
   const anPresentCount = Object.values(anEntries).filter((s) => s === "present").length;
   const anAbsentCount = Object.values(anEntries).filter((s) => s === "absent").length;
+  const anOffCount = Object.values(anEntries).filter((s) => s === "friday" || s === "holiday").length;
 
+  // FN and AN are separate state objects: a bulk action on one session can never touch the other.
   function setAllFn(status: AttendanceStatus) {
-    setFnEntries((prev) => {
-      const next = { ...prev };
-      for (const key of Object.keys(next)) next[key] = status;
-      return next;
-    });
+    setFnEntries((prev) => applyToAll(prev, status));
   }
 
   function setAllAn(status: AttendanceStatus) {
-    setAnEntries((prev) => {
-      const next = { ...prev };
-      for (const key of Object.keys(next)) next[key] = status;
-      return next;
-    });
+    setAnEntries((prev) => applyToAll(prev, status));
   }
 
   async function handleSave() {
@@ -160,7 +169,7 @@ export function AttendanceRoster({ students, classId, track, date, existingEntri
       if (result.success) {
         toast.success(`Attendance saved`);
       } else {
-        toast.error("Failed to save attendance");
+        toast.error(typeof result.error === "string" ? result.error : "Failed to save attendance");
       }
     });
   }
@@ -189,6 +198,7 @@ export function AttendanceRoster({ students, classId, track, date, existingEntri
               <span className="w-5 h-5 rounded-sm bg-red-50 text-red-700 border border-red-300 text-xs flex items-center justify-center font-medium">A</span>
               <span className="text-muted-foreground">{fnAbsentCount}</span>
             </span>
+            {fnOffCount > 0 && <span className="ml-2 text-xs text-muted-foreground">{fnOffCount} off</span>}
           </div>
 
           <div className="flex items-center gap-2">
@@ -201,6 +211,7 @@ export function AttendanceRoster({ students, classId, track, date, existingEntri
               <span className="w-5 h-5 rounded-sm bg-red-50 text-red-700 border border-red-300 text-xs flex items-center justify-center font-medium">A</span>
               <span className="text-muted-foreground">{anAbsentCount}</span>
             </span>
+            {anOffCount > 0 && <span className="ml-2 text-xs text-muted-foreground">{anOffCount} off</span>}
           </div>
         </div>
       </div>
@@ -209,18 +220,22 @@ export function AttendanceRoster({ students, classId, track, date, existingEntri
       <div className="flex flex-col sm:flex-row gap-4 pt-2 pb-2 border-b border-border">
         <div className="flex flex-col gap-2">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Forenoon (FN)</span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button onClick={() => setAllFn("present")} className="text-xs px-3 py-1.5 border border-border rounded-sm hover:bg-muted transition-colors">All Present</button>
             <button onClick={() => setAllFn("absent")} className="text-xs px-3 py-1.5 border border-border rounded-sm hover:bg-muted transition-colors">All Absent</button>
+            <button onClick={() => setAllFn("friday")} className="text-xs px-3 py-1.5 border border-border rounded-sm hover:bg-muted transition-colors">All Friday</button>
+            <button onClick={() => setAllFn("holiday")} className="text-xs px-3 py-1.5 border border-border rounded-sm hover:bg-muted transition-colors">All Holiday</button>
             <button onClick={() => setAllFn("unmarked")} className="text-xs px-3 py-1.5 border border-border rounded-sm hover:bg-muted transition-colors text-muted-foreground">Clear All</button>
           </div>
         </div>
         
         <div className="flex flex-col gap-2">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Afternoon (AN)</span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button onClick={() => setAllAn("present")} className="text-xs px-3 py-1.5 border border-border rounded-sm hover:bg-muted transition-colors">All Present</button>
             <button onClick={() => setAllAn("absent")} className="text-xs px-3 py-1.5 border border-border rounded-sm hover:bg-muted transition-colors">All Absent</button>
+            <button onClick={() => setAllAn("friday")} className="text-xs px-3 py-1.5 border border-border rounded-sm hover:bg-muted transition-colors">All Friday</button>
+            <button onClick={() => setAllAn("holiday")} className="text-xs px-3 py-1.5 border border-border rounded-sm hover:bg-muted transition-colors">All Holiday</button>
             <button onClick={() => setAllAn("unmarked")} className="text-xs px-3 py-1.5 border border-border rounded-sm hover:bg-muted transition-colors text-muted-foreground">Clear All</button>
           </div>
         </div>
@@ -253,11 +268,11 @@ export function AttendanceRoster({ students, classId, track, date, existingEntri
                   <td className="px-4 py-3 border-l border-border bg-muted/10">
                     <div className="flex flex-col items-center gap-2">
                       <div className="flex justify-center gap-1">
-                        {(["present", "absent", "unmarked"] as AttendanceStatus[]).map((s) => (
+                        {(["present", "absent", "friday", "holiday", "unmarked"] as AttendanceStatus[]).map((s) => (
                           <button
                             key={s}
                             onClick={() => setFnEntries((prev) => ({ ...prev, [student.id]: s }))}
-                            title={s === "unmarked" ? "Clear / Unmarked" : s}
+                            title={STATUS_TITLES[s]}
                             className={`w-8 h-8 text-xs font-bold rounded-sm border transition-all ${
                               fnStatus === s
                                 ? STATUS_STYLES[s]
@@ -291,11 +306,11 @@ export function AttendanceRoster({ students, classId, track, date, existingEntri
                   <td className="px-4 py-3 border-l border-border bg-muted/10">
                     <div className="flex flex-col items-center gap-2">
                       <div className="flex justify-center gap-1">
-                        {(["present", "absent", "unmarked"] as AttendanceStatus[]).map((s) => (
+                        {(["present", "absent", "friday", "holiday", "unmarked"] as AttendanceStatus[]).map((s) => (
                           <button
                             key={s}
                             onClick={() => setAnEntries((prev) => ({ ...prev, [student.id]: s }))}
-                            title={s === "unmarked" ? "Clear / Unmarked" : s}
+                            title={STATUS_TITLES[s]}
                             className={`w-8 h-8 text-xs font-bold rounded-sm border transition-all ${
                               anStatus === s
                                 ? STATUS_STYLES[s]

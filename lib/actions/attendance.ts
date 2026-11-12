@@ -101,7 +101,9 @@ export async function bulkMarkAttendance(input: unknown) {
 
   const { classId, track, date, entries } = parsed.data;
 
-  const records = await db.transaction(async (tx) => {
+  let records;
+  try {
+  records = await db.transaction(async (tx) => {
     const results = [];
     for (const entry of entries) {
       // Soft-delete legacy record if it exists
@@ -161,6 +163,15 @@ export async function bulkMarkAttendance(input: unknown) {
     }
     return results;
   });
+  } catch (err) {
+    console.error("[bulkMarkAttendance]", err);
+    // Friday/Holiday need migration 0011 (adds the two enum values); the whole save rolls back.
+    const msg = String((err as { message?: string })?.message ?? "");
+    const cause = String((err as { cause?: { message?: string } })?.cause?.message ?? "");
+    if (/invalid input value for enum/i.test(msg + cause))
+      return { success: false, error: "Friday / Holiday attendance needs the database update (migration 0011). Nothing was saved." };
+    return { success: false, error: "Could not save attendance. Nothing was changed." };
+  }
 
   await logActivity(
     session.user.id,

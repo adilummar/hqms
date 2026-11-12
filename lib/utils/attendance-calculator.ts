@@ -12,7 +12,11 @@
  * Percentage = Present Sessions / (Present Sessions + Absent Sessions) * 100
  */
 
-export type SessionStatus = "present" | "absent" | "unmarked";
+import { collapseOffSessions } from "@/lib/attendance/status";
+
+// "friday" / "holiday" = off-day sessions: not worked, so never present/absent/unmarked and
+// excluded from the percentage. A day with one off session is judged by the other session.
+export type SessionStatus = "present" | "absent" | "unmarked" | "friday" | "holiday";
 
 export interface DailyAttendance {
   fn: SessionStatus;
@@ -24,10 +28,14 @@ export type DailyOutcome =
   | "HALF_DAY_PRESENT" 
   | "FULL_DAY_ABSENT" 
   | "PENDING_PARTIAL" 
-  | "NO_RECORD";
+  | "NO_RECORD"
+  | "OFF_DAY";
 
-export function getDailyAttendanceOutcome(fn: SessionStatus, an: SessionStatus): DailyOutcome {
-  if (fn === "unmarked" && an === "unmarked") return "NO_RECORD";
+export function getDailyAttendanceOutcome(fnIn: SessionStatus, anIn: SessionStatus): DailyOutcome {
+  const { fn, an, offDay } = collapseOffSessions(fnIn, anIn);
+  if (offDay) return "OFF_DAY";
+  // One session off + the worked session not marked yet = partly recorded, not "no record"
+  if (fn === "unmarked" && an === "unmarked") return fnIn !== anIn ? "PENDING_PARTIAL" : "NO_RECORD";
   if (fn === "unmarked" || an === "unmarked") return "PENDING_PARTIAL";
   
   if (fn === "present" && an === "present") return "FULL_DAY_PRESENT";
@@ -60,6 +68,7 @@ export function calculateAttendanceMetrics(days: DailyAttendance[]): AttendanceM
 
   for (const day of days) {
     const outcome = getDailyAttendanceOutcome(day.fn, day.an);
+    // Off-day sessions are skipped entirely below (neither present, absent nor unmarked)
     if (outcome === "FULL_DAY_PRESENT") fullDaysPresent++;
     if (outcome === "HALF_DAY_PRESENT") halfDaysPresent++;
     if (outcome === "FULL_DAY_ABSENT") fullDaysAbsent++;

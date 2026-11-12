@@ -147,6 +147,10 @@ function formatTimeString(date: Date): string {
 
 type StaffAttendanceRow = typeof staffAttendance.$inferSelect;
 
+// The status enum is shared with student attendance (which adds friday/holiday); staff records only use these three.
+const asStaffStatus = (s: string | null | undefined): RecordStatus | null =>
+  s === "present" || s === "absent" || s === "leave" ? s : null;
+
 function buildCell(
   session: StaffSession,
   date: string,
@@ -157,7 +161,7 @@ function buildCell(
   const off = getOffInfo(date, session, offCfg);
   const status = resolveCellStatus({
     phase: getSessionPhase(session, date, now),
-    record: rec?.status ?? null,
+    record: asStaffStatus(rec?.status),
     off: off.off,
   });
   return {
@@ -532,7 +536,7 @@ export async function getStaffDailyAttendanceData(dateStr?: string): Promise<Dai
     if (isLegacyDate) {
       const rec = mine.find((r) => r.session === null);
       const status: RecordStatus | "unmarked" =
-        rec?.status ?? (selectedDate <= todayDate ? "absent" : "unmarked");
+        asStaffStatus(rec?.status) ?? (selectedDate <= todayDate ? "absent" : "unmarked");
       if (status === "present") legacyPresent++;
       else if (status === "leave") legacyLeave++;
       else if (status === "absent") legacyAbsent++;

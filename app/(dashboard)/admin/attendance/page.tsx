@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { collapseOffSessions } from "@/lib/attendance/status";
 import { requireAdmin } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { classes, enrollments, students, attendanceRecords } from "@/lib/db/schema";
@@ -109,10 +110,12 @@ export default async function AdminAttendancePage({ searchParams }: Props) {
                 if (AN === "present") presentSessions += 1;
               }
 
-              // Daily Status UI Logic
-              if (FN === "present" && AN === "present") attendanceMap[d] = "full_present";
-              else if (FN === "absent" && AN === "absent") attendanceMap[d] = "full_absent";
-              else if ((FN === "present" && AN === "absent") || (FN === "absent" && AN === "present")) attendanceMap[d] = "half_present";
+              // Daily Status UI Logic (Friday/Holiday sessions are taken out first)
+              const c = collapseOffSessions(FN ?? "", AN ?? "");
+              if (c.offDay) attendanceMap[d] = c.offDay;
+              else if (c.fn === "present" && c.an === "present") attendanceMap[d] = "full_present";
+              else if (c.fn === "absent" && c.an === "absent") attendanceMap[d] = "full_absent";
+              else if ((c.fn === "present" && c.an === "absent") || (c.fn === "absent" && c.an === "present")) attendanceMap[d] = "half_present";
               else if (FN || AN) attendanceMap[d] = "partial";
             }
           }
@@ -133,6 +136,8 @@ export default async function AdminAttendancePage({ searchParams }: Props) {
     full_absent: "bg-red-200 border border-red-300",
     partial: "bg-blue-200 border border-blue-300",
     leave: "bg-gray-100 border border-gray-200",
+    friday: "bg-violet-200 border border-violet-300",
+    holiday: "bg-sky-200 border border-sky-300",
   };
 
   return (
@@ -258,7 +263,7 @@ export default async function AdminAttendancePage({ searchParams }: Props) {
 
       {studentRows.length > 0 && (
         <p className="text-xs text-muted-foreground mt-3">
-          Rows highlighted in red are below {threshold}% attendance threshold.
+          Rows highlighted in red are below {threshold}% attendance threshold. Violet = Friday, blue-grey = Holiday (off days are not counted in the percentage).
         </p>
       )}
     </div>

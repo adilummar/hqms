@@ -35,6 +35,9 @@ export const attendanceStatusEnum = pgEnum("attendance_status", [
   "present",
   "absent",
   "leave",
+  // Off-day statuses (student attendance only; excluded from attendance %). Needs drizzle/0011.
+  "friday",
+  "holiday",
 ]);
 
 export const leaveTypeEnum = pgEnum("leave_type", [
