@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { staffMeetings } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
+import { categoryLabel } from "@/lib/staff-meetings/participants";
 import { PageHeader } from "@/components/layout/page-header";
 import {
   CalendarDays,
@@ -121,6 +122,12 @@ export default async function TutorStaffMeetingsPage() {
                       >
                         {meeting.title}
                       </Link>
+
+                      {meeting.category && (
+                        <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full bg-muted text-foreground border border-border font-medium font-dm-sans">
+                          {categoryLabel(meeting.category, meeting.customCategory)}
+                        </span>
+                      )}
 
                       {hasDecisions && (
                         <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 font-semibold dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 font-dm-sans">

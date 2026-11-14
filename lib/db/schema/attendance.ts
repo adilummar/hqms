@@ -8,6 +8,7 @@ import {
   timestamp,
   unique,
   uniqueIndex,
+  index,
 } from "drizzle-orm/pg-core";
 import { attendanceStatusEnum, leaveTypeEnum, classTrackEnum, attendanceSessionEnum, parentMeetingStatusEnum } from "./enums";
 import { students } from "./students";
@@ -216,6 +217,12 @@ export const staffMeetings = pgTable("staff_meetings", {
   status: varchar("status", { length: 50 }).default("scheduled").notNull(), // scheduled, completed, cancelled
   minutes: text("minutes"), // Discussion minutes
   decisions: text("decisions"), // Decisions taken / Action items
+  // school | madrasa | management | custom. NULL = legacy meeting (uncategorised).
+  category: varchar("category", { length: 20 }),
+  customCategory: varchar("custom_category", { length: 100 }), // only when category = custom
+  // false = legacy meeting: roster is the live eligible-staff list.
+  // true  = participants chosen for this meeting (staffMeetingAttendance rows + external guests).
+  participantsExplicit: boolean("participants_explicit").default(false).notNull(),
   createdBy: uuid("created_by")
     .notNull()
     .references(() => users.id, { onDelete: "restrict" }),
@@ -246,6 +253,37 @@ export const staffMeetingAttendance = pgTable(
   })
 );
 
+// External guests (not HQMS users). Belong to exactly one meeting; attendance is stored inline.
+export const staffMeetingExternalParticipants = pgTable(
+  "staff_meeting_external_participants",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    meetingId: uuid("meeting_id")
+      .notNull()
+      .references(() => staffMeetings.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 120 }).notNull(),
+    designation: varchar("designation", { length: 120 }),
+    contactNumber: varchar("contact_number", { length: 40 }),
+    attended: boolean("attended").default(true).notNull(),
+    remarks: text("remarks"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    meetingIdx: index("staff_meeting_ext_meeting_idx").on(table.meetingId),
+  })
+);
+
+export const staffMeetingExternalParticipantsRelations = relations(
+  staffMeetingExternalParticipants,
+  ({ one }) => ({
+    meeting: one(staffMeetings, {
+      fields: [staffMeetingExternalParticipants.meetingId],
+      references: [staffMeetings.id],
+    }),
+  })
+);
+
 export const staffMeetingsRelations = relations(
   staffMeetings,
   ({ one, many }) => ({
@@ -254,6 +292,7 @@ export const staffMeetingsRelations = relations(
       references: [users.id],
     }),
     attendanceRecords: many(staffMeetingAttendance),
+    externalParticipants: many(staffMeetingExternalParticipants),
   })
 );
 

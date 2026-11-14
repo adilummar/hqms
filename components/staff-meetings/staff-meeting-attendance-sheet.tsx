@@ -16,15 +16,9 @@ import {
   UserX,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { MeetingAttendee } from "@/lib/staff-meetings/participants";
 
-export interface StaffAttendee {
-  userId: string;
-  username: string;
-  email?: string | null;
-  role: string;
-  attended: boolean;
-  remarks: string | null;
-}
+export type StaffAttendee = MeetingAttendee;
 
 interface Props {
   meetingId: string;
@@ -48,17 +42,17 @@ export function StaffMeetingAttendanceSheet({
   const absentCount = total - presentCount;
   const attendanceRate = total > 0 ? Math.round((presentCount / total) * 100) : 0;
 
-  function handleToggleAttended(userId: string) {
+  function handleToggleAttended(key: string) {
     if (!isAdmin) return;
     setAttendees((prev) =>
-      prev.map((a) => (a.userId === userId ? { ...a, attended: !a.attended } : a))
+      prev.map((a) => (a.key === key ? { ...a, attended: !a.attended } : a))
     );
   }
 
-  function handleRemarksChange(userId: string, remarks: string) {
+  function handleRemarksChange(key: string, remarks: string) {
     if (!isAdmin) return;
     setAttendees((prev) =>
-      prev.map((a) => (a.userId === userId ? { ...a, remarks } : a))
+      prev.map((a) => (a.key === key ? { ...a, remarks } : a))
     );
   }
 
@@ -69,13 +63,22 @@ export function StaffMeetingAttendanceSheet({
 
   function handleSave() {
     startTransition(async () => {
-      const payload = attendees.map((a) => ({
-        userId: a.userId,
-        attended: a.attended,
-        remarks: a.remarks?.trim() || undefined,
-      }));
+      const payload = attendees
+        .filter((a) => a.kind === "staff")
+        .map((a) => ({
+          userId: a.userId!,
+          attended: a.attended,
+          remarks: a.remarks?.trim() || undefined,
+        }));
+      const externalPayload = attendees
+        .filter((a) => a.kind === "external")
+        .map((a) => ({
+          id: a.externalId!,
+          attended: a.attended,
+          remarks: a.remarks?.trim() || undefined,
+        }));
 
-      const res = await saveStaffMeetingAttendance(meetingId, payload);
+      const res = await saveStaffMeetingAttendance(meetingId, payload, externalPayload);
       if (res.success) {
         toast.success("Staff meeting attendance saved successfully!");
         router.refresh();
@@ -89,7 +92,9 @@ export function StaffMeetingAttendanceSheet({
     const matchesSearch =
       a.username.toLowerCase().includes(search.toLowerCase()) ||
       (a.email && a.email.toLowerCase().includes(search.toLowerCase()));
-    const matchesRole = filterRole === "all" || a.role === filterRole;
+    const matchesRole =
+      filterRole === "all" ||
+      (filterRole === "external" ? a.kind === "external" : a.kind === "staff" && a.role === filterRole);
     return matchesSearch && matchesRole;
   });
 
@@ -101,7 +106,7 @@ export function StaffMeetingAttendanceSheet({
           {/* Quick Stats */}
           <div className="flex items-center gap-6 flex-wrap font-dm-sans">
             <div>
-              <p className="text-[11px] text-muted-foreground uppercase font-semibold">Total Staff</p>
+              <p className="text-[11px] text-muted-foreground uppercase font-semibold">Total Participants</p>
               <p className="text-lg font-bold font-inter text-foreground">{total}</p>
             </div>
             <div className="border-l border-border pl-6">
@@ -178,6 +183,7 @@ export function StaffMeetingAttendanceSheet({
             <option value="tutor">Tutor</option>
             <option value="school_admin">School Admin</option>
             <option value="madrasa_admin">Madrasa Admin</option>
+            <option value="external">External Participants</option>
           </select>
         </div>
       </div>
@@ -189,7 +195,7 @@ export function StaffMeetingAttendanceSheet({
             <thead>
               <tr className="bg-muted/50 border-b border-border text-muted-foreground font-semibold uppercase text-[11px]">
                 <th className="py-2.5 px-4 w-12 text-center">#</th>
-                <th className="py-2.5 px-4">Staff Member</th>
+                <th className="py-2.5 px-4">Participant</th>
                 <th className="py-2.5 px-4 w-32">Role</th>
                 <th className="py-2.5 px-4 w-36 text-center">Attendance Status</th>
                 <th className="py-2.5 px-4">Remarks / Absence Reason</th>
@@ -199,13 +205,13 @@ export function StaffMeetingAttendanceSheet({
               {filteredAttendees.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-muted-foreground">
-                    No staff members match the criteria.
+                    No participants match the criteria.
                   </td>
                 </tr>
               ) : (
                 filteredAttendees.map((att, idx) => (
                   <tr
-                    key={att.userId}
+                    key={att.key}
                     className={`transition-colors ${
                       att.attended ? "hover:bg-emerald-500/5" : "bg-red-500/5 hover:bg-red-500/10"
                     }`}
@@ -221,19 +227,30 @@ export function StaffMeetingAttendanceSheet({
                       {att.email && (
                         <p className="text-[11px] text-muted-foreground">{att.email}</p>
                       )}
+                      {att.kind === "external" && (att.designation || att.contactNumber) && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {[att.designation, att.contactNumber].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
                     </td>
 
                     <td className="py-2.5 px-4">
-                      <span className="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-muted text-foreground border border-border capitalize">
-                        {att.role.replace("_", " ")}
-                      </span>
+                      {att.kind === "external" ? (
+                        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/50 dark:text-amber-300">
+                          External Guest
+                        </span>
+                      ) : (
+                        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-muted text-foreground border border-border capitalize">
+                          {att.role.replace("_", " ")}
+                        </span>
+                      )}
                     </td>
 
                     <td className="py-2.5 px-4 text-center">
                       {isAdmin ? (
                         <button
                           type="button"
-                          onClick={() => handleToggleAttended(att.userId)}
+                          onClick={() => handleToggleAttended(att.key)}
                           className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all ${
                             att.attended
                               ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300"
@@ -271,7 +288,7 @@ export function StaffMeetingAttendanceSheet({
                           type="text"
                           placeholder={att.attended ? "Optional note..." : "Reason for absence..."}
                           value={att.remarks || ""}
-                          onChange={(e) => handleRemarksChange(att.userId, e.target.value)}
+                          onChange={(e) => handleRemarksChange(att.key, e.target.value)}
                           className="w-full px-2.5 py-1 rounded border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
                         />
                       ) : (

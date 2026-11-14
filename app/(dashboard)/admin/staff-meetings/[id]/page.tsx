@@ -79,7 +79,7 @@ export default async function AdminStaffMeetingDetailPage({ params, searchParams
           }`}
         >
           <Users size={14} />
-          <span>Staff Attendance ({meeting.roster.length})</span>
+          <span>Attendance ({meeting.roster.length})</span>
         </Link>
 
         <Link
@@ -97,7 +97,13 @@ export default async function AdminStaffMeetingDetailPage({ params, searchParams
 
       {/* ── Tab Views ── */}
       {activeTab === "minutes" && (
-        <StaffMeetingMinutesEditor meeting={meeting} isAdmin={true} />
+        <StaffMeetingMinutesEditor
+          key={String(meeting.updatedAt)}
+          meeting={meeting}
+          isAdmin={true}
+          candidates={meeting.candidates}
+          selectedUserIds={meeting.selectedUserIds}
+        />
       )}
 
       {activeTab === "attendance" && (

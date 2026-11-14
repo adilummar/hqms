@@ -84,7 +84,7 @@ export default async function TutorStaffMeetingDetailPage({ params, searchParams
           }`}
         >
           <Users size={14} />
-          <span>Staff Attendance ({meeting.roster.length})</span>
+          <span>Attendance ({meeting.roster.length})</span>
         </Link>
 
         <Link

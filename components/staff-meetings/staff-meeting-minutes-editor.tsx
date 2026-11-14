@@ -24,6 +24,15 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  MeetingCategoryField,
+  MeetingParticipantsPicker,
+  newTempKey,
+  type CategoryValue,
+  type ExternalDraft,
+  type StaffCandidate,
+} from "./meeting-form-sections";
+import { categoryLabel, type MeetingCategory } from "@/lib/staff-meetings/participants";
 
 interface StaffMeetingProps {
   meeting: {
@@ -34,6 +43,15 @@ interface StaffMeetingProps {
     location: string | null;
     description: string | null;
     status: string;
+    category?: string | null;
+    customCategory?: string | null;
+    participantsExplicit?: boolean;
+    externalParticipants?: {
+      id: string;
+      name: string;
+      designation: string | null;
+      contactNumber: string | null;
+    }[];
     minutes: string | null;
     decisions: string | null;
     createdAt: Date | string;
@@ -44,9 +62,16 @@ interface StaffMeetingProps {
     } | null;
   };
   isAdmin?: boolean;
+  candidates?: StaffCandidate[];
+  selectedUserIds?: string[];
 }
 
-export function StaffMeetingMinutesEditor({ meeting, isAdmin = true }: StaffMeetingProps) {
+export function StaffMeetingMinutesEditor({
+  meeting,
+  isAdmin = true,
+  candidates = [],
+  selectedUserIds = [],
+}: StaffMeetingProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -66,6 +91,29 @@ export function StaffMeetingMinutesEditor({ meeting, isAdmin = true }: StaffMeet
   const [editTime, setEditTime] = useState(meeting.meetingTime || "");
   const [editLocation, setEditLocation] = useState(meeting.location || "");
   const [editDescription, setEditDescription] = useState(meeting.description || "");
+  const initialExternals = (): ExternalDraft[] =>
+    (meeting.externalParticipants ?? []).map((e) => ({
+      tempKey: newTempKey(),
+      id: e.id,
+      name: e.name,
+      designation: e.designation ?? "",
+      contactNumber: e.contactNumber ?? "",
+    }));
+  const [editCat, setEditCat] = useState<CategoryValue>({
+    category: (meeting.category as MeetingCategory | null) ?? "",
+    customCategory: meeting.customCategory ?? "",
+  });
+  const [editSelected, setEditSelected] = useState<string[]>(selectedUserIds);
+  const [editExternals, setEditExternals] = useState<ExternalDraft[]>(initialExternals);
+  const [editShowErrors, setEditShowErrors] = useState(false);
+
+  function participantsChanged() {
+    const a = [...editSelected].sort().join(",");
+    const b = [...selectedUserIds].sort().join(",");
+    const ea = JSON.stringify(editExternals.map((e) => [e.id ?? "", e.name, e.designation, e.contactNumber]));
+    const eb = JSON.stringify(initialExternals().map((e) => [e.id ?? "", e.name, e.designation, e.contactNumber]));
+    return a !== b || ea !== eb;
+  }
 
   const hasUnsavedMinutes =
     decisions !== (meeting.decisions || "") ||
@@ -93,6 +141,15 @@ export function StaffMeetingMinutesEditor({ meeting, isAdmin = true }: StaffMeet
   function handleSaveDetails(e: React.FormEvent) {
     e.preventDefault();
     if (!editTitle.trim() || !editDate) return;
+    setEditShowErrors(true);
+    const needsCategory = !!meeting.category || !!editCat.category;
+    if (needsCategory && (!editCat.category || (editCat.category === "custom" && !editCat.customCategory.trim()))) return;
+    if (editSelected.length + editExternals.length === 0) {
+      toast.error("Select at least one participant.");
+      return;
+    }
+    // Participants are only sent when changed (or already explicit), so legacy meetings keep their live roster.
+    const sendParticipants = !!meeting.participantsExplicit || participantsChanged();
 
     startTransition(async () => {
       const res = await updateStaffMeetingDetails({
@@ -103,6 +160,23 @@ export function StaffMeetingMinutesEditor({ meeting, isAdmin = true }: StaffMeet
         location: editLocation.trim() || null,
         description: editDescription.trim() || null,
         status,
+        ...(editCat.category
+          ? {
+              category: editCat.category,
+              customCategory: editCat.category === "custom" ? editCat.customCategory.trim() : null,
+            }
+          : {}),
+        ...(sendParticipants
+          ? {
+              participantUserIds: editSelected,
+              externalParticipants: editExternals.map((x) => ({
+                id: x.id,
+                name: x.name,
+                designation: x.designation || null,
+                contactNumber: x.contactNumber || null,
+              })),
+            }
+          : {}),
       });
 
       if (res.success) {
@@ -110,7 +184,9 @@ export function StaffMeetingMinutesEditor({ meeting, isAdmin = true }: StaffMeet
         setShowEditModal(false);
         router.refresh();
       } else {
-        toast.error("Failed to update details. Please check inputs.");
+        const err = ("error" in res ? res.error : undefined) as Record<string, string[] | undefined> | undefined;
+        const first = err && Object.values(err).flat().find(Boolean);
+        toast.error(first || "Failed to update details. Please check inputs.");
       }
     });
   }
@@ -158,6 +234,11 @@ export function StaffMeetingMinutesEditor({ meeting, isAdmin = true }: StaffMeet
                 {meeting.title}
               </h2>
             </div>
+            <p className="mt-1.5">
+              <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full bg-muted text-foreground border border-border font-medium font-dm-sans">
+                Category: {categoryLabel(meeting.category, meeting.customCategory) ?? "Uncategorised"}
+              </span>
+            </p>
             {meeting.createdByUser && (
               <p className="text-xs text-muted-foreground mt-1 font-dm-sans">
                 Convened by{" "}
@@ -387,7 +468,7 @@ export function StaffMeetingMinutesEditor({ meeting, isAdmin = true }: StaffMeet
       {/* ── MODAL: EDIT MEETING DETAILS ── */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-xl animate-fade-in">
+          <div className="w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-xl animate-fade-in">
             <div className="flex items-center justify-between pb-3 border-b border-border">
               <h3 className="font-inter text-base font-semibold text-foreground">
                 Edit Meeting Details
@@ -414,6 +495,8 @@ export function StaffMeetingMinutesEditor({ meeting, isAdmin = true }: StaffMeet
                   className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
                 />
               </div>
+
+              <MeetingCategoryField value={editCat} onChange={setEditCat} showError={editShowErrors && (!!meeting.category || !!editCat.category)} />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -467,6 +550,17 @@ export function StaffMeetingMinutesEditor({ meeting, isAdmin = true }: StaffMeet
                   className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
                 />
               </div>
+
+              <MeetingParticipantsPicker
+                candidates={candidates}
+                selected={editSelected}
+                onSelectedChange={setEditSelected}
+                externals={editExternals}
+                onExternalsChange={setEditExternals}
+              />
+              <p className="text-[11px] text-muted-foreground font-dm-sans">
+                Existing attendance is kept for everyone who stays on the list.
+              </p>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-border">
                 <button

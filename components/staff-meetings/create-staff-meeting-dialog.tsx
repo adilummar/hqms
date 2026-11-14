@@ -5,8 +5,15 @@ import { useRouter } from "next/navigation";
 import { createStaffMeeting } from "@/lib/actions/staff-meetings";
 import { Calendar, Clock, MapPin, Plus, Loader2, X, FileText } from "lucide-react";
 import { toast } from "sonner";
+import {
+  MeetingCategoryField,
+  MeetingParticipantsPicker,
+  type CategoryValue,
+  type ExternalDraft,
+  type StaffCandidate,
+} from "./meeting-form-sections";
 
-export function CreateStaffMeetingDialog() {
+export function CreateStaffMeetingDialog({ staff = [] }: { staff?: StaffCandidate[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -18,10 +25,21 @@ export function CreateStaffMeetingDialog() {
   const [meetingTime, setMeetingTime] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
+  const [cat, setCat] = useState<CategoryValue>({ category: "", customCategory: "" });
+  // Default: every eligible staff member is invited; the admin deselects who is not needed.
+  const [selected, setSelected] = useState<string[]>(() => staff.map((s) => s.id));
+  const [externals, setExternals] = useState<ExternalDraft[]>([]);
+  const [showErrors, setShowErrors] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setShowErrors(true);
     if (!title.trim() || !meetingDate) return;
+    if (!cat.category || (cat.category === "custom" && !cat.customCategory.trim())) return;
+    if (selected.length + externals.length === 0) {
+      toast.error("Select at least one participant.");
+      return;
+    }
 
     startTransition(async () => {
       const result = await createStaffMeeting({
@@ -30,18 +48,34 @@ export function CreateStaffMeetingDialog() {
         meetingTime: meetingTime.trim() || undefined,
         location: location.trim() || undefined,
         description: description.trim() || undefined,
+        category: cat.category,
+        customCategory: cat.category === "custom" ? cat.customCategory.trim() : null,
+        participantUserIds: selected,
+        externalParticipants: externals.map((x) => ({
+          name: x.name,
+          designation: x.designation || null,
+          contactNumber: x.contactNumber || null,
+        })),
       });
 
-      if (result.success && result.data) {
+      if (result.success && "data" in result && result.data) {
         toast.success("Staff meeting scheduled successfully!");
         setOpen(false);
         setTitle("");
         setMeetingTime("");
         setLocation("");
         setDescription("");
+        setCat({ category: "", customCategory: "" });
+        setSelected(staff.map((s) => s.id));
+        setExternals([]);
+        setShowErrors(false);
         router.push(`/admin/staff-meetings/${result.data.id}`);
       } else {
-        toast.error("Failed to schedule meeting. Please check inputs.");
+        const err = ("error" in result ? result.error : undefined) as
+          | Record<string, string[] | undefined>
+          | undefined;
+        const first = err && Object.values(err).flat().find(Boolean);
+        toast.error(first || "Failed to schedule meeting. Please check inputs.");
       }
     });
   }
@@ -58,7 +92,7 @@ export function CreateStaffMeetingDialog() {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-xl animate-fade-in">
+          <div className="w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-xl animate-fade-in">
             <div className="flex items-center justify-between pb-3 border-b border-border">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
@@ -95,6 +129,8 @@ export function CreateStaffMeetingDialog() {
                   className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal"
                 />
               </div>
+
+              <MeetingCategoryField value={cat} onChange={setCat} showError={showErrors} />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -152,6 +188,14 @@ export function CreateStaffMeetingDialog() {
                   className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-teal resize-none"
                 />
               </div>
+
+              <MeetingParticipantsPicker
+                candidates={staff}
+                selected={selected}
+                onSelectedChange={setSelected}
+                externals={externals}
+                onExternalsChange={setExternals}
+              />
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
                 <button

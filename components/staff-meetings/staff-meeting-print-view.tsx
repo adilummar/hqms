@@ -1,6 +1,7 @@
 "use client";
 
 import { Printer } from "lucide-react";
+import { categoryLabel } from "@/lib/staff-meetings/participants";
 import type { StaffAttendee } from "./staff-meeting-attendance-sheet";
 
 interface Props {
@@ -12,6 +13,8 @@ interface Props {
     location: string | null;
     description: string | null;
     status: string;
+    category?: string | null;
+    customCategory?: string | null;
     minutes: string | null;
     decisions: string | null;
     createdByUser?: {
@@ -20,6 +23,12 @@ interface Props {
     } | null;
   };
   attendees: StaffAttendee[];
+}
+
+function roleLabel(m: StaffAttendee) {
+  return m.kind === "external"
+    ? `External${m.designation ? ` – ${m.designation}` : ""}`
+    : m.role.replace("_", " ");
 }
 
 export function StaffMeetingPrintView({ meeting, attendees }: Props) {
@@ -59,6 +68,12 @@ export function StaffMeetingPrintView({ meeting, attendees }: Props) {
           <div>
             <span className="text-gray-500 font-medium block">Meeting Title:</span>
             <span className="font-bold text-gray-900">{meeting.title}</span>
+          </div>
+          <div>
+            <span className="text-gray-500 font-medium block">Category:</span>
+            <span className="font-bold text-gray-900">
+              {categoryLabel(meeting.category, meeting.customCategory) ?? "Uncategorised"}
+            </span>
           </div>
           <div>
             <span className="text-gray-500 font-medium block">Date & Time:</span>
@@ -109,9 +124,9 @@ export function StaffMeetingPrintView({ meeting, attendees }: Props) {
               </p>
               <div className="space-y-1">
                 {presentMembers.map((m) => (
-                  <div key={m.userId} className="text-gray-800 flex justify-between">
+                  <div key={m.key} className="text-gray-800 flex justify-between">
                     <span>• {m.username}</span>
-                    <span className="text-gray-500 text-[10px]">({m.role.replace("_", " ")})</span>
+                    <span className="text-gray-500 text-[10px]">({roleLabel(m)})</span>
                   </div>
                 ))}
               </div>
@@ -126,10 +141,10 @@ export function StaffMeetingPrintView({ meeting, attendees }: Props) {
               ) : (
                 <div className="space-y-1">
                   {absentMembers.map((m) => (
-                    <div key={m.userId} className="text-gray-800 flex justify-between">
+                    <div key={m.key} className="text-gray-800 flex justify-between">
                       <span>• {m.username}</span>
                       <span className="text-gray-500 text-[10px]">
-                        {m.remarks ? `Reason: ${m.remarks}` : `(${m.role.replace("_", " ")})`}
+                        {m.remarks ? `Reason: ${m.remarks}` : `(${roleLabel(m)})`}
                       </span>
                     </div>
                   ))}

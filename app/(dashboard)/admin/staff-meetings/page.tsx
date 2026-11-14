@@ -17,6 +17,7 @@ import {
   Briefcase,
   AlertCircle,
 } from "lucide-react";
+import { categoryLabel } from "@/lib/staff-meetings/participants";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -40,7 +41,9 @@ export default async function AdminStaffMeetingsPage() {
   const today = new Date().toISOString().split("T")[0];
 
   // Only Hifz tutors count towards staff meeting attendance
-  const hifzTutorIds = new Set((await getHifzTutors()).map((t) => t.id));
+  const eligibleStaff = await getHifzTutors();
+  const hifzTutorIds = new Set(eligibleStaff.map((t) => t.id));
+  const staffOptions = eligibleStaff.map((t) => ({ id: t.id, username: t.username, email: t.email, role: t.role }));
 
   const allMeetingsRaw = await db.query.staffMeetings.findMany({
     orderBy: [desc(staffMeetings.meetingDate), desc(staffMeetings.createdAt)],
@@ -51,12 +54,21 @@ export default async function AdminStaffMeetingsPage() {
       attendanceRecords: {
         columns: { attended: true, userId: true },
       },
+      externalParticipants: {
+        columns: { attended: true },
+      },
     },
   });
 
+  // Legacy meetings: live eligible roster. Explicit meetings: exactly the chosen staff + external guests.
   const allMeetings = allMeetingsRaw.map((m) => ({
     ...m,
-    attendanceRecords: m.attendanceRecords.filter((a) => hifzTutorIds.has(a.userId)),
+    attendanceRecords: [
+      ...(m.participantsExplicit
+        ? m.attendanceRecords
+        : m.attendanceRecords.filter((a) => hifzTutorIds.has(a.userId))),
+      ...m.externalParticipants,
+    ],
   }));
 
   const totalMeetings = allMeetings.length;
@@ -90,7 +102,7 @@ export default async function AdminStaffMeetingsPage() {
         title="Staff Meetings & Decisions"
         description="Schedule institutional staff meetings, document proceedings, and record formal decisions"
         breadcrumbs={[{ label: "Admin" }, { label: "Staff Meetings" }]}
-        action={<CreateStaffMeetingDialog />}
+        action={<CreateStaffMeetingDialog staff={staffOptions} />}
       />
 
       {/* ── Overview Statistics Cards ── */}
@@ -153,7 +165,7 @@ export default async function AdminStaffMeetingsPage() {
             Click &quot;Schedule Staff Meeting&quot; above to organize your first faculty & staff session, record minutes, and track decisions.
           </p>
           <div className="mt-4 flex justify-center">
-            <CreateStaffMeetingDialog />
+            <CreateStaffMeetingDialog staff={staffOptions} />
           </div>
         </div>
       ) : (
@@ -191,6 +203,10 @@ export default async function AdminStaffMeetingsPage() {
                       >
                         {meeting.title}
                       </Link>
+
+                      <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full bg-muted text-foreground border border-border font-medium font-dm-sans">
+                        {categoryLabel(meeting.category, meeting.customCategory) ?? "Uncategorised"}
+                      </span>
 
                       {hasDecisions ? (
                         <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 font-semibold dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 font-dm-sans">
@@ -230,7 +246,7 @@ export default async function AdminStaffMeetingsPage() {
                       {attendeesCount > 0 && (
                         <span className="flex items-center gap-1">
                           <CheckCircle2 size={13} className="text-emerald-600" />
-                          {presentCount}/{attendeesCount} Staff Attended
+                          {presentCount}/{attendeesCount} Attended
                         </span>
                       )}
                       {meeting.createdByUser && (
