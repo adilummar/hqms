@@ -77,7 +77,15 @@ const STUDENT_NAV: NavItem[] = [
   { label: "My Stars",    href: "/student/stars",    icon: Star },
 ];
 
-function getNavItems(role: string): NavItem[] {
+const MADRASA_TUTOR_NAV: NavItem[] = [
+  { label: "Dashboard",       href: "/tutor",                       icon: LayoutDashboard },
+  { label: "Attendance",      href: "/tutor/attendance",            icon: CalendarCheck },
+  { label: "Exams",           href: "/tutor/exams",                 icon: FileText },
+  { label: "Bulk Mark Entry", href: "/tutor/exams/bulk-mark-entry", icon: ListChecks },
+];
+
+function getNavItems(role: string, madrasaOnly = false): NavItem[] {
+  if (role === "tutor" && madrasaOnly) return MADRASA_TUTOR_NAV;
   switch (role) {
     case "super_admin":
     case "admin":
@@ -100,6 +108,7 @@ function getNavItems(role: string): NavItem[] {
 interface SidebarProps {
   role: string;
   username: string;
+  madrasaOnly?: boolean;
   isOpen?: boolean;
   onClose?: () => void;
   isTabletExpanded?: boolean;
@@ -109,13 +118,14 @@ interface SidebarProps {
 export function Sidebar({
   role,
   username,
+  madrasaOnly = false,
   isOpen = false,
   onClose,
   isTabletExpanded = false,
   onTabletToggle,
 }: SidebarProps) {
   const pathname = usePathname();
-  const navItems = getNavItems(role);
+  const navItems = getNavItems(role, madrasaOnly);
 
   function isActive(href: string) {
     if (pathname === href) return true;

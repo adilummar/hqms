@@ -1,3 +1,4 @@
+import { requireNonMadrasaTutor } from "@/lib/auth/tutor-scope";
 import { requireTutor } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import {
@@ -23,7 +24,7 @@ interface Props {
 }
 
 export default async function TutorHifzPage({ searchParams }: Props) {
-  await requireTutor();
+  await requireNonMadrasaTutor();
   const params = await searchParams;
 
   const today = new Date().toISOString().split("T")[0];

@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { isMadrasaOnlySession } from "@/lib/auth/tutor-scope";
 import {
   parentMeetings,
   parentMeetingAttendance,
@@ -121,7 +122,8 @@ export async function getAllParentMeetings() {
 // ── Get meetings + existing attendance for a specific class (tutor view) ──────
 
 export async function getMeetingRosterData(meetingId: string, classId: string) {
-  await requireRole(["tutor", "admin", "super_admin"]);
+  const session0 = await requireRole(["tutor", "admin", "super_admin"]);
+  if (await isMadrasaOnlySession(session0)) throw new Error("Not permitted");
 
   const [meeting, classEnrollments] = await Promise.all([
     db.query.parentMeetings.findFirst({
@@ -160,6 +162,7 @@ export async function getMeetingRosterData(meetingId: string, classId: string) {
 
 export async function saveParentMeetingAttendance(input: unknown) {
   const session = await requireRole(["tutor", "admin", "super_admin"]);
+  if (await isMadrasaOnlySession(session)) throw new Error("Not permitted");
   const parsed = saveMeetingAttendanceSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, error: parsed.error.flatten().fieldErrors };

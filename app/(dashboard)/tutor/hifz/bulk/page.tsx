@@ -1,3 +1,4 @@
+import { requireNonMadrasaTutor } from "@/lib/auth/tutor-scope";
 import { getActiveLeavePeriod } from "@/lib/actions/leave-tracker";
 import { requireTutor } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
@@ -35,7 +36,7 @@ interface Props {
 }
 
 export default async function HifzBulkPage({ searchParams }: Props) {
-  await requireTutor();
+  await requireNonMadrasaTutor();
   const params = await searchParams;
 
   const today = new Date().toISOString().split("T")[0];

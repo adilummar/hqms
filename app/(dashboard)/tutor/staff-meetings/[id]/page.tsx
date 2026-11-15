@@ -1,3 +1,4 @@
+import { requireNonMadrasaTutor } from "@/lib/auth/tutor-scope";
 import { requireRole } from "@/lib/auth/helpers";
 import { getStaffMeetingDetails } from "@/lib/actions/staff-meetings";
 import { PageHeader } from "@/components/layout/page-header";
@@ -19,13 +20,7 @@ interface Props {
 }
 
 export default async function TutorStaffMeetingDetailPage({ params, searchParams }: Props) {
-  await requireRole([
-    "tutor",
-    "admin",
-    "super_admin",
-    "school_admin",
-    "madrasa_admin",
-  ]);
+  await requireNonMadrasaTutor(["tutor", "admin", "super_admin", "school_admin", "madrasa_admin"]);
   const { id } = await params;
   const { tab = "minutes" } = await searchParams;
 

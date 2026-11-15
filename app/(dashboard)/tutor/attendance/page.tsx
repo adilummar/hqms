@@ -1,4 +1,5 @@
 import { requireTutor } from "@/lib/auth/helpers";
+import { isMadrasaOnlySession } from "@/lib/auth/tutor-scope";
 import { db } from "@/lib/db";
 import { classes, enrollments, students, attendanceRecords, remarksOptions } from "@/lib/db/schema";
 import { eq, and, inArray, isNull } from "drizzle-orm";
@@ -15,12 +16,13 @@ interface Props {
 }
 
 export default async function TutorAttendancePage({ searchParams }: Props) {
-  await requireTutor();
+  const session = await requireTutor();
+  const madrasaOnly = await isMadrasaOnlySession(session);
   const params = await searchParams;
 
   const today = new Date().toISOString().split("T")[0];
   const selectedDate = params.date ?? today;
-  const selectedTrack = (params.track ?? "hifz") as Track;
+  const selectedTrack = (madrasaOnly ? "madrasa" : (params.track ?? "hifz")) as Track;
 
   const [allClasses, attendanceRemarkOptions] = await Promise.all([
     db.query.classes.findMany({
@@ -89,11 +91,11 @@ export default async function TutorAttendancePage({ searchParams }: Props) {
         </div>
         <div>
           <label className="block text-xs text-muted-foreground mb-1">Track</label>
-          <select name="track" defaultValue={selectedTrack}
+          <select name="track" defaultValue={selectedTrack} disabled={madrasaOnly}
             className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground">
-            <option value="hifz">Hifz</option>
+            {!madrasaOnly && <option value="hifz">Hifz</option>}
             <option value="madrasa">Madrasa</option>
-            <option value="school">School</option>
+            {!madrasaOnly && <option value="school">School</option>}
           </select>
         </div>
         <div>

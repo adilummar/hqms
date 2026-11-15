@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { isMadrasaOnlySession } from "@/lib/auth/tutor-scope";
 import { classes, enrollments, studentStars } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
@@ -58,6 +59,7 @@ async function canManageStudent(
 
 export async function awardStar(input: unknown) {
   const session = await requireRole(["tutor", "admin", "super_admin"]);
+  if (await isMadrasaOnlySession(session)) throw new Error("Not permitted");
   const parsed = awardStarSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, error: parsed.error.flatten().fieldErrors };
@@ -94,6 +96,7 @@ export async function awardStar(input: unknown) {
 
 export async function updateStar(input: unknown) {
   const session = await requireRole(["tutor", "admin", "super_admin"]);
+  if (await isMadrasaOnlySession(session)) throw new Error("Not permitted");
   const parsed = updateStarSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, error: parsed.error.flatten().fieldErrors };
@@ -145,6 +148,7 @@ export async function updateStar(input: unknown) {
 
 export async function removeStar(starId: string) {
   const session = await requireRole(["tutor", "admin", "super_admin"]);
+  if (await isMadrasaOnlySession(session)) throw new Error("Not permitted");
   const parsedId = z.string().uuid().safeParse(starId);
   if (!parsedId.success) {
     return { success: false, error: "Invalid star." };
@@ -189,6 +193,7 @@ export async function removeStar(starId: string) {
 
 export async function getStudentStars(studentId: string) {
   const session = await requireRole(["tutor", "admin", "super_admin"]);
+  if (await isMadrasaOnlySession(session)) throw new Error("Not permitted");
   const parsedId = z.string().uuid().safeParse(studentId);
   if (!parsedId.success || !(await canManageStudent(session, parsedId.data))) {
     return [];
@@ -206,6 +211,7 @@ export async function getStudentStars(studentId: string) {
 
 export async function getClassStarCounts(classId: string) {
   const session = await requireRole(["tutor", "admin", "super_admin"]);
+  if (await isMadrasaOnlySession(session)) throw new Error("Not permitted");
   const parsedId = z.string().uuid().safeParse(classId);
   if (!parsedId.success) return [];
 

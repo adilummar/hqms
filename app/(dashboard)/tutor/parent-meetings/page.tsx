@@ -1,3 +1,4 @@
+import { requireNonMadrasaTutor } from "@/lib/auth/tutor-scope";
 import { requireTutor } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import {
@@ -21,7 +22,7 @@ interface Props {
 }
 
 export default async function TutorParentMeetingsPage({ searchParams }: Props) {
-  const session = await requireTutor();
+  const session = await requireNonMadrasaTutor();
   const params = await searchParams;
 
   const today = new Date().toISOString().split("T")[0];

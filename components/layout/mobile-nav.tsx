@@ -8,11 +8,12 @@ import { Header } from "@/components/layout/header";
 interface MobileNavProps {
   role: string;
   username: string;
+  madrasaOnly?: boolean;
 }
 
 const STORAGE_KEY = "hqms-sidebar-expanded";
 
-export function MobileNav({ role, username }: MobileNavProps) {
+export function MobileNav({ role, username, madrasaOnly = false }: MobileNavProps) {
   const [isOpen, setIsOpen] = useState(false);
   // Start as false to avoid SSR mismatch; corrected on first client effect
   const [isTabletExpanded, setIsTabletExpanded] = useState(false);
@@ -54,6 +55,7 @@ export function MobileNav({ role, username }: MobileNavProps) {
       <Sidebar
         role={role}
         username={username}
+        madrasaOnly={madrasaOnly}
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         isTabletExpanded={isTabletExpanded}

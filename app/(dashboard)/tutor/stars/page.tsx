@@ -1,3 +1,4 @@
+import { requireNonMadrasaTutor } from "@/lib/auth/tutor-scope";
 import { requireTutor } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { classes, enrollments, students, studentStars } from "@/lib/db/schema";
@@ -25,7 +26,7 @@ interface StudentStar {
 }
 
 export default async function TutorStarsPage({ searchParams }: Props) {
-  const session = await requireTutor();
+  const session = await requireNonMadrasaTutor();
   const params = await searchParams;
   const isAdmin =
     session.user.role === "admin" || session.user.role === "super_admin";

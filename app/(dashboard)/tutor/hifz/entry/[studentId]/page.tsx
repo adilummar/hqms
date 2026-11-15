@@ -1,3 +1,4 @@
+import { requireNonMadrasaTutor } from "@/lib/auth/tutor-scope";
 import { requireTutor, getSession } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { students, hifzDailyEntries, juzTracker, leavePeriods } from "@/lib/db/schema";
@@ -19,7 +20,7 @@ interface Props {
 }
 
 export default async function HifzEntryPage({ params, searchParams }: Props) {
-  await requireTutor();
+  await requireNonMadrasaTutor();
   const { studentId } = await params;
   const { date } = await searchParams;
 

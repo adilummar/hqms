@@ -5,6 +5,7 @@ import { eq, and, count } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
 import Link from "next/link";
+import { isMadrasaOnlySession } from "@/lib/auth/tutor-scope";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Tutor Dashboard" };
@@ -20,6 +21,40 @@ export default async function TutorDashboard() {
       eq(classes.isActive, true)
     ),
   });
+
+  if (await isMadrasaOnlySession(session)) {
+    const madrasaClasses = tutorClasses.filter((c) => c.track === "madrasa");
+    const counts = await Promise.all(
+      madrasaClasses.map(async (c) => {
+        const [r] = await db
+          .select({ count: count() })
+          .from(enrollments)
+          .where(and(eq(enrollments.classId, c.id), eq(enrollments.status, "active")));
+        return { id: c.id, name: c.name, students: r?.count ?? 0 };
+      })
+    );
+    return (
+      <div>
+        <PageHeader
+          title="My Dashboard"
+          description={`Today: ${new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}`}
+          action={
+            <Link
+              href="/tutor/attendance"
+              className="px-4 py-2 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors"
+            >
+              Mark Attendance →
+            </Link>
+          }
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          {counts.map((c) => (
+            <StatCard key={c.id} label={c.name} value={c.students} description="Madrasa students" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const hifzClass = tutorClasses.find((c) => c.track === "hifz");
 

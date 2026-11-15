@@ -1,3 +1,4 @@
+import { requireNonMadrasaTutor } from "@/lib/auth/tutor-scope";
 import { requireRole } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { classes } from "@/lib/db/schema";
@@ -13,7 +14,7 @@ interface Props {
 }
 
 export default async function TutorHifzTargetsPage({ searchParams }: Props) {
-  const session = await requireRole(["tutor", "admin", "super_admin"]);
+  const session = await requireNonMadrasaTutor();
   const params = await searchParams;
 
   const now = new Date();

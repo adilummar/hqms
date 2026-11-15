@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { isMadrasaOnlySession } from "@/lib/auth/tutor-scope";
 import { MobileNav } from "@/components/layout/mobile-nav";
 
 export default async function DashboardRootLayout({
@@ -13,11 +14,13 @@ export default async function DashboardRootLayout({
   const role = session.user.role as string;
   const username = session.user.name ?? "User";
 
+  const madrasaOnly = await isMadrasaOnlySession(session);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Sidebar + Header wired together via MobileNav client component */}
       <div className="print:hidden">
-        <MobileNav role={role} username={username} />
+        <MobileNav role={role} username={username} madrasaOnly={madrasaOnly} />
       </div>
 
       {/*

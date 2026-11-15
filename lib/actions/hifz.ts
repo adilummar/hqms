@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { isMadrasaOnlySession } from "@/lib/auth/tutor-scope";
 import { hifzDailyEntries, juzTracker, students } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
@@ -39,6 +40,7 @@ const hifzEntrySchema = z.object({
 
 export async function saveDailyHifzEntry(input: z.infer<typeof hifzEntrySchema>) {
   const session = await requireRole(["tutor", "admin", "super_admin"]);
+  if (await isMadrasaOnlySession(session)) throw new Error("Not permitted");
   
   const parsed = hifzEntrySchema.safeParse(input);
   if (!parsed.success) {
@@ -269,6 +271,7 @@ async function countCompletedJuz(studentId: string) {
 
 export async function convertToHafiz(studentId: string) {
   const session = await requireRole(["tutor", "admin", "super_admin"]);
+  if (await isMadrasaOnlySession(session)) throw new Error("Not permitted");
 
   const completed = await countCompletedJuz(studentId);
   if (completed < 30) {
@@ -350,6 +353,7 @@ const bulkHifzEntrySchema = z.object({
 
 export async function saveBulkHifzEntries(input: unknown) {
   const session = await requireRole(["tutor", "admin", "super_admin"]);
+  if (await isMadrasaOnlySession(session)) throw new Error("Not permitted");
   const parsed = bulkHifzEntrySchema.safeParse(input);
   if (!parsed.success) {
     const juzIssue = parsed.error.issues.find((i) => i.message === JUZ_RANGE_MESSAGE);

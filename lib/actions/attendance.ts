@@ -9,6 +9,7 @@ import {
   markAttendanceSchema,
   bulkMarkAttendanceSchema,
 } from "@/lib/validators/attendance.schema";
+import { isMadrasaOnlySession } from "@/lib/auth/tutor-scope";
 import { revalidatePath } from "next/cache";
 
 export async function markAttendance(input: unknown) {
@@ -19,6 +20,9 @@ export async function markAttendance(input: unknown) {
   }
 
   const d = parsed.data;
+  if (d.track !== "madrasa" && (await isMadrasaOnlySession(session))) {
+    return { success: false, error: { track: ["Not permitted"] } };
+  }
   
   // Soft-delete legacy record if it exists
   await db.update(attendanceRecords)
@@ -100,6 +104,9 @@ export async function bulkMarkAttendance(input: unknown) {
   }
 
   const { classId, track, date, entries } = parsed.data;
+  if (track !== "madrasa" && (await isMadrasaOnlySession(session))) {
+    return { success: false, error: { track: ["Not permitted"] } };
+  }
 
   let records;
   try {

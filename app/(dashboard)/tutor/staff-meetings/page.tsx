@@ -1,3 +1,4 @@
+import { requireNonMadrasaTutor } from "@/lib/auth/tutor-scope";
 import { requireRole } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { staffMeetings } from "@/lib/db/schema";
@@ -33,13 +34,7 @@ function formatDate(d: string) {
 }
 
 export default async function TutorStaffMeetingsPage() {
-  const session = await requireRole([
-    "tutor",
-    "admin",
-    "super_admin",
-    "school_admin",
-    "madrasa_admin",
-  ]);
+  const session = await requireNonMadrasaTutor(["tutor", "admin", "super_admin", "school_admin", "madrasa_admin"]);
 
   const allMeetings = await db.query.staffMeetings.findMany({
     orderBy: [desc(staffMeetings.meetingDate), desc(staffMeetings.createdAt)],
