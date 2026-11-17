@@ -8,9 +8,11 @@ import {
   juzTracker,
   academicYears,
   leavePeriods,
+  remarksOptions,
 } from "@/lib/db/schema";
 import { eq, and, asc, inArray, ne } from "drizzle-orm";
 import { getMonthlySabaqPages, rankByMonthlyPages } from "@/lib/services/hifz-monthly-rank";
+import { formatSabaq, formatSabaqJuz, formatDaura } from "@/lib/hifz/entry-display";
 import { PageHeader } from "@/components/layout/page-header";
 import { getActiveLeavePeriod } from "@/lib/actions/leave-tracker";
 import Link from "next/link";
@@ -121,6 +123,12 @@ export default async function TutorHifzPage({ searchParams }: Props) {
       }));
     }
   }
+
+  // Saved remark ids -> configured labels (inactive remarks still resolve so history stays readable)
+  const remarkRows = await db.query.remarksOptions.findMany({
+    columns: { id: true, label: true },
+  });
+  const remarkLabels = new Map(remarkRows.map((r) => [r.id, r.label]));
 
   const enteredCount = studentRows.filter((r) => !!r.entry).length;
   const pendingCount = studentRows.length - enteredCount;
@@ -284,30 +292,20 @@ export default async function TutorHifzPage({ searchParams }: Props) {
                         : currentJuz ? `Juz ${currentJuz.juzNumber}` : "—"}
                     </td>
                     <td className="px-4 py-3 font-jetbrains text-sm">
-                      {s.isHafiz
-                        ? "—"
-                        : entry?.sabaqFromPage && entry?.sabaqToPage
-                          ? `${entry.sabaqFromPage}→${entry.sabaqToPage}`
-                          : entry?.sabaqRemarksId
-                          ? "Reason given"
-                          : "—"}
+                      {s.isHafiz ? "—" : formatSabaq(entry, remarkLabels)}
                     </td>
                     <td className="px-4 py-3">
-                      {s.isHafiz
-                        ? "—"
-                        : entry
-                          ? entry.sabaqJuzGiven
-                            ? <span className="text-green-600 font-medium">✓</span>
-                            : <span className="text-red-500">✗</span>
-                          : "—"}
+                      {s.isHafiz ? "—" : (() => {
+                        const sj = formatSabaqJuz(entry, remarkLabels);
+                        return sj.kind === "given"
+                          ? <span className="text-green-600 font-medium">{sj.text}</span>
+                          : sj.kind === "not_given"
+                            ? <span className="text-red-500">{sj.text}</span>
+                            : "—";
+                      })()}
                     </td>
                     <td className="px-4 py-3 font-jetbrains text-sm">
-                      {s.isHafiz && entry
-                        ? [
-                            entry.dauraJuzNumbers?.length ? `D1: Juz ${entry.dauraJuzNumbers.join(", ")}` : null,
-                            entry.daura2JuzNumbers?.length ? `D2: Juz ${entry.daura2JuzNumbers.join(", ")}` : null,
-                          ].filter(Boolean).join(" · ") || (entry.dauraRemarksId || entry.daura2RemarksId ? "Reason" : "—")
-                        : entry?.dauraJuzNumbers?.length ? `Juz ${entry.dauraJuzNumbers.join(", ")}` : entry?.dauraRemarksId ? "Reason" : "—"}
+                      {formatDaura(entry, remarkLabels, s.isHafiz)}
                     </td>
                     <td className="px-4 py-3">
                       <span className="flex items-center gap-1.5 text-xs">
