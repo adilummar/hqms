@@ -1,7 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { examSessions, examSubjects, examGradeRules, examMarks, examTrackSubjects } from "@/lib/db/schema";
+import { examinations, examSessions, examSubjects, examGradeRules, examMarks, examTrackSubjects } from "@/lib/db/schema";
+import { getSessionProgress, EMPTY_PROGRESS } from "@/lib/exams/session-progress";
 import { requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
 import { z } from "zod";
@@ -9,6 +10,7 @@ import { eq, and, sql, inArray } from "drizzle-orm";
 import { syncClassSubjects, assertClassesInTrack, findLastExamSubjects } from "@/lib/exams/subjects-db";
 import { saveHifzResults } from "@/lib/exams/hifz-results";
 import { revalidatePath } from "next/cache";
+import { authorizeMarkWrites } from "@/lib/exams/mark-guard";
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -122,13 +124,51 @@ export async function deleteExamSession(id: string) {
   return { success: true };
 }
 
-export async function publishExamResults(examSessionId: string) {
-  await requireRole(["super_admin"]);
+/** Read-only completeness check for one track session (used by the publish review UI). */
+export async function getPublishReadiness(examSessionId: string) {
+  await requireRole(["super_admin", "admin"]);
+  const target = await db.query.examSessions.findFirst({ where: eq(examSessions.id, examSessionId) });
+  if (!target) return { success: false as const, error: "Exam track not found" };
+  const p = (await getSessionProgress([examSessionId])).get(examSessionId) ?? EMPTY_PROGRESS;
+  return {
+    success: true as const,
+    track: target.track,
+    published: target.resultStatus === "published",
+    publishedAt: target.publishedAt,
+    ...p,
+  };
+}
 
-  await db
+/**
+ * Publishes ONE track session. Never touches sibling sessions of the same examination.
+ * Refuses a session with no subjects, and one with missing marks unless the admin
+ * explicitly confirms (`allowIncomplete`).
+ */
+export async function publishExamResults(examSessionId: string, options?: { allowIncomplete?: boolean }) {
+  const user = await requireRole(["super_admin"]);
+
+  const target = await db.query.examSessions.findFirst({ where: eq(examSessions.id, examSessionId) });
+  if (!target) return { success: false, error: "Exam track not found" };
+  if (target.resultStatus === "published") return { success: true };
+
+  const progress = (await getSessionProgress([examSessionId])).get(examSessionId) ?? EMPTY_PROGRESS;
+  if (progress.subjects === 0) return { success: false, error: "This track has no subjects. Add subjects before publishing." };
+  if (progress.missing > 0 && !options?.allowIncomplete)
+    return {
+      success: false,
+      code: "incomplete" as const,
+      missing: progress.missing,
+      error: `${progress.missing} mark(s) are still missing for this track.`,
+    };
+
+  // Conditional update: only flips this session, and only if still unpublished
+  const flipped = await db
     .update(examSessions)
     .set({ resultStatus: "published", publishedAt: new Date(), updatedAt: new Date() })
-    .where(eq(examSessions.id, examSessionId));
+    .where(and(eq(examSessions.id, examSessionId), eq(examSessions.resultStatus, "draft")))
+    .returning({ id: examSessions.id });
+  if (flipped.length === 0) return { success: true };
+  await logActivity(user.user.id, "exam.publish", "exam_session", examSessionId);
 
   // Notification integration
   try {
@@ -155,21 +195,95 @@ export async function publishExamResults(examSessionId: string) {
     console.error("Failed to send publish notification:", err);
   }
 
-  revalidatePath(`/admin/exams/${examSessionId}`);
+  revalidatePath(`/admin/exams/${target.examinationId}`);
   revalidatePath("/admin/exams");
+  revalidatePath("/parent/results");
   return { success: true };
 }
 
 export async function unpublishExamResults(examSessionId: string) {
-  await requireRole(["super_admin"]);
+  const user = await requireRole(["super_admin"]);
 
-  await db
+  const [updated] = await db
     .update(examSessions)
     .set({ resultStatus: "draft", publishedAt: null, updatedAt: new Date() })
-    .where(eq(examSessions.id, examSessionId));
+    .where(eq(examSessions.id, examSessionId))
+    .returning({ examinationId: examSessions.examinationId });
+  if (!updated) return { success: false, error: "Exam track not found" };
 
-  revalidatePath(`/admin/exams/${examSessionId}`);
+  await logActivity(user.user.id, "exam.unpublish", "exam_session", examSessionId);
+  revalidatePath(`/admin/exams/${updated.examinationId}`);
+  revalidatePath("/admin/exams");
+  revalidatePath("/parent/results");
   return { success: true };
+}
+
+const TRACK_ENUM = z.enum(["school", "madrasa", "hifz"]);
+
+/**
+ * Configures a track (creates its exam_session) inside an EXISTING common examination.
+ * Reuses the (examination, track) unique constraint; never creates a second parent exam.
+ */
+export async function addTrackToExamination(input: unknown) {
+  const user = await requireRole(["super_admin", "admin"]);
+  const parsed = z
+    .object({
+      examinationId: z.string().uuid(),
+      track: TRACK_ENUM,
+      startDate: z.string().nullish().transform((v) => v || null),
+      endDate: z.string().nullish().transform((v) => v || null),
+      tutorMarkEntryOnly: z.boolean().optional(),
+    })
+    .safeParse(input);
+  if (!parsed.success) return { success: false as const, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  const { examinationId, track, startDate, endDate, tutorMarkEntryOnly } = parsed.data;
+  if (startDate && endDate && startDate > endDate) return { success: false as const, error: "End date cannot be before start date" };
+
+  const exam = await db.query.examinations.findFirst({ where: eq(examinations.id, examinationId) });
+  if (!exam) return { success: false as const, error: "Examination not found" };
+
+  const existing = await db.query.examSessions.findFirst({
+    where: and(eq(examSessions.examinationId, examinationId), eq(examSessions.track, track)),
+  });
+  if (existing) return { success: false as const, error: `The ${track} track is already configured` };
+
+  const [created] = await db
+    .insert(examSessions)
+    .values({
+      examinationId,
+      name: `${exam.name} - ${track.charAt(0).toUpperCase() + track.slice(1)}`,
+      track,
+      academicYearId: exam.academicYearId,
+      startDate,
+      endDate,
+      tutorMarkEntryOnly: tutorMarkEntryOnly ?? false,
+      createdBy: user.user.id,
+    })
+    .returning();
+
+  await logActivity(user.user.id, "exam.track_add", "exam_session", created.id);
+  revalidatePath(`/admin/exams/${examinationId}`);
+  revalidatePath("/admin/exams");
+  return { success: true as const, sessionId: created.id };
+}
+
+/** Sets the exam status (scheduled / ongoing / completed / cancelled) of ONE track session. */
+export async function setTrackStatus(examSessionId: string, status: string) {
+  const user = await requireRole(["super_admin", "admin"]);
+  const parsed = z.enum(["scheduled", "ongoing", "completed", "cancelled"]).safeParse(status);
+  if (!parsed.success) return { success: false as const, error: "Invalid status" };
+
+  const [updated] = await db
+    .update(examSessions)
+    .set({ status: parsed.data, updatedAt: new Date() })
+    .where(eq(examSessions.id, examSessionId))
+    .returning({ examinationId: examSessions.examinationId });
+  if (!updated) return { success: false as const, error: "Exam track not found" };
+
+  await logActivity(user.user.id, "exam.track_status", "exam_session", examSessionId);
+  revalidatePath(`/admin/exams/${updated.examinationId}`);
+  revalidatePath("/admin/exams");
+  return { success: true as const };
 }
 
 export async function updateSessionDates(sessionId: string, startDate: string | null, endDate: string | null) {
@@ -415,6 +529,11 @@ export async function saveExamMark(input: unknown) {
 
   const { examSubjectId, studentId, marksObtained, isAbsent, remarks } = parsed.data;
 
+  const denied = await authorizeMarkWrites({ id: session.user.id, role: session.user.role }, [
+    { examSubjectId, studentId, marksObtained: isAbsent ? null : marksObtained },
+  ]);
+  if (denied) return { success: false, error: denied };
+
   await db
     .insert(examMarks)
     .values({
@@ -454,6 +573,12 @@ export async function saveBulkExamMarks(input: unknown) {
     }
 
     if (parsed.data.marks.length === 0) return { success: true };
+
+    const denied = await authorizeMarkWrites(
+      { id: session.user.id, role: session.user.role },
+      parsed.data.marks.map((m) => ({ examSubjectId: m.examSubjectId, studentId: m.studentId, marksObtained: m.isAbsent ? null : m.marksObtained }))
+    );
+    if (denied) return { success: false, error: denied };
 
     const rows = parsed.data.marks.map((m) => ({
       examSubjectId: m.examSubjectId,

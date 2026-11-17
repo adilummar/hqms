@@ -5,7 +5,9 @@ import { examinations, examSessions, classes } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
-import { SubjectManager, GradeRulesManager, PublishControls } from "@/components/exams/exam-detail-panels";
+import { SubjectManager, GradeRulesManager } from "@/components/exams/exam-detail-panels";
+import { TrackPublishControls, TrackStatusSelect, ConfigureTrackForm } from "@/components/exams/track-controls";
+import { getSessionProgress, EMPTY_PROGRESS } from "@/lib/exams/session-progress";
 import { getTrackSubjectCatalogue } from "@/lib/exams/track-subjects";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -46,8 +48,17 @@ export default async function ExamDetailPage({ params, searchParams }: Props) {
     hifz:    "bg-purple-500/10 text-purple-600 border-purple-500/20",
   };
 
-  const activeTrackName = urlTrack || (examination.examSessions.length > 0 ? examination.examSessions[0].track : null);
-  const activeSession = examination.examSessions.find(s => s.track === activeTrackName);
+  const TRACKS = ["school", "madrasa", "hifz"] as const;
+  type TrackName = (typeof TRACKS)[number];
+  // Only a known track is honoured; anything else falls back to the first configured one.
+  const requested = TRACKS.find((t) => t === urlTrack);
+  const activeTrackName: TrackName =
+    requested ?? (examination.examSessions[0]?.track as TrackName | undefined) ?? "school";
+  const sessionByTrack = new Map(examination.examSessions.map((s) => [s.track as TrackName, s]));
+  const activeSession = sessionByTrack.get(activeTrackName);
+  const progress = activeSession
+    ? (await getSessionProgress([activeSession.id])).get(activeSession.id) ?? EMPTY_PROGRESS
+    : EMPTY_PROGRESS;
 
   let trackClasses: any[] = [];
   let catalogue: Awaited<ReturnType<typeof getTrackSubjectCatalogue>> = { ready: true, subjects: [] };
@@ -63,7 +74,7 @@ export default async function ExamDetailPage({ params, searchParams }: Props) {
     <div>
       <PageHeader
         title={examination.name}
-        description={`${examination.academicYear?.label} · ${examination.examSessions.length} tracks included`}
+        description={`${examination.academicYear?.label} · ${examination.examSessions.length} of 3 tracks configured`}
         breadcrumbs={[
           { label: "Admin" },
           { label: "Exams", href: "/admin/exams" },
@@ -97,31 +108,33 @@ export default async function ExamDetailPage({ params, searchParams }: Props) {
         </div>
       </div>
 
-      {examination.examSessions.length === 0 ? (
-        <div className="bg-card border border-border rounded-lg p-8 text-center text-muted-foreground text-sm">
-          No tracks initialized for this examination.
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Tab Navigation */}
+      {
+        <div className="space-y-6" key={`${activeTrackName}:${activeSession?.id ?? "none"}`}>
+          {/* Tab Navigation: all three tracks; an unconfigured track can still be opened */}
           <div className="flex gap-2 border-b border-border mb-6">
-            {examination.examSessions.map(session => {
-              const isActive = session.track === activeTrackName;
+            {TRACKS.map(track => {
+              const s = sessionByTrack.get(track);
+              const isActive = track === activeTrackName;
               return (
                 <Link
-                  key={session.id}
-                  href={`/admin/exams/${id}?track=${session.track}`}
-                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  key={track}
+                  href={`/admin/exams/${id}?track=${track}`}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                     isActive
                       ? "border-primary text-foreground"
                       : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
                   }`}
                 >
-                  <span className="capitalize">{session.track}</span>
+                  <span className="capitalize">{track}</span>
+                  <span className="text-[10px] font-normal text-muted-foreground">
+                    {!s ? "not configured" : s.resultStatus === "published" ? "published" : s.status}
+                  </span>
                 </Link>
               );
             })}
           </div>
+
+          {!activeSession && <ConfigureTrackForm examinationId={id} track={activeTrackName} />}
 
           {activeSession && (
             <>
@@ -150,10 +163,13 @@ export default async function ExamDetailPage({ params, searchParams }: Props) {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <PublishControls
+                  <TrackStatusSelect examSessionId={activeSession.id} status={activeSession.status} />
+                  <TrackPublishControls
                     examSessionId={activeSession.id}
                     resultStatus={activeSession.resultStatus}
                     isSuperAdmin={isSuperAdmin}
+                    publishedAt={activeSession.publishedAt ? activeSession.publishedAt.toISOString() : null}
+                    track={activeSession.track}
                   />
                   {activeSession.track === "school" && (
                     <Link
@@ -175,6 +191,29 @@ export default async function ExamDetailPage({ params, searchParams }: Props) {
                   >
                     Enter Marks →
                   </Link>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-card border border-border rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground">Subjects</p>
+                  <p className="font-medium text-sm">{progress.subjects}</p>
+                </div>
+                <div className="bg-card border border-border rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground">Marks entered</p>
+                  <p className="font-medium text-sm">{progress.entered} / {progress.expected}</p>
+                </div>
+                <div className="bg-card border border-border rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground">Missing</p>
+                  <p className={`font-medium text-sm ${progress.missing > 0 ? "text-amber-600" : ""}`}>{progress.missing}</p>
+                </div>
+                <div className="bg-card border border-border rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground">Publication</p>
+                  <p className="font-medium text-sm">
+                    {activeSession.resultStatus === "published"
+                      ? `Published ${activeSession.publishedAt ? activeSession.publishedAt.toLocaleDateString() : ""}`
+                      : "Not published"}
+                  </p>
                 </div>
               </div>
 
@@ -236,7 +275,7 @@ export default async function ExamDetailPage({ params, searchParams }: Props) {
             </>
           )}
         </div>
-      )}
+      }
     </div>
   );
 }
