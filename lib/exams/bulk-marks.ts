@@ -7,7 +7,7 @@
 // subject's class (same rule as the individual mark-entry screen).
 import { enrollmentStudentIsActive } from "@/lib/students/active";
 import { db } from "@/lib/db";
-import { examSessions, examSubjects, examMarks, examinations, enrollments, classes, students } from "@/lib/db/schema";
+import { examSessions, examSubjects, examMarks, examinations, enrollments, classes, students, academicYears } from "@/lib/db/schema";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { validateMarkText } from "@/lib/exams/bulk-marks-validate";
 
@@ -23,6 +23,14 @@ export type SubjectContext = {
 
 export type Denied = { ok: false; error: string };
 
+/** The full selection chain; every link is re-verified server-side. */
+export interface BulkSelection {
+  examinationId: string;
+  examSessionId: string;
+  classId: string;
+  examSubjectId: string;
+}
+
 /**
  * Loads the subject together with its session and class and proves they belong together:
  * subject ∈ session, class track = session track, and the caller may enter marks for it.
@@ -30,20 +38,25 @@ export type Denied = { ok: false; error: string };
  */
 export async function resolveSubjectContext(
   user: BulkUser,
-  examSessionId: string,
-  examSubjectId: string,
+  sel: BulkSelection,
   forWrite: boolean
 ): Promise<({ ok: true } & SubjectContext) | Denied> {
+  const { examinationId, examSessionId, classId, examSubjectId } = sel;
   if (!ENTRY_ROLES.includes(user.role)) return { ok: false, error: "You are not allowed to enter marks" };
+
+  const exam = await db.query.examinations.findFirst({ where: eq(examinations.id, examinationId), columns: { id: true } });
+  if (!exam) return { ok: false, error: "Examination not found" };
 
   const subject = await db.query.examSubjects.findFirst({ where: eq(examSubjects.id, examSubjectId) });
   if (!subject || subject.examSessionId !== examSessionId) return { ok: false, error: "Subject does not belong to this exam session" };
+  if (subject.classId !== classId) return { ok: false, error: "Subject does not belong to the selected class" };
 
   const [session, cls] = await Promise.all([
     db.query.examSessions.findFirst({ where: eq(examSessions.id, examSessionId) }),
     db.query.classes.findFirst({ where: eq(classes.id, subject.classId) }),
   ]);
   if (!session || !cls) return { ok: false, error: "Exam session or class not found" };
+  if (session.examinationId !== examinationId) return { ok: false, error: "Session does not belong to this examination" };
   if (cls.track !== session.track) return { ok: false, error: "Class does not belong to this track" };
 
   // Same rules as the individual screens
@@ -73,8 +86,9 @@ export interface BulkSheet {
 }
 
 /** Two queries total (students, marks) regardless of class size. */
-export async function loadBulkSheet(user: BulkUser, examSessionId: string, examSubjectId: string) {
-  const ctx = await resolveSubjectContext(user, examSessionId, examSubjectId, false);
+export async function loadBulkSheet(user: BulkUser, sel: BulkSelection) {
+  const { examSubjectId } = sel;
+  const ctx = await resolveSubjectContext(user, sel, false);
   if (!ctx.ok) return ctx;
 
   const [roster, marks] = await Promise.all([
@@ -130,14 +144,14 @@ export type BulkSaveResult =
  */
 export async function applyBulkMarks(
   user: BulkUser,
-  examSessionId: string,
-  examSubjectId: string,
+  sel: BulkSelection,
   changes: BulkChange[]
 ): Promise<BulkSaveResult> {
+  const { examSessionId, examSubjectId } = sel;
   if (changes.length === 0) return { ok: false, error: "No changes to save" };
   if (changes.length > 1000) return { ok: false, error: "Too many rows in one save" };
 
-  const ctx = await resolveSubjectContext(user, examSessionId, examSubjectId, true);
+  const ctx = await resolveSubjectContext(user, sel, true);
   if (!ctx.ok) return ctx;
 
   // One row per student (a repeated student would otherwise hit the same row twice)
@@ -158,7 +172,7 @@ export async function applyBulkMarks(
     .from(enrollments)
     .where(and(eq(enrollments.classId, ctx.subject.classId), eq(enrollments.status, "active"), enrollmentStudentIsActive(), inArray(enrollments.studentId, ids)));
   const eligibleSet = new Set(eligible.map((e) => e.id));
-  if (ids.some((id) => !eligibleSet.has(id))) return { ok: false, error: "A student is not eligible for this subject" };
+  if (ids.some((id) => !eligibleSet.has(id))) return { ok: false, error: "A student is not actively enrolled in the selected class" };
 
   try {
     return await db.transaction(async (tx) => {
@@ -216,12 +230,16 @@ export interface BulkOptions {
   examinations: {
     id: string;
     name: string;
+    academicYearId: string;
+    academicYearLabel: string;
     sessions: {
       id: string;
       track: "school" | "madrasa" | "hifz";
       name: string;
       locked: boolean;
-      subjects: { id: string; name: string; totalMarks: number; className: string }[];
+      /** Only classes of this session's track that have configured subjects and that the caller may use */
+      classes: { id: string; name: string }[];
+      subjects: { id: string; name: string; totalMarks: number; classId: string; className: string }[];
     }[];
   }[];
 }
@@ -237,6 +255,9 @@ export async function loadBulkOptions(user: BulkUser): Promise<BulkOptions> {
     .select({
       examId: examinations.id,
       examName: examinations.name,
+      academicYearId: examinations.academicYearId,
+      academicYearLabel: academicYears.label,
+      yearBatch: academicYears.batchNumber,
       sessionId: examSessions.id,
       sessionName: examSessions.name,
       track: examSessions.track,
@@ -246,6 +267,7 @@ export async function loadBulkOptions(user: BulkUser): Promise<BulkOptions> {
       subjectName: examSubjects.name,
       totalMarks: examSubjects.totalMarks,
       displayOrder: examSubjects.displayOrder,
+      classId: classes.id,
       className: classes.name,
       classTrack: classes.track,
       tutorId: classes.tutorId,
@@ -254,6 +276,7 @@ export async function loadBulkOptions(user: BulkUser): Promise<BulkOptions> {
     .innerJoin(examSessions, eq(examSessions.id, examSubjects.examSessionId))
     .innerJoin(examinations, eq(examinations.id, examSessions.examinationId))
     .innerJoin(classes, eq(classes.id, examSubjects.classId))
+    .innerJoin(academicYears, eq(academicYears.id, examinations.academicYearId))
     .orderBy(desc(examinations.createdAt), asc(examSessions.track), asc(classes.name), asc(examSubjects.displayOrder));
 
   const out = new Map<string, BulkOptions["examinations"][number]>();
@@ -262,10 +285,11 @@ export async function loadBulkOptions(user: BulkUser): Promise<BulkOptions> {
     if (r.tutorOnly && user.role !== "tutor") continue;
     if (user.role === "tutor" && (r.tutorId !== user.id || (r.track === "hifz" && r.resultStatus !== "published"))) continue;
     let ex = out.get(r.examId);
-    if (!ex) out.set(r.examId, (ex = { id: r.examId, name: r.examName, sessions: [] }));
+    if (!ex) out.set(r.examId, (ex = { id: r.examId, name: r.examName, academicYearId: r.academicYearId, academicYearLabel: r.yearBatch ? `Batch ${r.yearBatch}` : r.academicYearLabel, sessions: [] }));
     let s = ex.sessions.find((x) => x.id === r.sessionId);
-    if (!s) ex.sessions.push((s = { id: r.sessionId, track: r.track, name: r.sessionName, locked: r.resultStatus === "published", subjects: [] }));
-    s.subjects.push({ id: r.subjectId, name: r.subjectName, totalMarks: r.totalMarks, className: r.className });
+    if (!s) ex.sessions.push((s = { id: r.sessionId, track: r.track, name: r.sessionName, locked: r.resultStatus === "published", classes: [], subjects: [] }));
+    if (!s.classes.some((c) => c.id === r.classId)) s.classes.push({ id: r.classId, name: r.className });
+    s.subjects.push({ id: r.subjectId, name: r.subjectName, totalMarks: r.totalMarks, classId: r.classId, className: r.className });
   }
   return { examinations: [...out.values()] };
 }

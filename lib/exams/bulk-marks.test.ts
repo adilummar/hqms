@@ -78,6 +78,10 @@ test("bulk save: tracks, preservation, security, atomicity", { skip: !isLocal &&
     sess[k] = (await db.insert(S.examSessions).values({ examinationId: exam.id, name: `${tag}-${k}`, track: k, academicYearId: year.id }).returning())[0];
     subj[k] = (await db.insert(S.examSubjects).values({ examSessionId: sess[k].id, classId: cls[k].id, name: `${k}-SUBJ`, totalMarks: 100, passMarks: 35 }).returning())[0];
   }
+  // Full selection chain; mismatched args build manipulated requests (session, subject-track, class-track)
+  const sel = (st: Track, ut: Track = st, cl: Track = ut) => ({
+    examinationId: exam.id, examSessionId: sess[st].id, classId: cls[cl].id, examSubjectId: subj[ut].id,
+  });
   const A = { id: admin.id, role: "admin" };
   const T = { id: tutor.id, role: "tutor" };
   const marksOf = async (k: Track) =>
@@ -91,7 +95,7 @@ test("bulk save: tracks, preservation, security, atomicity", { skip: !isLocal &&
     ]);
 
     await t.test("sheet loads eligible students only, with explicit zero preserved", async () => {
-      const r = await loadBulkSheet(A, sess.school.id, subj.school.id);
+      const r = await loadBulkSheet(A, sel("school", "school"));
       assert.ok(r.ok);
       assert.deepEqual(r.sheet.students.map((s) => s.id).sort(), [s1.id, s2.id, s3.id].sort());
       assert.ok(!r.sheet.students.some((s) => s.id === outsider.id));
@@ -103,7 +107,7 @@ test("bulk save: tracks, preservation, security, atomicity", { skip: !isLocal &&
 
     await t.test("new + updated saved; untouched row and remarks preserved; no other track touched", async () => {
       const before = (await marksOf("school")).get(s1.id)!;
-      const res = await applyBulkMarks(A, sess.school.id, subj.school.id, [
+      const res = await applyBulkMarks(A, sel("school", "school"), [
         { studentId: s2.id, value: "61.5", absent: false }, // update
         { studentId: s3.id, value: "0", absent: false },    // new explicit zero
       ]);
@@ -119,15 +123,15 @@ test("bulk save: tracks, preservation, security, atomicity", { skip: !isLocal &&
 
     await t.test("update preserves remarks; resubmitting identical values writes nothing", async () => {
       await db.update(S.examMarks).set({ remarks: "note" }).where(and(eq(S.examMarks.examSubjectId, subj.school.id), eq(S.examMarks.studentId, s2.id)));
-      const r1 = await applyBulkMarks(A, sess.school.id, subj.school.id, [{ studentId: s2.id, value: "70", absent: false }]);
+      const r1 = await applyBulkMarks(A, sel("school", "school"), [{ studentId: s2.id, value: "70", absent: false }]);
       assert.deepEqual(r1, { ok: true, created: 0, updated: 1, unchanged: 0 });
       assert.equal((await marksOf("school")).get(s2.id)!.remarks, "note");
-      const r2 = await applyBulkMarks(A, sess.school.id, subj.school.id, [{ studentId: s2.id, value: "70.00", absent: false }]);
+      const r2 = await applyBulkMarks(A, sel("school", "school"), [{ studentId: s2.id, value: "70.00", absent: false }]);
       assert.deepEqual(r2, { ok: true, created: 0, updated: 0, unchanged: 1 });
     });
 
     await t.test("double submit / concurrent saves never duplicate a mark", async () => {
-      const call = () => applyBulkMarks(A, sess.madrasa.id, subj.madrasa.id, [{ studentId: s1.id, value: "42", absent: false }]);
+      const call = () => applyBulkMarks(A, sel("madrasa", "madrasa"), [{ studentId: s1.id, value: "42", absent: false }]);
       const rs = await Promise.all([call(), call(), call()]);
       assert.ok(rs.every((r) => r.ok));
       const rows = await db.select().from(S.examMarks).where(and(eq(S.examMarks.examSubjectId, subj.madrasa.id), eq(S.examMarks.studentId, s1.id)));
@@ -137,7 +141,7 @@ test("bulk save: tracks, preservation, security, atomicity", { skip: !isLocal &&
 
     await t.test("madrasa and hifz tracks save independently", async () => {
       for (const k of ["madrasa", "hifz"] as Track[]) {
-        const r = await applyBulkMarks(A, sess[k].id, subj[k].id, [{ studentId: s2.id, value: "33", absent: false }]);
+        const r = await applyBulkMarks(A, sel(k, k), [{ studentId: s2.id, value: "33", absent: false }]);
         assert.ok(r.ok, k);
         assert.equal(Number((await marksOf(k)).get(s2.id)!.marksObtained), 33);
       }
@@ -145,7 +149,7 @@ test("bulk save: tracks, preservation, security, atomicity", { skip: !isLocal &&
     });
 
     await t.test("absent saves absent with null marks", async () => {
-      const r = await applyBulkMarks(A, sess.hifz.id, subj.hifz.id, [{ studentId: s3.id, value: "", absent: true }]);
+      const r = await applyBulkMarks(A, sel("hifz", "hifz"), [{ studentId: s3.id, value: "", absent: true }]);
       assert.ok(r.ok);
       const m = (await marksOf("hifz")).get(s3.id)!;
       assert.equal(m.isAbsent, true);
@@ -155,7 +159,7 @@ test("bulk save: tracks, preservation, security, atomicity", { skip: !isLocal &&
     await t.test("invalid input rejected and the whole batch is atomic", async () => {
       const before = await marksOf("school");
       for (const bad of ["101", "-5", "1.234", "abc", ""]) {
-        const r = await applyBulkMarks(A, sess.school.id, subj.school.id, [
+        const r = await applyBulkMarks(A, sel("school", "school"), [
           { studentId: s3.id, value: "10", absent: false },
           { studentId: s2.id, value: bad, absent: false },
         ]);
@@ -167,23 +171,35 @@ test("bulk save: tracks, preservation, security, atomicity", { skip: !isLocal &&
 
     await t.test("relationships are verified server-side", async () => {
       // subject from another session
-      assert.equal((await applyBulkMarks(A, sess.madrasa.id, subj.school.id, [{ studentId: s1.id, value: "1", absent: false }])).ok, false);
+      assert.equal((await applyBulkMarks(A, sel("madrasa", "school"), [{ studentId: s1.id, value: "1", absent: false }])).ok, false);
       // student not enrolled in the subject's class
-      assert.equal((await applyBulkMarks(A, sess.school.id, subj.school.id, [{ studentId: outsider.id, value: "1", absent: false }])).ok, false);
+      assert.equal((await applyBulkMarks(A, sel("school", "school"), [{ studentId: outsider.id, value: "1", absent: false }])).ok, false);
+      // manipulated class: subject is school's but the request names the madrasa class (and vice versa)
+      const one = [{ studentId: s1.id, value: "1", absent: false }];
+      assert.equal((await applyBulkMarks(A, sel("school", "school", "madrasa"), one)).ok, false);
+      assert.equal((await loadBulkSheet(A, sel("school", "school", "hifz"))).ok, false);
+      // examination that does not own the session
+      assert.equal((await applyBulkMarks(A, { ...sel("school"), examinationId: "00000000-0000-4000-8000-000000000000" }, one)).ok, false);
+      // track-mismatched class: madrasa session/subject can never be written under the school class
+      assert.equal((await applyBulkMarks(A, sel("madrasa", "madrasa", "school"), one)).ok, false);
+      assert.equal(((await marksOf("madrasa")).get(s1.id)?.marksObtained ?? null) === "1.00", false);
+      // class-scoped sheet lists only that class's roster, and options expose per-track classes
+      const opts = (await loadBulkOptions(A)).examinations.find((e) => e.id === exam.id)!;
+      for (const s of opts.sessions) assert.deepEqual(s.classes.map((c) => c.id), [cls[s.track].id]);
       // duplicate student in one submission
-      assert.equal((await applyBulkMarks(A, sess.school.id, subj.school.id, [
+      assert.equal((await applyBulkMarks(A, sel("school", "school"), [
         { studentId: s1.id, value: "1", absent: false }, { studentId: s1.id, value: "2", absent: false },
       ])).ok, false);
-      assert.equal((await applyBulkMarks(A, sess.school.id, subj.school.id, [])).ok, false);
+      assert.equal((await applyBulkMarks(A, sel("school", "school"), [])).ok, false);
     });
 
     await t.test("roles and ownership", async () => {
       const c = [{ studentId: s1.id, value: "5", absent: false }];
-      assert.equal((await applyBulkMarks({ id: parentUser.id, role: "parent" }, sess.school.id, subj.school.id, c)).ok, false);
-      assert.equal((await loadBulkSheet({ id: parentUser.id, role: "parent" }, sess.school.id, subj.school.id)).ok, false);
-      assert.equal((await applyBulkMarks({ id: otherTutor.id, role: "tutor" }, sess.school.id, subj.school.id, c)).ok, false); // not their class
-      assert.equal((await applyBulkMarks(T, sess.school.id, subj.school.id, c)).ok, true); // their class
-      assert.equal((await applyBulkMarks(T, sess.hifz.id, subj.hifz.id, c)).ok, false); // existing rule: unpublished Hifz hidden from tutors
+      assert.equal((await applyBulkMarks({ id: parentUser.id, role: "parent" }, sel("school", "school"), c)).ok, false);
+      assert.equal((await loadBulkSheet({ id: parentUser.id, role: "parent" }, sel("school", "school"))).ok, false);
+      assert.equal((await applyBulkMarks({ id: otherTutor.id, role: "tutor" }, sel("school", "school"), c)).ok, false); // not their class
+      assert.equal((await applyBulkMarks(T, sel("school", "school"), c)).ok, true); // their class
+      assert.equal((await applyBulkMarks(T, sel("hifz", "hifz"), c)).ok, false); // existing rule: unpublished Hifz hidden from tutors
       const opts = await loadBulkOptions({ id: otherTutor.id, role: "tutor" });
       assert.ok(!opts.examinations.some((e) => e.id === exam.id)); // sees nothing of other classes
       const adminOpts = await loadBulkOptions(A);
@@ -194,19 +210,19 @@ test("bulk save: tracks, preservation, security, atomicity", { skip: !isLocal &&
 
     await t.test("tutor-only exams block admins", async () => {
       await db.update(S.examSessions).set({ tutorMarkEntryOnly: true }).where(eq(S.examSessions.id, sess.school.id));
-      assert.equal((await applyBulkMarks(A, sess.school.id, subj.school.id, [{ studentId: s1.id, value: "9", absent: false }])).ok, false);
+      assert.equal((await applyBulkMarks(A, sel("school", "school"), [{ studentId: s1.id, value: "9", absent: false }])).ok, false);
       await db.update(S.examSessions).set({ tutorMarkEntryOnly: false }).where(eq(S.examSessions.id, sess.school.id));
     });
 
     await t.test("published sessions are locked; publication status never changed by saving", async () => {
       await db.update(S.examSessions).set({ resultStatus: "published", publishedAt: new Date() }).where(eq(S.examSessions.id, sess.school.id));
       const before = (await marksOf("school")).get(s2.id)!.marksObtained;
-      const r = await applyBulkMarks(A, sess.school.id, subj.school.id, [{ studentId: s2.id, value: "99", absent: false }]);
+      const r = await applyBulkMarks(A, sel("school", "school"), [{ studentId: s2.id, value: "99", absent: false }]);
       assert.equal(r.ok, false);
       assert.equal((await marksOf("school")).get(s2.id)!.marksObtained, before);
-      assert.equal((await loadBulkSheet(A, sess.school.id, subj.school.id)).ok && true, true); // still viewable
+      assert.equal((await loadBulkSheet(A, sel("school", "school"))).ok && true, true); // still viewable
       // saving on an unpublished track leaves publication flags alone
-      await applyBulkMarks(A, sess.madrasa.id, subj.madrasa.id, [{ studentId: s3.id, value: "20", absent: false }]);
+      await applyBulkMarks(A, sel("madrasa", "madrasa"), [{ studentId: s3.id, value: "20", absent: false }]);
       const rows = await db.select().from(S.examSessions).where(inArray(S.examSessions.id, [sess.school.id, sess.madrasa.id, sess.hifz.id]));
       const st = Object.fromEntries(rows.map((x) => [x.track, x.resultStatus]));
       assert.deepEqual(st, { school: "published", madrasa: "draft", hifz: "draft" });

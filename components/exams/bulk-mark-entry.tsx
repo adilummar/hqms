@@ -32,8 +32,10 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function BulkMarkEntry({ options }: { options: BulkOptions }) {
+  const [yearId, setYearId] = useState("");
   const [examId, setExamId] = useState("");
   const [track, setTrack] = useState("");
+  const [classId, setClassId] = useState("");
   const [subjectId, setSubjectId] = useState("");
 
   const [sheet, setSheet] = useState<BulkSheet | null>(null);
@@ -44,10 +46,19 @@ export function BulkMarkEntry({ options }: { options: BulkOptions }) {
   const [saving, startSave] = useTransition();
   const reqId = useRef(0);
 
-  const exam = options.examinations.find((e) => e.id === examId);
+  const years = useMemo(() => {
+    const m = new Map<string, string>();
+    options.examinations.forEach((e) => m.set(e.academicYearId, e.academicYearLabel));
+    return [...m].map(([id, label]) => ({ id, label }));
+  }, [options]);
+  const yearExams = options.examinations.filter((e) => e.academicYearId === yearId);
+  const exam = yearExams.find((e) => e.id === examId);
   // One session per (examination, track): never offer another track's session
   const session = exam?.sessions.find((s) => s.track === track);
-  const subject = session?.subjects.find((s) => s.id === subjectId);
+  // Classes and subjects come only from this session, so another track's classes never appear
+  const cls = session?.classes.find((c) => c.id === classId);
+  const classSubjects = session?.subjects.filter((s) => s.classId === classId) ?? [];
+  const subject = classSubjects.find((s) => s.id === subjectId);
 
   // Original (saved) state per student, derived from the freshly loaded sheet
   const orig = useMemo(() => {
@@ -88,11 +99,11 @@ export function BulkMarkEntry({ options }: { options: BulkOptions }) {
     setQuery("");
   };
 
-  async function load(sessionId: string, sid: string) {
+  async function load(sessionId: string, clsId: string, sid: string) {
     const id = ++reqId.current;
     setLoading(true);
     setLoadError(null);
-    const res = await getBulkSheet({ examSessionId: sessionId, examSubjectId: sid });
+    const res = await getBulkSheet({ examinationId: examId, examSessionId: sessionId, classId: clsId, examSubjectId: sid });
     if (id !== reqId.current) return; // stale (selection changed meanwhile)
     setLoading(false);
     if (!res.success) {
@@ -108,18 +119,27 @@ export function BulkMarkEntry({ options }: { options: BulkOptions }) {
     setRows(next);
   }
 
+  const onYear = (v: string) => {
+    if (!confirmDiscard()) return;
+    clearSheet(); setYearId(v); setExamId(""); setTrack(""); setClassId(""); setSubjectId("");
+  };
   const onExam = (v: string) => {
     if (!confirmDiscard()) return;
-    clearSheet(); setExamId(v); setTrack(""); setSubjectId("");
+    clearSheet(); setExamId(v); setTrack(""); setClassId(""); setSubjectId("");
   };
   const onTrack = (v: string) => {
     if (!confirmDiscard()) return;
-    clearSheet(); setTrack(v); setSubjectId("");
+    clearSheet(); setTrack(v); setClassId(""); setSubjectId("");
+  };
+  const onClass = (v: string) => {
+    if (!confirmDiscard()) return;
+    // Stale rows/marks of the previous class are dropped before anything new loads
+    clearSheet(); setClassId(v); setSubjectId("");
   };
   const onSubject = (v: string) => {
     if (!confirmDiscard()) return;
     clearSheet(); setSubjectId(v);
-    if (v && session) void load(session.id, v);
+    if (v && session && classId) void load(session.id, classId, v);
   };
 
   const setValue = (id: string, value: string) =>
@@ -128,10 +148,12 @@ export function BulkMarkEntry({ options }: { options: BulkOptions }) {
     setRows((p) => ({ ...p, [id]: { value: absent ? "" : displayMark(sheet?.students.find((s) => s.id === id)?.mark?.value), absent } }));
 
   const save = () => {
-    if (!session || !sheet || !dirty || hasErrors) return;
+    if (!session || !sheet || !classId || !dirty || hasErrors) return;
     startSave(async () => {
       const res = await saveBulkSubjectMarks({
+        examinationId: examId,
         examSessionId: session.id,
+        classId,
         examSubjectId: sheet.subject.id,
         changes: changed.map((s) => ({ studentId: s.id, value: rows[s.id].value.trim(), absent: rows[s.id].absent })),
       });
@@ -141,7 +163,7 @@ export function BulkMarkEntry({ options }: { options: BulkOptions }) {
       }
       const parts = [res.created && `${res.created} new`, res.updated && `${res.updated} updated`].filter(Boolean);
       toast.success(parts.length ? `Saved: ${parts.join(", ")}` : "Nothing needed saving");
-      await load(session.id, sheet.subject.id); // authoritative refresh
+      await load(session.id, classId, sheet.subject.id); // authoritative refresh
     });
   };
 
@@ -152,15 +174,26 @@ export function BulkMarkEntry({ options }: { options: BulkOptions }) {
 
   const counts = useMemo(() => {
     if (!sheet) return null;
-    let existing = 0, modified = 0, fresh = 0;
+    let existing = 0, modified = 0, fresh = 0, absent = 0, sum = 0, scored = 0;
     for (const s of sheet.students) {
-      const st = rowStatus(orig[s.id], rows[s.id] ?? { value: "", absent: false }, max);
+      const r = rows[s.id] ?? { value: "", absent: false };
+      const st = rowStatus(orig[s.id], r, max);
       if (st === "existing") existing++;
       else if (st === "modified") { modified++; existing++; }
       else if (st === "new") fresh++;
+      if (st !== "not_entered") {
+        if (r.absent) absent++;
+        else if (validateMarkText(r.value, max) === null && r.value.trim() !== "") { sum += Number(r.value); scored++; }
+      }
     }
     const entered = existing + fresh;
-    return { total: sheet.students.length, existing, modified, fresh, remaining: sheet.students.length - entered };
+    const total = sheet.students.length;
+    return {
+      total, existing, modified, fresh, entered, absent,
+      remaining: total - entered,
+      percent: total ? Math.round((entered / total) * 100) : 0,
+      average: scored ? sum / scored : null,
+    };
   }, [sheet, rows, orig, max]);
 
   const focusNext = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -174,12 +207,19 @@ export function BulkMarkEntry({ options }: { options: BulkOptions }) {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div>
+          <label className="block text-xs text-muted-foreground mb-1">Academic year</label>
+          <select className={selectCls} value={yearId} onChange={(e) => onYear(e.target.value)} disabled={saving}>
+            <option value="">Select year</option>
+            {years.map((y) => <option key={y.id} value={y.id}>{y.label}</option>)}
+          </select>
+        </div>
         <div>
           <label className="block text-xs text-muted-foreground mb-1">Examination</label>
-          <select className={selectCls} value={examId} onChange={(e) => onExam(e.target.value)} disabled={saving}>
+          <select className={selectCls} value={examId} onChange={(e) => onExam(e.target.value)} disabled={!yearId || saving}>
             <option value="">Select examination</option>
-            {options.examinations.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+            {yearExams.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
           </select>
         </div>
         <div>
@@ -198,15 +238,28 @@ export function BulkMarkEntry({ options }: { options: BulkOptions }) {
           </select>
         </div>
         <div>
+          <label className="block text-xs text-muted-foreground mb-1">Class</label>
+          <select className={selectCls} value={classId} onChange={(e) => onClass(e.target.value)} disabled={!session || saving}>
+            <option value="">Select class</option>
+            {session?.classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div>
           <label className="block text-xs text-muted-foreground mb-1">Subject</label>
-          <select className={selectCls} value={subjectId} onChange={(e) => onSubject(e.target.value)} disabled={!session || saving}>
+          <select className={selectCls} value={subjectId} onChange={(e) => onSubject(e.target.value)} disabled={!cls || saving}>
             <option value="">Select subject</option>
-            {session?.subjects.map((s) => (
-              <option key={s.id} value={s.id}>{s.name} — {s.className} (max {s.totalMarks})</option>
+            {classSubjects.map((s) => (
+              <option key={s.id} value={s.id}>{s.name} (max {s.totalMarks})</option>
             ))}
           </select>
         </div>
       </div>
+
+      {track && session && session.classes.length === 0 && (
+        <div className="rounded-md border border-dashed bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
+          No classes are configured for this track in this examination.
+        </div>
+      )}
 
       {noOptions && (
         <div className="rounded-md border border-dashed bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
@@ -236,9 +289,12 @@ export function BulkMarkEntry({ options }: { options: BulkOptions }) {
 
           <div className="flex flex-wrap items-center justify-between gap-3 bg-card p-4 rounded-lg border">
             <div>
-              <h3 className="font-semibold">{sheet.subject.name} — {subject.className}</h3>
+              <h3 className="font-semibold">{sheet.subject.name} — {cls?.name}</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {counts.total} students · {counts.existing} entered · {counts.fresh} new · {counts.modified} modified · {counts.remaining} remaining
+                {counts.total} students · {counts.entered} entered · {counts.remaining} pending · {counts.percent}% complete
+                {counts.average !== null && <> · average {counts.average.toFixed(1)} / {max}</>}
+                {counts.absent > 0 && <> · {counts.absent} absent</>}
+                {(counts.fresh > 0 || counts.modified > 0) && <> · unsaved: {counts.fresh} new, {counts.modified} modified</>}
               </p>
             </div>
             <Button onClick={save} disabled={sheet.locked || !dirty || hasErrors || saving}>
@@ -258,13 +314,12 @@ export function BulkMarkEntry({ options }: { options: BulkOptions }) {
             </div>
           ) : (
             <div className="rounded-md border bg-card overflow-x-auto">
-              <table className="w-full text-sm min-w-[720px]">
+              <table className="w-full text-sm min-w-[640px]">
                 <thead className="bg-muted/50 border-b">
                   <tr className="text-left text-xs text-muted-foreground">
                     <th className="px-3 py-2 w-12">No.</th>
                     <th className="px-3 py-2">Admission No.</th>
                     <th className="px-3 py-2">Student</th>
-                    <th className="px-3 py-2">Class</th>
                     <th className="px-3 py-2 text-right">Max</th>
                     <th className="px-3 py-2">Marks Obtained</th>
                     <th className="px-3 py-2">Absent</th>
@@ -273,7 +328,7 @@ export function BulkMarkEntry({ options }: { options: BulkOptions }) {
                 </thead>
                 <tbody className="divide-y">
                   {visible.length === 0 && (
-                    <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">No students match your search.</td></tr>
+                    <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">No students match your search.</td></tr>
                   )}
                   {visible.map(({ s, i }) => {
                     const r = rows[s.id] ?? { value: "", absent: false };
@@ -284,7 +339,6 @@ export function BulkMarkEntry({ options }: { options: BulkOptions }) {
                         <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
                         <td className="px-3 py-2 font-jetbrains text-xs">{s.admissionNumber}</td>
                         <td className="px-3 py-2 font-medium">{s.name}</td>
-                        <td className="px-3 py-2 text-muted-foreground">{subject.className}</td>
                         <td className="px-3 py-2 text-right">{max}</td>
                         <td className="px-3 py-2">
                           <Input
