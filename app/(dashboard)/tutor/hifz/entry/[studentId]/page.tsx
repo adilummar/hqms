@@ -1,3 +1,4 @@
+import { INACTIVE_STUDENT_ERROR } from "@/lib/students/active";
 import { requireTutor, getSession } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { students, hifzDailyEntries, juzTracker, leavePeriods } from "@/lib/db/schema";
@@ -113,6 +114,11 @@ export default async function HifzEntryPage({ params, searchParams }: Props) {
         canRevert={canRevert}
       />
 
+      {student.status !== "active" && !existingEntry ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          {INACTIVE_STUDENT_ERROR} Existing records remain available in the student profile and reports.
+        </div>
+      ) : (
       <HifzEntryForm
         key={targetDate}
         studentId={student.id}
@@ -126,6 +132,7 @@ export default async function HifzEntryPage({ params, searchParams }: Props) {
         lastSabaqToPage={lastSabaqToPage}
         activeLeave={activeLeave}
       />
+      )}
     </div>
   );
 }

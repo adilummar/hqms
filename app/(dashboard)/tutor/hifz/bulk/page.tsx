@@ -1,3 +1,4 @@
+import { enrollmentStudentIsActive } from "@/lib/students/active";
 import { getActiveLeavePeriod } from "@/lib/actions/leave-tracker";
 import { requireTutor } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
@@ -89,7 +90,7 @@ export default async function HifzBulkPage({ searchParams }: Props) {
     const classEnrollments = await db.query.enrollments.findMany({
       where: and(
         eq(enrollments.classId, selectedClassId),
-        eq(enrollments.status, "active")
+        eq(enrollments.status, "active"), enrollmentStudentIsActive()
       ),
     });
 

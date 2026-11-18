@@ -1,5 +1,7 @@
 "use server";
 
+import { findInactiveStudentIds, INACTIVE_STUDENT_ERROR } from "@/lib/students/active";
+import { enrollmentStudentIsActive } from "@/lib/students/active";
 import { db } from "@/lib/db";
 import { classes, enrollments, studentStars } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth/helpers";
@@ -36,7 +38,7 @@ async function tutorCanManageStudent(userId: string, studentId: string) {
     .where(
       and(
         eq(enrollments.studentId, studentId),
-        eq(enrollments.status, "active"),
+        eq(enrollments.status, "active"), enrollmentStudentIsActive(),
         eq(classes.tutorId, userId),
         eq(classes.isActive, true),
         eq(classes.track, "hifz")
@@ -69,6 +71,11 @@ export async function awardStar(input: unknown) {
       success: false,
       error: "You can only award stars to students in your assigned classes.",
     };
+  }
+
+  // New stars are only for active students (existing stars stay untouched)
+  if ((await findInactiveStudentIds([studentId])).length > 0) {
+    return { success: false, error: INACTIVE_STUDENT_ERROR };
   }
 
   const [star] = await db
@@ -225,7 +232,7 @@ export async function getClassStarCounts(classId: string) {
   const classEnrollments = await db.query.enrollments.findMany({
     where: and(
       eq(enrollments.classId, parsedId.data),
-      eq(enrollments.status, "active")
+      eq(enrollments.status, "active"), enrollmentStudentIsActive()
     ),
   });
 

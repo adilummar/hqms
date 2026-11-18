@@ -1,5 +1,6 @@
 "use server";
 
+import { findInactiveStudentIds, INACTIVE_STUDENT_ERROR } from "@/lib/students/active";
 import { db } from "@/lib/db";
 import { hifzDailyEntries, juzTracker, students } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth/helpers";
@@ -7,7 +8,7 @@ import { logActivity } from "@/lib/actions/activity";
 import { z } from "zod";
 import { juzNumberSchema, JUZ_RANGE_MESSAGE } from "@/lib/validators/juz";
 import { resolveSabaqPages, validateSabaqRange } from "@/lib/hifz/sabaq-pages";
-import { eq, and, count } from "drizzle-orm";
+import { eq, and, count, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 const hifzEntrySchema = z.object({
@@ -68,6 +69,13 @@ export async function saveDailyHifzEntry(input: z.infer<typeof hifzEntrySchema>)
     } else {
       isNewEntry = true;
     }
+  }
+
+  // New daily entries are only for ACTIVE students. Editing an already-recorded entry
+  // (historical correction) stays allowed.
+  if (!data.id) {
+    const inactive = await findInactiveStudentIds([data.studentId]);
+    if (inactive.length > 0) return { success: false, error: INACTIVE_STUDENT_ERROR };
   }
 
   let entryId = data.id;
@@ -363,6 +371,19 @@ export async function saveBulkHifzEntries(input: unknown) {
     const err = validateSabaqRange(entry.sabaqFromPage, entry.sabaqToPage);
     if (err) return { success: false, error: err };
   }
+  // Inactive students may not receive NEW entries (existing entries can still be corrected)
+  const inactiveIds = await findInactiveStudentIds(entries.map((e) => e.studentId));
+  if (inactiveIds.length > 0) {
+    const already = await db.query.hifzDailyEntries.findMany({
+      where: and(inArray(hifzDailyEntries.studentId, inactiveIds), eq(hifzDailyEntries.date, date)),
+      columns: { studentId: true },
+    });
+    const hasEntry = new Set(already.map((a) => a.studentId));
+    if (inactiveIds.some((id) => !hasEntry.has(id))) {
+      return { success: false, error: INACTIVE_STUDENT_ERROR };
+    }
+  }
+
   let saved = 0;
   const newEntryIds: string[] = [];
   const newEntryStudentIds: string[] = [];

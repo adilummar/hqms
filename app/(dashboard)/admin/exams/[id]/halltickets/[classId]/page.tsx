@@ -1,3 +1,4 @@
+import { enrollmentStudentIsActive } from "@/lib/students/active";
 import { requireAdmin } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { examSessions, classes, examSubjects, enrollments } from "@/lib/db/schema";
@@ -41,7 +42,7 @@ export default async function HallTicketsPrintPage({
   const classEnrollments = await db.query.enrollments.findMany({
     where: and(
       eq(enrollments.classId, classId),
-      eq(enrollments.status, "active")
+      eq(enrollments.status, "active"), enrollmentStudentIsActive()
     ),
     with: { student: true },
   });

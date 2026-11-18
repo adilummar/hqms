@@ -1,5 +1,6 @@
 "use server";
 
+import { enrollmentStudentIsActive } from "@/lib/students/active";
 import { db } from "@/lib/db";
 import { 
   studentAnnualHifzTargets, 
@@ -40,7 +41,7 @@ export async function initializeAcademicYearTargets(academicYearId: string) {
   const activeEnrollments = await db.query.enrollments.findMany({
     where: and(
       eq(enrollments.academicYearId, academicYearId),
-      eq(enrollments.status, "active")
+      eq(enrollments.status, "active"), enrollmentStudentIsActive()
     )
   });
 

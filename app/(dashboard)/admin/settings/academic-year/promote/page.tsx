@@ -1,3 +1,4 @@
+import { enrollmentStudentIsActive } from "@/lib/students/active";
 import { requireAdmin } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { academicYears, enrollments, students } from "@/lib/db/schema";
@@ -33,7 +34,7 @@ export default async function PromoteStudentsPage({ searchParams }: Props) {
   // Get all active enrollments NOT in the new year (these are the ones needing promotion)
   const activeEnrollments = await db.query.enrollments.findMany({
     where: and(
-      eq(enrollments.status, "active"),
+      eq(enrollments.status, "active"), enrollmentStudentIsActive(),
       ne(enrollments.academicYearId, yearId)
     ),
     with: {

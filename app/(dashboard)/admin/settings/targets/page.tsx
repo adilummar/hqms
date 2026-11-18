@@ -1,3 +1,4 @@
+import { enrollmentStudentIsActive } from "@/lib/students/active";
 import { requireRole } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { academicYears, enrollments, students, studentAnnualHifzTargets } from "@/lib/db/schema";
@@ -20,7 +21,7 @@ export default async function TargetsSettingsPage() {
     const activeEnrollments = await db.query.enrollments.findMany({
       where: and(
         eq(enrollments.academicYearId, currentAcYear.id),
-        eq(enrollments.status, "active")
+        eq(enrollments.status, "active"), enrollmentStudentIsActive()
       ),
       with: { student: true }
     });

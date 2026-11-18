@@ -1,3 +1,4 @@
+import { enrollmentStudentIsActive } from "@/lib/students/active";
 import { requireTutor, getSession } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { examSessions, classes, examSubjects, examMarks, enrollments } from "@/lib/db/schema";
@@ -55,7 +56,7 @@ export default async function TutorMarkEntryPage({
   const classEnrollments = await db.query.enrollments.findMany({
     where: and(
       eq(enrollments.classId, classId),
-      eq(enrollments.status, "active")
+      eq(enrollments.status, "active"), enrollmentStudentIsActive()
     ),
     with: {
       student: true,

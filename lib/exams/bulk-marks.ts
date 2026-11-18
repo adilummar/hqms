@@ -5,6 +5,7 @@
 //               → exam_marks (unique per subject + student).
 // A bulk sheet is ONE exam_subjects row. Eligible students = active enrolments in that
 // subject's class (same rule as the individual mark-entry screen).
+import { enrollmentStudentIsActive } from "@/lib/students/active";
 import { db } from "@/lib/db";
 import { examSessions, examSubjects, examMarks, examinations, enrollments, classes, students } from "@/lib/db/schema";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
@@ -87,7 +88,7 @@ export async function loadBulkSheet(user: BulkUser, examSessionId: string, examS
       })
       .from(enrollments)
       .innerJoin(students, eq(students.id, enrollments.studentId))
-      .where(and(eq(enrollments.classId, ctx.subject.classId), eq(enrollments.status, "active")))
+      .where(and(eq(enrollments.classId, ctx.subject.classId), eq(enrollments.status, "active"), enrollmentStudentIsActive()))
       .orderBy(asc(students.firstName), asc(students.lastName)),
     db
       .select({ studentId: examMarks.studentId, marksObtained: examMarks.marksObtained, isAbsent: examMarks.isAbsent })
@@ -155,7 +156,7 @@ export async function applyBulkMarks(
   const eligible = await db
     .select({ id: enrollments.studentId })
     .from(enrollments)
-    .where(and(eq(enrollments.classId, ctx.subject.classId), eq(enrollments.status, "active"), inArray(enrollments.studentId, ids)));
+    .where(and(eq(enrollments.classId, ctx.subject.classId), eq(enrollments.status, "active"), enrollmentStudentIsActive(), inArray(enrollments.studentId, ids)));
   const eligibleSet = new Set(eligible.map((e) => e.id));
   if (ids.some((id) => !eligibleSet.has(id))) return { ok: false, error: "A student is not eligible for this subject" };
 

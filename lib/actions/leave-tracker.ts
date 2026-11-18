@@ -1,5 +1,6 @@
 "use server";
 
+import { findInactiveStudentIds, INACTIVE_STUDENT_ERROR } from "@/lib/students/active";
 import { db } from "@/lib/db";
 import {
   leavePeriods,
@@ -317,6 +318,11 @@ export async function saveLeaveResponses(
     if (ownedStudentId !== studentId) {
       return { success: false, error: "Unauthorized" };
     }
+  }
+
+  // New leave responses are only recorded for active students
+  if ((await findInactiveStudentIds([studentId])).length > 0) {
+    return { success: false, error: INACTIVE_STUDENT_ERROR };
   }
 
   for (const r of responses) {

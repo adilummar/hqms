@@ -1,5 +1,6 @@
 "use server";
 
+import { enrollmentStudentIsActive, findInactiveStudentIds, INACTIVE_STUDENT_ERROR } from "@/lib/students/active";
 import { db } from "@/lib/db";
 import {
   academicYears,
@@ -310,6 +311,11 @@ export async function promoteStudent(studentId: string, newAcademicYearId: strin
     return { success: false, error: "No active enrollment found for this student." };
   }
 
+  // Never carry an inactive (completed/discontinued) student into a new academic year
+  if ((await findInactiveStudentIds([studentId])).length > 0) {
+    return { success: false, error: "Inactive students cannot be promoted." };
+  }
+
   const alreadyPromoted = await db.query.enrollments.findFirst({
     where: and(
       eq(enrollments.studentId, studentId),
@@ -377,7 +383,8 @@ export async function bulkPromoteByClass(classId: string, newAcademicYearId: str
   const classEnrollments = await db.query.enrollments.findMany({
     where: and(
       eq(enrollments.classId, classId),
-      eq(enrollments.status, "active")
+      eq(enrollments.status, "active"),
+      enrollmentStudentIsActive()
     ),
   });
 
@@ -399,6 +406,7 @@ export async function getPromotionStatus(newAcademicYearId: string) {
   const allActiveEnrollments = await db.query.enrollments.findMany({
     where: and(
       eq(enrollments.status, "active"),
+      enrollmentStudentIsActive(),
       ne(enrollments.academicYearId, newAcademicYearId)
     ),
     with: {

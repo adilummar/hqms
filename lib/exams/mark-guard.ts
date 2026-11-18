@@ -3,6 +3,7 @@
 // same rules: subject ∈ session, class track = session track, role/track permission, tutor
 // owns the class, publish lock, and the student is actively enrolled in the subject's class.
 // Plain module (NOT "use server"): reachable only through the authorising actions.
+import { enrollmentStudentIsActive } from "@/lib/students/active";
 import { db } from "@/lib/db";
 import { examSessions, examSubjects, classes, enrollments } from "@/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
@@ -83,7 +84,7 @@ export async function authorizeMarkWrites(user: MarkUser, marks: MarkWrite[]): P
     const rows = await db
       .select({ id: enrollments.studentId })
       .from(enrollments)
-      .where(and(eq(enrollments.classId, classId), eq(enrollments.status, "active"), inArray(enrollments.studentId, ids)));
+      .where(and(eq(enrollments.classId, classId), eq(enrollments.status, "active"), enrollmentStudentIsActive(), inArray(enrollments.studentId, ids)));
     if (rows.length !== ids.length) return "A student is not eligible for this subject";
   }
   return null;

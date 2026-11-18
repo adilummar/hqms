@@ -1,8 +1,9 @@
 "use server";
 
+import { findInactiveStudentIds, INACTIVE_STUDENT_ERROR } from "@/lib/students/active";
 import { db } from "@/lib/db";
 import { attendanceRecords } from "@/lib/db/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { requireRole } from "@/lib/auth/helpers";
 import { logActivity } from "@/lib/actions/activity";
 import {
@@ -10,6 +11,27 @@ import {
   bulkMarkAttendanceSchema,
 } from "@/lib/validators/attendance.schema";
 import { revalidatePath } from "next/cache";
+
+/**
+ * True when any of these students is inactive AND has no attendance record yet on that date
+ * (new attendance for inactive students is blocked; correcting an existing record is allowed).
+ */
+async function inactiveWithoutRecord(studentIds: string[], date: string): Promise<boolean> {
+  const inactive = await findInactiveStudentIds(studentIds);
+  if (inactive.length === 0) return false;
+  const existing = await db
+    .select({ studentId: attendanceRecords.studentId })
+    .from(attendanceRecords)
+    .where(
+      and(
+        inArray(attendanceRecords.studentId, inactive),
+        eq(attendanceRecords.date, date),
+        isNull(attendanceRecords.deletedAt)
+      )
+    );
+  const has = new Set(existing.map((e) => e.studentId));
+  return inactive.some((id) => !has.has(id));
+}
 
 export async function markAttendance(input: unknown) {
   const session = await requireRole(["tutor", "admin", "super_admin"]);
@@ -19,7 +41,12 @@ export async function markAttendance(input: unknown) {
   }
 
   const d = parsed.data;
-  
+
+  if (d.status !== "unmarked") {
+    const blocked = await inactiveWithoutRecord([d.studentId], d.date);
+    if (blocked) return { success: false, error: INACTIVE_STUDENT_ERROR };
+  }
+
   // Soft-delete legacy record if it exists
   await db.update(attendanceRecords)
     .set({ deletedAt: new Date(), deletedBy: session.user.id })
@@ -100,6 +127,12 @@ export async function bulkMarkAttendance(input: unknown) {
   }
 
   const { classId, track, date, entries } = parsed.data;
+
+  const blocked = await inactiveWithoutRecord(
+    entries.filter((e) => e.status !== "unmarked").map((e) => e.studentId),
+    date
+  );
+  if (blocked) return { success: false, error: INACTIVE_STUDENT_ERROR };
 
   let records;
   try {

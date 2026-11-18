@@ -1,5 +1,7 @@
 "use server";
 
+import { findInactiveStudentIds, INACTIVE_STUDENT_ERROR } from "@/lib/students/active";
+import { enrollmentStudentIsActive } from "@/lib/students/active";
 import { db } from "@/lib/db";
 import {
   parentMeetings,
@@ -128,7 +130,7 @@ export async function getMeetingRosterData(meetingId: string, classId: string) {
       where: eq(parentMeetings.id, meetingId),
     }),
     db.query.enrollments.findMany({
-      where: and(eq(enrollments.classId, classId), eq(enrollments.status, "active")),
+      where: and(eq(enrollments.classId, classId), eq(enrollments.status, "active"), enrollmentStudentIsActive()),
     }),
   ]);
 
@@ -180,6 +182,12 @@ export async function saveParentMeetingAttendance(input: unknown) {
   });
   
   const existingMap = new Map(existingRecords.map(r => [r.studentId, r.status]));
+
+  // Inactive students may not receive NEW meeting attendance (existing records can be corrected)
+  const inactiveIds = await findInactiveStudentIds(studentIds);
+  if (inactiveIds.some((id) => !existingMap.has(id))) {
+    return { success: false, error: INACTIVE_STUDENT_ERROR };
+  }
 
   await db.transaction(async (tx) => {
     for (const entry of entries) {

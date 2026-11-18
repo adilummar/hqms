@@ -1,3 +1,4 @@
+import { enrollmentStudentIsActive } from "@/lib/students/active";
 import { requireRole } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { classes, users, enrollments } from "@/lib/db/schema";
@@ -33,7 +34,7 @@ export default async function ClassesSettingsPage({ searchParams }: Props) {
       orderBy: [asc(users.username)],
     }),
     db.query.enrollments.findMany({
-      where: eq(enrollments.status, "active"),
+      where: and(eq(enrollments.status, "active"), enrollmentStudentIsActive()),
       columns: { classId: true }
     })
   ]);

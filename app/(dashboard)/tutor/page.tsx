@@ -1,3 +1,4 @@
+import { enrollmentStudentIsActive } from "@/lib/students/active";
 import { requireRole } from "@/lib/auth/helpers";
 import { db } from "@/lib/db";
 import { hifzDailyEntries, enrollments, classes } from "@/lib/db/schema";
@@ -31,7 +32,7 @@ export default async function TutorDashboard() {
     const enrolledStudents = await db.query.enrollments.findMany({
       where: and(
         eq(enrollments.classId, hifzClass.id),
-        eq(enrollments.status, "active")
+        eq(enrollments.status, "active"), enrollmentStudentIsActive()
       ),
     });
     totalStudents = enrolledStudents.length;
