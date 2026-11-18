@@ -317,9 +317,9 @@ export function BulkMarkEntry({ options }: { options: BulkOptions }) {
               <table className="w-full text-sm min-w-[640px]">
                 <thead className="bg-muted/50 border-b">
                   <tr className="text-left text-xs text-muted-foreground">
-                    <th className="px-3 py-2 w-12">No.</th>
-                    <th className="px-3 py-2">Admission No.</th>
-                    <th className="px-3 py-2">Student</th>
+                    <th className="px-3 py-2 w-12 hidden md:table-cell">No.</th>
+                    <th className="px-3 py-2 hidden md:table-cell">Admission No.</th>
+                    <th className="px-3 py-2 sticky left-0 z-20 bg-muted border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)] min-w-[130px] md:static md:z-auto md:bg-transparent md:border-r-0 md:shadow-none">Student</th>
                     <th className="px-3 py-2 text-right">Max</th>
                     <th className="px-3 py-2">Marks Obtained</th>
                     <th className="px-3 py-2">Absent</th>
@@ -336,9 +336,12 @@ export function BulkMarkEntry({ options }: { options: BulkOptions }) {
                     const st = rowStatus(orig[s.id], r, max);
                     return (
                       <tr key={s.id} className="hover:bg-muted/30">
-                        <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
-                        <td className="px-3 py-2 font-jetbrains text-xs">{s.admissionNumber}</td>
-                        <td className="px-3 py-2 font-medium">{s.name}</td>
+                        <td className="px-3 py-2 text-muted-foreground hidden md:table-cell">{i + 1}</td>
+                        <td className="px-3 py-2 font-jetbrains text-xs hidden md:table-cell">{s.admissionNumber}</td>
+                        <td className="px-3 py-2 font-medium sticky left-0 z-10 bg-card border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)] min-w-[130px] max-w-[160px] md:static md:z-auto md:bg-transparent md:border-r-0 md:shadow-none md:max-w-none">
+                          <div className="md:hidden text-[11px] text-muted-foreground font-normal">{i + 1}. <span className="font-jetbrains">{s.admissionNumber}</span></div>
+                          {s.name}
+                        </td>
                         <td className="px-3 py-2 text-right">{max}</td>
                         <td className="px-3 py-2">
                           <Input
