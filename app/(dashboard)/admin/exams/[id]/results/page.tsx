@@ -5,6 +5,8 @@ import { eq, and, inArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { ClassResultReport } from "@/components/exams/class-result-report";
+import { CategoryResultReport } from "@/components/exams/category-result-report";
+import { YEAR_CATEGORIES } from "@/lib/exams/year-category";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
@@ -68,7 +70,28 @@ export default async function AdminExamResultsPage({
                 {cls.name}
               </TabsTrigger>
             ))}
+            {YEAR_CATEGORIES.map(cat => (
+              <TabsTrigger
+                key={cat.key}
+                value={`cat-${cat.key}`}
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border border-dashed"
+              >
+                {cat.label} ({cat.year})
+              </TabsTrigger>
+            ))}
           </TabsList>
+
+          {YEAR_CATEGORIES.map(cat => (
+            <TabsContent key={cat.key} value={`cat-${cat.key}`} className="mt-6">
+              <div className="mb-4">
+                <h3 className="font-semibold text-lg">{cat.label} — {cat.year} ranking across all classes</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Students of this year in every class are ranked together by percentage. Only students who passed all subjects are ranked.
+                </p>
+              </div>
+              <CategoryResultReport examSessionId={exam.id} category={cat.key} />
+            </TabsContent>
+          ))}
           
           {examClasses.map(cls => (
             <TabsContent key={cls.id} value={cls.id} className="mt-6">
