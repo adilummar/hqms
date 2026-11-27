@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { saveBulkHifzEntries } from "@/lib/actions/hifz";
 import { toast } from "sonner";
 import { Save, Loader2, CheckCircle2, ChevronsUpDown } from "lucide-react";
@@ -31,6 +32,7 @@ type StudentInput = {
   lastName: string | null;
   studentCode: string;
   currentJuzNumber: number | null;
+  activeJuz: { id: string; juzNumber: number; completedOnDate: boolean } | null;
   /** Where this student's previous Sabaq (before the selected date) ended — informational */
   lastSabaqToPage: string | null;
   existingEntry: ExistingEntry | null;
@@ -46,6 +48,8 @@ type RowState = {
   sabaqJuzRemarksId: string;
   dauraJuz: string;
   dauraRemarksId: string;
+  /** Tick = "this student completed their current Juz on the entry date" */
+  completeJuz: boolean;
 };
 
 interface Props {
@@ -75,7 +79,8 @@ function hasData(row: RowState): boolean {
     row.sabaqToPage ||
     row.dauraJuz ||
     row.sabaqRemarksId ||
-    row.dauraRemarksId
+    row.dauraRemarksId ||
+    row.completeJuz
   );
 }
 
@@ -158,9 +163,11 @@ export function HifzBulkEntry({
       sabaqJuzRemarksId: s.existingEntry?.sabaqJuzRemarksId ?? "",
       dauraJuz: (s.existingEntry?.dauraJuzNumbers ?? []).join(" "),
       dauraRemarksId: s.existingEntry?.dauraRemarksId ?? "",
+      completeJuz: false,
     }))
   );
 
+  const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<string>>(
     () => new Set(students.filter((s) => s.existingEntry).map((s) => s.id))
@@ -275,6 +282,8 @@ export function HifzBulkEntry({
         sabaqJuzRemarksId: r.sabaqJuzRemarksId || undefined,
         dauraJuzNumbers: parseJuzNumbers(r.dauraJuz),
         dauraRemarksId: r.dauraRemarksId || undefined,
+        // Only a Juz the page offered for this student; the server re-verifies ownership
+        completeJuzId: r.completeJuz ? students.find((s) => s.id === r.studentId)?.activeJuz?.id : undefined,
       }));
 
       const result = await saveBulkHifzEntries({ date, entries });
@@ -282,6 +291,10 @@ export function HifzBulkEntry({
       if (result.success) {
         toast.success(`Saved ${result.saved} student${result.saved !== 1 ? "s" : ""}`);
         setSavedIds(new Set(toSave.map((r) => r.studentId)));
+        // Completed Juz are now recorded; clear the ticks so a re-save cannot re-apply them
+        setRows((prev) => prev.map((r) => (r.completeJuz ? { ...r, completeJuz: false } : r)));
+        if (result.juzCompleted) toast.success(`${result.juzCompleted} Juz marked as completed`);
+        router.refresh();
       } else {
         toast.error(typeof result.error === "string" ? result.error : "Failed to save. Please try again.");
       }
@@ -584,6 +597,34 @@ export function HifzBulkEntry({
                     )}
                   </div>
                 </div>
+
+                {/* Divider */}
+                <div className="border-t border-border/50" />
+
+                {/* Juz completed row — same action as "Mark Juz N as Completed Today" in Individual entry */}
+                {student.activeJuz && (
+                  <>
+                    <div className="border-t border-border/50" />
+                    <div className="grid grid-cols-[3rem_1fr] gap-x-3 items-start">
+                      <span className={labelCls}>Juz</span>
+                      {student.activeJuz.completedOnDate ? (
+                        <span className="text-sm font-medium text-emerald-700">✓ Juz {student.activeJuz.juzNumber} completed</span>
+                      ) : (
+                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={row.completeJuz}
+                            onChange={(e) => updateRow(student.id, { completeJuz: e.target.checked })}
+                            className="accent-foreground w-4 h-4 rounded"
+                          />
+                          <span className={cn("text-sm font-medium", row.completeJuz ? "text-foreground" : "text-muted-foreground")}>
+                            Juz {student.activeJuz.juzNumber} completed today ({date})
+                          </span>
+                        </label>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 {/* Divider */}
                 <div className="border-t border-border/50" />

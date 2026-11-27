@@ -17,6 +17,7 @@ import { formatSabaq, formatSabaqJuz, formatDaura } from "@/lib/hifz/entry-displ
 import { PageHeader } from "@/components/layout/page-header";
 import { getActiveLeavePeriod } from "@/lib/actions/leave-tracker";
 import Link from "next/link";
+import { ownClassesFirst, classLabel } from "@/lib/tutor/class-order";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Daily Hifz Entry" };
@@ -26,7 +27,8 @@ interface Props {
 }
 
 export default async function TutorHifzPage({ searchParams }: Props) {
-  await requireTutor();
+  const authSession = await requireTutor();
+  const userId = authSession.user.id as string;
   const params = await searchParams;
 
   const today = new Date().toISOString().split("T")[0];
@@ -36,9 +38,11 @@ export default async function TutorHifzPage({ searchParams }: Props) {
   const activeLeave = await getActiveLeavePeriod();
 
   // Get available Hifz classes
-  const hifzClasses = await db.query.classes.findMany({
-    where: and(eq(classes.track, "hifz"), eq(classes.isActive, true)),
-  });
+  // The class teacher's own class first (and selected by default); other classes stay selectable
+  const hifzClasses = ownClassesFirst(
+    await db.query.classes.findMany({ where: and(eq(classes.track, "hifz"), eq(classes.isActive, true)) }),
+    userId
+  );
 
   // Check for pending promotions (students not enrolled in current academic year)
   const currentYear = await db.query.academicYears.findFirst({
@@ -225,7 +229,7 @@ export default async function TutorHifzPage({ searchParams }: Props) {
           >
             {hifzClasses.map((cls) => (
               <option key={cls.id} value={cls.id}>
-                {cls.name}
+                {classLabel(cls, userId)}
               </option>
             ))}
           </select>

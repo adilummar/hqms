@@ -27,6 +27,7 @@ import { HifzBulkEntry } from "@/components/hifz/hifz-bulk-entry";
 import { getMonthlySabaqPages, rankByMonthlyPages } from "@/lib/services/hifz-monthly-rank";
 import { getPreviousSabaqEnds } from "@/lib/services/hifz-continuation";
 import Link from "next/link";
+import { ownClassesFirst, classLabel } from "@/lib/tutor/class-order";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Bulk Hifz Entry" };
@@ -36,7 +37,8 @@ interface Props {
 }
 
 export default async function HifzBulkPage({ searchParams }: Props) {
-  await requireTutor();
+  const authSession = await requireTutor();
+  const userId = authSession.user.id as string;
   const params = await searchParams;
 
   const today = new Date().toISOString().split("T")[0];
@@ -48,9 +50,11 @@ export default async function HifzBulkPage({ searchParams }: Props) {
 
 
   // ── Classes ────────────────────────────────────────────────────────────────
-  const hifzClasses = await db.query.classes.findMany({
-    where: and(eq(classes.track, "hifz"), eq(classes.isActive, true)),
-  });
+  // The class teacher's own class first (and selected by default); other classes stay selectable
+  const hifzClasses = ownClassesFirst(
+    await db.query.classes.findMany({ where: and(eq(classes.track, "hifz"), eq(classes.isActive, true)) }),
+    userId
+  );
 
   const selectedClassId = params.classId ?? hifzClasses[0]?.id;
 
@@ -70,6 +74,8 @@ export default async function HifzBulkPage({ searchParams }: Props) {
     lastName: string | null;
     studentCode: string;
     currentJuzNumber: number | null;
+    /** The in-progress Juz that can be ticked as completed on the selected date (null when none) */
+    activeJuz: { id: string; juzNumber: number; completedOnDate: boolean } | null;
     lastSabaqToPage: string | null;
     existingEntry: {
       id: string;
@@ -135,8 +141,12 @@ export default async function HifzBulkPage({ searchParams }: Props) {
       const entryMap = new Map(existingEntries.map((e) => [e.studentId, e]));
       // Keep only the first (most recent) juz per student
       const juzMap = new Map<string, number>();
+      const activeJuzMap = new Map<string, NonNullable<StudentRow["activeJuz"]>>();
       for (const j of currentJuzList) {
-        if (!juzMap.has(j.studentId)) juzMap.set(j.studentId, j.juzNumber);
+        if (!juzMap.has(j.studentId)) {
+          juzMap.set(j.studentId, j.juzNumber);
+          activeJuzMap.set(j.studentId, { id: j.id, juzNumber: j.juzNumber, completedOnDate: j.status === "completed" });
+        }
       }
 
       const monthlyTotals = await getMonthlySabaqPages(studentIds);
@@ -150,6 +160,7 @@ export default async function HifzBulkPage({ searchParams }: Props) {
           lastName: s.lastName,
           studentCode: s.studentCode,
           currentJuzNumber: juzMap.get(s.id) ?? null,
+          activeJuz: activeJuzMap.get(s.id) ?? null,
           lastSabaqToPage: prevEnds.get(s.id) ?? null,
           existingEntry: entry
             ? {
@@ -204,7 +215,7 @@ export default async function HifzBulkPage({ searchParams }: Props) {
           >
             {hifzClasses.map((cls) => (
               <option key={cls.id} value={cls.id}>
-                {cls.name}
+                {classLabel(cls, userId)}
               </option>
             ))}
           </select>

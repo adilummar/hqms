@@ -8,7 +8,7 @@ import { logActivity } from "@/lib/actions/activity";
 import { z } from "zod";
 import { juzNumberSchema, JUZ_RANGE_MESSAGE } from "@/lib/validators/juz";
 import { resolveSabaqPages, validateSabaqRange } from "@/lib/hifz/sabaq-pages";
-import { eq, and, count, inArray } from "drizzle-orm";
+import { eq, and, count, inArray, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 const hifzEntrySchema = z.object({
@@ -349,6 +349,8 @@ const bulkEntryItemSchema = z.object({
   sabaqJuzRemarksId: z.string().uuid().nullable().optional(),
   dauraJuzNumbers: z.array(juzNumberSchema).nullable().optional(),
   dauraRemarksId: z.string().uuid().nullable().optional(),
+  /** Mark this student's in-progress Juz as completed on the entry date (checked server-side) */
+  completeJuzId: z.string().uuid().optional(),
 });
 
 const bulkHifzEntrySchema = z.object({
@@ -385,6 +387,8 @@ export async function saveBulkHifzEntries(input: unknown) {
   }
 
   let saved = 0;
+  let juzCompleted = 0;
+  const completedJuz: { id: string; juzNumber: number; studentId: string }[] = [];
   const newEntryIds: string[] = [];
   const newEntryStudentIds: string[] = [];
 
@@ -427,6 +431,23 @@ export async function saveBulkHifzEntries(input: unknown) {
       newEntryStudentIds.push(entry.studentId);
     }
 
+    // Juz completion: only the student's OWN not-yet-completed Juz row can be completed
+    if (entry.completeJuzId) {
+      const [done] = await db.update(juzTracker)
+        .set({ status: "completed", completionDate: date, updatedAt: new Date(), updatedBy: session.user.id })
+        .where(and(
+          eq(juzTracker.id, entry.completeJuzId),
+          eq(juzTracker.studentId, entry.studentId),
+          ne(juzTracker.status, "completed")
+        ))
+        .returning();
+      if (done) {
+        juzCompleted++;
+        completedJuz.push({ id: done.id, juzNumber: done.juzNumber, studentId: entry.studentId });
+        await logActivity(session.user.id, "juz.complete", "juz_tracker", done.id);
+      }
+    }
+
     await logActivity(
       session.user.id,
       existing ? "hifz_entry.bulk_update" : "hifz_entry.bulk_create",
@@ -434,6 +455,26 @@ export async function saveBulkHifzEntries(input: unknown) {
       entry.studentId
     );
     saved++;
+  }
+
+  // Juz-completed notifications (same message and idempotency key as Individual entry)
+  for (const j of completedJuz) {
+    try {
+      const { notificationService } = await import("@/lib/services/notifications");
+      const recipients = await notificationService.resolveHifzEntryRecipients(j.studentId);
+      await notificationService.createNotification({
+        type: "juz_completed",
+        title: `Juz ${j.juzNumber} Completed!`,
+        body: `Alhamdulillah, Juz ${j.juzNumber} has been marked as completed on ${date}.`,
+        entityType: "juz_tracker",
+        entityId: j.id,
+        deepLink: `/parent/progress`,
+        recipients,
+        idempotencyKey: `juz_completed:${j.id}:${date}`,
+      });
+    } catch (err) {
+      console.error("Failed to send juz completion notification:", err);
+    }
   }
 
   // Notifications for newly created entries
@@ -467,6 +508,6 @@ export async function saveBulkHifzEntries(input: unknown) {
 
   revalidatePath("/tutor/hifz");
   revalidatePath("/tutor/hifz/bulk");
-  return { success: true, saved };
+  return { success: true, saved, juzCompleted };
 }
 

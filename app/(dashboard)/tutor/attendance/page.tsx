@@ -4,6 +4,7 @@ import { classes, enrollments, students, attendanceRecords, remarksOptions } fro
 import { eq, and, inArray, isNull } from "drizzle-orm";
 import { PageHeader } from "@/components/layout/page-header";
 import { AttendanceRoster } from "@/components/attendance/attendance-roster";
+import { ownClassesFirst, classLabel } from "@/lib/tutor/class-order";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Attendance" };
@@ -15,14 +16,15 @@ interface Props {
 }
 
 export default async function TutorAttendancePage({ searchParams }: Props) {
-  await requireTutor();
+  const authSession = await requireTutor();
+  const userId = authSession.user.id as string;
   const params = await searchParams;
 
   const today = new Date().toISOString().split("T")[0];
   const selectedDate = params.date ?? today;
   const selectedTrack = (params.track ?? "hifz") as Track;
 
-  const [allClasses, attendanceRemarkOptions] = await Promise.all([
+  const [unorderedClasses, attendanceRemarkOptions] = await Promise.all([
     db.query.classes.findMany({
       where: and(eq(classes.track, selectedTrack), eq(classes.isActive, true)),
     }),
@@ -31,6 +33,8 @@ export default async function TutorAttendancePage({ searchParams }: Props) {
     }),
   ]);
 
+  // The class teacher's own class first (and selected by default); other classes stay selectable
+  const allClasses = ownClassesFirst(unorderedClasses, userId);
   const selectedClassId = params.classId ?? allClasses[0]?.id;
 
   let studentList: { id: string; studentCode: string; firstName: string; lastName: string | null }[] = [];
@@ -100,7 +104,7 @@ export default async function TutorAttendancePage({ searchParams }: Props) {
           <label className="block text-xs text-muted-foreground mb-1">Class</label>
           <select name="classId" defaultValue={selectedClassId}
             className="h-9 px-3 text-sm border border-border rounded-sm bg-background focus:outline-none focus:ring-1 focus:ring-foreground">
-            {allClasses.map((cls) => <option key={cls.id} value={cls.id}>{cls.name}</option>)}
+            {allClasses.map((cls) => <option key={cls.id} value={cls.id}>{classLabel(cls, userId)}</option>)}
           </select>
         </div>
         <button type="submit" className="h-9 px-4 bg-foreground text-background text-sm font-medium rounded-sm hover:bg-foreground/90 transition-colors">
